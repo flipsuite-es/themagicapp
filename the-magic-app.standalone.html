@@ -612,6 +612,108 @@ input, textarea {
   margin: 8px 0;
 }
 
+/* ==========================================================================
+   Estilos de los trucos nuevos
+   ========================================================================== */
+
+/* Encabezado de categoría en portada / Modo Mago */
+.cathead {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+  margin: 22px 4px 10px;
+  font-weight: 700;
+}
+.cathead:first-of-type { margin-top: 6px; }
+
+/* Adivino tu Edad */
+.agelist { display: grid; gap: 10px; }
+.agecard {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.agecard:active { transform: scale(0.99); }
+.agecard.sel {
+  border-color: var(--gold);
+  background: rgba(233, 196, 106, 0.12);
+}
+.agenums {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  word-spacing: 3px;
+}
+.agecard.sel .agenums { color: var(--gold-soft); }
+.agetoggle { font-size: 11.5px; color: var(--ink-faint); margin-top: 8px; }
+.agecard.sel .agetoggle { color: var(--gold); }
+.agecard.sel .agetoggle b::after { content: " ✓"; }
+
+/* Las 21 Cartas */
+.cols21 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.col21 { display: flex; flex-direction: column; gap: 6px; }
+.mini {
+  border-radius: 8px;
+  background: #fdfdfb;
+  color: #16181f;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  padding: 8px 0;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.mini.red { color: #d8203f; }
+.colbtn { font-size: 12px !important; min-height: 42px !important; margin-top: 4px !important; padding: 0 4px; }
+
+/* Dados */
+.dice { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.die {
+  width: 60px; height: 60px;
+  font-size: 40px; line-height: 1;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.06);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.die:active { transform: scale(0.94); background: var(--gold); color: #1a1030; }
+
+/* Predicción Sellada — sobre */
+.envelope {
+  text-align: center;
+  padding: 26px 10px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(139,108,255,0.14), rgba(233,196,106,0.08));
+  border: 1px dashed var(--line);
+  margin: 6px 0 10px;
+}
+.envelope .seal { font-size: 64px; filter: drop-shadow(0 6px 20px rgba(139,108,255,0.5)); }
+.envelope .envtx { margin-top: 10px; color: var(--ink-soft); font-size: 15px; line-height: 1.5; }
+
+/* Cuadrado mágico */
+.magicgrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+.mcell {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 </style>
 <div class="stars"></div>
 <div class="app">
@@ -675,7 +777,43 @@ input, textarea {
   /* =====================================================================
      HOME
      ===================================================================== */
+  // Catálogo de trucos, agrupado por categoría (dirige portada y Modo Mago)
+  var CATALOG = [
+    {
+      cat: "Autofuncionales · nunca fallan",
+      items: [
+        { id: "simbolo", ico: "🜂", title: "Símbolo Imposible", desc: "Adivino el símbolo que ha pensado. Sin tocar el teléfono.", tag: "Fácil" },
+        { id: "reloj", ico: "🕛", title: "Reloj Mental", desc: "Piensa una hora en secreto. La app la encuentra sola.", tag: "Fácil" },
+        { id: "mil89", ico: "🔢", title: "Predicción 1089", desc: "Haga cuentas con un número libre: la predicción ya estaba escrita.", tag: "Fácil" },
+        { id: "edad", ico: "🎂", title: "Adivino tu Edad", desc: "Señala unas cartas y la app dice tu edad (o cualquier número).", tag: "Fácil" },
+        { id: "cumple", ico: "📅", title: "Cumpleaños Mágico", desc: "Extraigo tu fecha de nacimiento de un solo número.", tag: "Fácil" },
+        { id: "veintiuna", ico: "🃏", title: "Las 21 Cartas", desc: "Piensa una carta; tras tres rondas, la encuentro.", tag: "Medio" },
+        { id: "dados", ico: "🎲", title: "Dados Rayos X", desc: "Apila tres dados: veo la suma de las caras ocultas.", tag: "Fácil" }
+      ]
+    },
+    {
+      cat: "Con manejo secreto · aprende en Modo Mago",
+      items: [
+        { id: "lector", ico: "🧠", title: "Lector Mental", desc: "Su carta o palabra aparece en su pantalla como magia.", tag: "Potente" },
+        { id: "sellada", ico: "✉️", title: "Predicción Sellada", desc: "Escribes la predicción antes. Al abrirla, coincide.", tag: "Potente" }
+      ]
+    },
+    {
+      cat: "Herramientas del mago",
+      items: [
+        { id: "cuadrado", ico: "🔲", title: "Cuadrado Mágico", desc: "Te genera un cuadrado que suma el número que elijan.", tag: "Utilidad" }
+      ]
+    }
+  ];
+
   function renderHome() {
+    var groups = CATALOG.map(function (g) {
+      var cards = g.items.map(function (t) {
+        return trickCard(t.id, t.ico, t.title, t.desc, t.tag);
+      }).join("");
+      return '<div class="cathead">' + g.cat + '</div><div class="grid">' + cards + "</div>";
+    }).join("");
+
     view.innerHTML =
       '<div class="screen">' +
       '<div class="brand">' +
@@ -684,11 +822,7 @@ input, textarea {
       '<p>Mentalismo imposible — en su propio teléfono</p>' +
       "</div>" +
       '<div id="installSlot"></div>' +
-      '<div class="grid">' +
-      trickCard("simbolo", "🜂", "Símbolo Imposible", "Adivino el símbolo que ha pensado. Sin tocar el teléfono.", "Autofuncional") +
-      trickCard("lector", "🧠", "Lector Mental", "Su carta (o palabra) aparece en su pantalla como por arte de magia.", "Universal") +
-      trickCard("reloj", "🕛", "Reloj Mental", "Piensa una hora en secreto. La app la encuentra sola.", "Autofuncional") +
-      "</div>" +
+      groups +
       '<div class="foot"><span id="secretDoor">✦ Concentra tu energía ✦</span></div>' +
       "</div>";
 
@@ -1220,6 +1354,342 @@ input, textarea {
     panel.appendChild(b2);
   }
 
+  /* ---------------------------------------------------------------------
+     Helper de "escaneo mental" reutilizable: barra de progreso + orbe,
+     luego llama a done(). Pinta dentro de un .panel del título dado.
+     --------------------------------------------------------------------- */
+  function scanScreen(title, msgs, done) {
+    view.innerHTML =
+      '<div class="screen">' + topbar(title) +
+      '<div class="panel"><div class="scanwrap" style="min-height:auto;padding:20px 0">' +
+      '<div class="orb"></div>' +
+      '<div class="prompt">Concentrándome…</div>' +
+      '<div class="progress"><i id="bar"></i></div>' +
+      '<div class="scanstatus" id="st"></div>' +
+      "</div></div></div>";
+    var bar = document.getElementById("bar");
+    var st = document.getElementById("st");
+    var p = 0;
+    var step = 100 / msgs.length;
+    var iv = setInterval(function () {
+      p += 4 + rnd(5);
+      if (p > 100) p = 100;
+      bar.style.width = p + "%";
+      st.textContent = msgs[Math.min(msgs.length - 1, Math.floor(p / step))];
+      if (p >= 100) { clearInterval(iv); setTimeout(done, 300); }
+    }, 120);
+  }
+
+  function resultPanel(title, innerHtml) {
+    view.innerHTML =
+      '<div class="screen">' + topbar(title) +
+      '<div class="panel">' + innerHtml +
+      '<button class="btn" onclick="location.hash=\'#/\'">Terminar</button>' +
+      "</div></div>";
+  }
+
+  /* =====================================================================
+     TRUCO — PREDICCIÓN 1089 (autofuncional)
+     N de 3 cifras (1ª y última difieren ≥2). Invierte y resta; invierte
+     el resultado y suma: SIEMPRE 1089.
+     ===================================================================== */
+  function renderMil89() {
+    view.innerHTML =
+      '<div class="screen">' + topbar("Predicción 1089") +
+      '<div class="panel">' +
+      "<h2>Predicción 1089</h2>" +
+      '<p class="lead">Antes de empezar, <b>ya escribí una predicción</b>. Ahora tú manda.</p>' +
+      "<ol style='color:var(--ink-soft);line-height:1.7'>" +
+      "<li>Piensa un número de <b>3 cifras</b> cuya primera y última cifra se diferencien en <b>2 o más</b> (ej. <code>721</code>).</li>" +
+      "<li>Invierte sus cifras y <b>resta</b> el menor al mayor. (<code>721 − 127 = 594</code>)</li>" +
+      "<li>Invierte ese resultado y <b>suma</b> ambos. (<code>594 + 495</code>)</li>" +
+      "<li>Concéntrate en tu total final.</li>" +
+      "</ol>" +
+      '<button class="btn" id="go">Abrir mi predicción</button>' +
+      "</div></div>";
+    document.getElementById("go").addEventListener("click", function () {
+      scanScreen("Predicción 1089", ["Leyendo tu total…", "Comparando con mi sobre…"], function () {
+        resultPanel("Predicción 1089",
+          '<div class="bigreveal"><div class="sym" style="font-size:64px;color:var(--gold-soft)">1089</div>' +
+          '<div class="lbl">Tu total es <b>1089</b>… y eso es justo lo que había escrito.</div></div>');
+      });
+    });
+  }
+
+  /* =====================================================================
+     TRUCO — ADIVINO TU EDAD (cartas binarias, autofuncional)
+     6 cartas = 6 bits. El espectador marca en cuáles aparece su número.
+     La suma de los valores base (potencias de 2) = su número (1..63).
+     ===================================================================== */
+  function renderEdad() {
+    var cards = "";
+    for (var c = 0; c < 6; c++) {
+      var nums = [];
+      for (var n = 1; n <= 63; n++) if ((n >> c) & 1) nums.push(n);
+      cards +=
+        '<div class="agecard" data-bit="' + c + '">' +
+        '<div class="agenums">' + nums.join("  ") + "</div>" +
+        '<div class="agetoggle">¿Está tu número aquí? <b>tócala si SÍ</b></div>' +
+        "</div>";
+    }
+    view.innerHTML =
+      '<div class="screen">' + topbar("Adivino tu Edad") +
+      '<div class="panel">' +
+      "<h2>Adivino tu Edad</h2>" +
+      '<p>Piensa tu edad (o cualquier número del 1 al 63). Toca <b>todas</b> las cartas donde aparezca tu número. Vuelve a tocar para desmarcar.</p>' +
+      "</div>" +
+      '<div class="agelist">' + cards + "</div>" +
+      '<button class="btn" id="go">Adivinar</button>' +
+      "</div>";
+    view.querySelectorAll(".agecard").forEach(function (card) {
+      card.addEventListener("click", function () { card.classList.toggle("sel"); });
+    });
+    document.getElementById("go").addEventListener("click", function () {
+      var sum = 0;
+      view.querySelectorAll(".agecard.sel").forEach(function (card) {
+        sum += 1 << parseInt(card.getAttribute("data-bit"), 10);
+      });
+      scanScreen("Adivino tu Edad", ["Sumando frecuencias…", "Aislando el número…"], function () {
+        var msg = sum === 0
+          ? "No marcaste ninguna carta… ¿pensabas en el 0? 😉"
+          : "Tu número es… <b>" + sum + "</b>.";
+        resultPanel("Adivino tu Edad",
+          '<div class="bigreveal"><div class="sym" style="font-size:72px;color:var(--gold-soft)">' + (sum || "0") + "</div>" +
+          '<div class="lbl">' + msg + "</div></div>");
+      });
+    });
+  }
+
+  /* =====================================================================
+     TRUCO — CUMPLEAÑOS MÁGICO (autofuncional)
+     Pasos: mes×5, +6, ×4, +9, ×5, +día  =>  100*mes + día + 165.
+     El espectador dice ese total; la app resta 165 y decodifica.
+     ===================================================================== */
+  var MESES = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  function renderCumple() {
+    view.innerHTML =
+      '<div class="screen">' + topbar("Cumpleaños Mágico") +
+      '<div class="panel">' +
+      "<h2>Cumpleaños Mágico</h2>" +
+      '<p class="lead">No me digas tu fecha. Solo haz estas cuentas en secreto:</p>' +
+      "<ol style='color:var(--ink-soft);line-height:1.7'>" +
+      "<li>Número de tu <b>mes</b> (enero=1 … diciembre=12).</li>" +
+      "<li>Multiplícalo por <b>5</b>.</li><li>Súmale <b>6</b>.</li>" +
+      "<li>Multiplica por <b>4</b>.</li><li>Súmale <b>9</b>.</li>" +
+      "<li>Multiplica por <b>5</b>.</li>" +
+      "<li>Súmale el <b>día</b> de tu cumpleaños.</li>" +
+      "</ol>" +
+      '<p>Escribe aquí ese total final:</p>' +
+      '<input id="total" type="number" inputmode="numeric" placeholder="tu total" ' +
+      'style="width:100%;min-height:52px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,0.06);color:var(--ink);font-size:20px;padding:0 14px;text-align:center">' +
+      '<button class="btn" id="go">Adivinar mi cumpleaños</button>' +
+      "</div></div>";
+    document.getElementById("go").addEventListener("click", function () {
+      var v = parseInt(document.getElementById("total").value, 10);
+      if (isNaN(v)) { toast("Escribe tu total"); return; }
+      var x = v - 165;
+      var mes = Math.floor(x / 100);
+      var dia = x % 100;
+      if (mes < 1 || mes > 12 || dia < 1 || dia > 31) {
+        toast("Revisa las cuentas 🙂"); return;
+      }
+      scanScreen("Cumpleaños Mágico", ["Descifrando el número…", "Encontrando la fecha…"], function () {
+        resultPanel("Cumpleaños Mágico",
+          '<div class="bigreveal"><div class="sym" style="font-size:52px;color:var(--gold-soft)">' + dia + " de " + MESES[mes] + "</div>" +
+          '<div class="lbl">Naciste un <b>' + dia + " de " + MESES[mes] + "</b>. ¿Me equivoco?</div></div>");
+      });
+    });
+  }
+
+  /* =====================================================================
+     TRUCO — LAS 21 CARTAS (autofuncional clásico)
+     3 columnas de 7. El espectador indica en qué columna está su carta;
+     se recoge con esa columna en el centro y se reparte de nuevo. Tras 3
+     rondas, su carta queda en la posición central (índice 10).
+     ===================================================================== */
+  var deck21 = null, round21 = 0;
+  function renderVeintiuna() {
+    // 21 cartas distintas al azar de la baraja
+    var full = [];
+    for (var s = 0; s < 4; s++) for (var v = 0; v < 13; v++) full.push({ suit: SUITS[s].sym, val: VALUES[v] });
+    shuffle(full);
+    deck21 = full.slice(0, 21);
+    round21 = 0;
+    paint21();
+  }
+  function paint21() {
+    var cols = [[], [], []];
+    for (var i = 0; i < 21; i++) cols[i % 3].push(deck21[i]);
+    var colHtml = cols.map(function (col, idx) {
+      var cards = col.map(function (c) {
+        var red = c.suit === "♥" || c.suit === "♦";
+        return '<div class="mini ' + (red ? "red" : "") + '">' + c.val + c.suit + "</div>";
+      }).join("");
+      return '<div class="col21">' + cards +
+        '<button class="btn violet colbtn" data-col="' + idx + '">Mi carta está aquí</button></div>';
+    }).join("");
+    view.innerHTML =
+      '<div class="screen">' + topbar("Las 21 Cartas") +
+      '<div class="panel">' +
+      "<h2>Las 21 Cartas</h2>" +
+      "<p>" + (round21 === 0
+        ? "Piensa <b>una</b> de estas cartas y recuérdala. Dime en qué <b>columna</b> está."
+        : "Ronda " + (round21 + 1) + " de 3. ¿En qué columna está tu carta ahora?") + "</p>" +
+      '<div class="cols21">' + colHtml + "</div>" +
+      "</div></div>";
+    view.querySelectorAll(".colbtn").forEach(function (b) {
+      b.addEventListener("click", function () { choose21(parseInt(b.getAttribute("data-col"), 10)); });
+    });
+  }
+  function choose21(chosen) {
+    var cols = [[], [], []];
+    for (var i = 0; i < 21; i++) cols[i % 3].push(deck21[i]);
+    var others = [0, 1, 2].filter(function (c) { return c !== chosen; });
+    // Recoger con la columna elegida en el centro
+    deck21 = cols[others[0]].concat(cols[chosen], cols[others[1]]);
+    round21++;
+    if (round21 >= 3) {
+      var card = deck21[10];
+      scanScreen("Las 21 Cartas", ["Rastreando tu carta…", "Reduciendo posibilidades…", "La tengo…"], function () {
+        var red = card.suit === "♥" || card.suit === "♦";
+        resultPanel("Las 21 Cartas",
+          '<div class="cardface ' + (red ? "red" : "") + '">' +
+          '<div class="corner tl">' + card.val + "<br>" + card.suit + "</div>" +
+          '<div class="center">' + card.suit + "</div>" +
+          '<div class="corner br">' + card.val + "<br>" + card.suit + "</div></div>" +
+          '<div class="lbl" style="text-align:center;margin-top:16px;color:var(--ink-soft)">Tu carta era el <b>' +
+          card.val + " de " + suitName(card.suit) + "</b>.</div>");
+      });
+    } else {
+      paint21();
+    }
+  }
+
+  /* =====================================================================
+     TRUCO — DADOS RAYOS X (autofuncional)
+     3 dados apilados: las 5 caras ocultas suman 21 − (cara de arriba),
+     porque caras opuestas suman 7.
+     ===================================================================== */
+  function renderDados() {
+    var faces = "";
+    for (var f = 1; f <= 6; f++) faces += '<button class="die" data-f="' + f + '">' + dieFace(f) + "</button>";
+    view.innerHTML =
+      '<div class="screen">' + topbar("Dados Rayos X") +
+      '<div class="panel">' +
+      "<h2>Dados Rayos X</h2>" +
+      "<p>Coge <b>3 dados</b> y apílalos en una torre. Sin que yo la vea, dime solo el número de <b>la cara de arriba</b>:</p>" +
+      '<div class="dice">' + faces + "</div>" +
+      '<p class="hint">Voy a “ver” a través de la torre las 5 caras que nadie puede ver.</p>' +
+      "</div></div>";
+    view.querySelectorAll(".die").forEach(function (d) {
+      d.addEventListener("click", function () {
+        var top = parseInt(d.getAttribute("data-f"), 10);
+        scanScreen("Dados Rayos X", ["Atravesando la torre…", "Contando las caras ocultas…"], function () {
+          resultPanel("Dados Rayos X",
+            '<div class="bigreveal"><div class="sym" style="font-size:72px;color:var(--gold-soft)">' + (21 - top) + "</div>" +
+            '<div class="lbl">Las <b>5 caras ocultas</b> de tu torre suman <b>' + (21 - top) + "</b>. Desármala y cuéntalas.</div></div>");
+        });
+      });
+    });
+  }
+  function dieFace(n) {
+    return ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][n];
+  }
+
+  /* =====================================================================
+     TRUCO — PREDICCIÓN SELLADA (manejo secreto, universal)
+     Muestras un sobre "sellado" desde el principio. Antes de presentar,
+     cargas la predicción con el mismo gesto secreto (deslizar desde arriba
+     abre el panel de carga). Al abrir, coincide.
+     ===================================================================== */
+  function renderSellada() {
+    view.innerHTML =
+      '<div class="screen">' + topbar("Predicción Sellada") +
+      '<div class="panel" id="scan">' +
+      "<h2>Predicción Sellada</h2>" +
+      '<div class="envelope"><div class="seal">✉️</div>' +
+      '<div class="envtx">Ya escribí mi predicción.<br><span class="hint">No puedo cambiarla.</span></div></div>' +
+      '<p class="hint" id="prompt">Cuando digas, abrimos el sobre.</p>' +
+      '<button class="btn" id="open">Abrir la predicción</button>' +
+      "</div></div>";
+    buildQuickSet();
+    armSwipeToLoad();
+    if (loaded.type) {
+      var s = document.querySelector(".seal");
+      if (s) s.textContent = "🔒";
+      var pr = document.getElementById("prompt");
+      if (pr) pr.textContent = "Predicción lista y sellada.";
+    }
+    document.getElementById("open").addEventListener("click", function () {
+      var result;
+      if (loaded.type === "card") result = { kind: "card", card: loaded.card };
+      else if (loaded.type === "text") result = { kind: "text", text: loaded.text };
+      else result = { kind: "card", card: { suit: SUITS[rnd(4)].sym, val: VALUES[rnd(13)] } };
+      scanScreen("Predicción Sellada", ["Rompiendo el sello…", "Desdoblando el papel…"], function () {
+        var body;
+        if (result.kind === "card") {
+          var c = result.card, red = c.suit === "♥" || c.suit === "♦";
+          body = '<div class="cardface ' + (red ? "red" : "") + '">' +
+            '<div class="corner tl">' + c.val + "<br>" + c.suit + "</div>" +
+            '<div class="center">' + c.suit + "</div>" +
+            '<div class="corner br">' + c.val + "<br>" + c.suit + "</div></div>" +
+            '<div class="lbl" style="text-align:center;margin-top:16px;color:var(--ink-soft)">Mi predicción: <b>' +
+            c.val + " de " + suitName(c.suit) + "</b>.</div>";
+        } else {
+          body = '<div class="textreveal">' + escapeHtml(result.text) + "</div>";
+        }
+        resultPanel("Predicción Sellada", body);
+        loaded = { type: null, card: null, text: null };
+      });
+    });
+  }
+
+  /* =====================================================================
+     HERRAMIENTA — CUADRADO MÁGICO
+     Genera un cuadrado 4×4 cuyas filas, columnas y diagonales suman N.
+     Base mágica (constante 34) + N−34 en una transversal que toca cada
+     fila, columna y ambas diagonales exactamente una vez.
+     ===================================================================== */
+  var MAGIC_BASE = [
+    [1, 15, 14, 4],
+    [12, 6, 7, 9],
+    [8, 10, 11, 5],
+    [13, 3, 2, 16]
+  ];
+  // Celdas donde sumar e = N-34 : (0,0),(1,3),(2,1),(3,2)
+  var MAGIC_ADD = [[0, 0], [1, 3], [2, 1], [3, 2]];
+  function magicSquare(N) {
+    var e = N - 34;
+    var g = MAGIC_BASE.map(function (r) { return r.slice(); });
+    MAGIC_ADD.forEach(function (p) { g[p[0]][p[1]] += e; });
+    return g;
+  }
+  function renderCuadrado() {
+    view.innerHTML =
+      '<div class="screen">' + topbar("Cuadrado Mágico") +
+      '<div class="backstage-bar"><span class="dot"></span> HERRAMIENTA · úsala con papel, el móvil en tu mano</div>' +
+      '<div class="panel">' +
+      "<h2>Cuadrado Mágico</h2>" +
+      "<p>Pide un número (su edad, un año, el número que quieran). Genéralo aquí, cópialo en un papel y muestra que <b>cada fila, columna y las dos diagonales suman ese número</b>.</p>" +
+      '<input id="target" type="number" inputmode="numeric" placeholder="número (p. ej. 66)" ' +
+      'style="width:100%;min-height:52px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,0.06);color:var(--ink);font-size:20px;padding:0 14px;text-align:center">' +
+      '<button class="btn" id="go">Generar</button>' +
+      '<div id="out"></div>' +
+      "</div></div>";
+    document.getElementById("go").addEventListener("click", function () {
+      var N = parseInt(document.getElementById("target").value, 10);
+      if (isNaN(N)) { toast("Escribe un número"); return; }
+      if (N < 22) { toast("Usa 22 o más para que salga bonito"); return; }
+      var g = magicSquare(N);
+      var cells = "";
+      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) cells += '<div class="mcell">' + g[i][j] + "</div>";
+      document.getElementById("out").innerHTML =
+        '<div class="magicgrid">' + cells + "</div>" +
+        '<p class="hint" style="text-align:center">Todas las líneas suman <b>' + N + "</b>.</p>";
+    });
+  }
+
   /* =====================================================================
      MODO MAGO (backstage) — OCULTO al público.
      Se entra manteniendo pulsado el título en la portada. Aquí el mago
@@ -1236,11 +1706,12 @@ input, textarea {
       '<h2 style="color:var(--gold)">🎩 Aprende tus trucos</h2>' +
       '<p class="hint">Estudia aquí en privado. Cada truco explica qué ve el público, el secreto y cómo presentarlo. Cuando actúes, vuelve a la portada y usa solo las pantallas de actuación.</p>' +
       '</div>' +
-      '<div class="tutlist">' +
-      tutRow("simbolo", "🜂", "Símbolo Imposible", "Autofuncional · para principiantes") +
-      tutRow("lector", "🧠", "Lector Mental", "El más potente · requiere práctica") +
-      tutRow("reloj", "🕛", "Reloj Mental", "Autofuncional · interactivo") +
-      '</div>' +
+      CATALOG.map(function (g) {
+        var rows = g.items.map(function (t) {
+          return tutRow(t.id, t.ico, t.title, t.tag);
+        }).join("");
+        return '<div class="cathead">' + g.cat + '</div><div class="tutlist">' + rows + "</div>";
+      }).join("") +
       '<div class="panel" style="margin-top:16px">' +
       '<h3 style="color:var(--violet-soft);margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px">Reglas de oro</h3>' +
       '<ul style="color:var(--ink-soft);line-height:1.6;font-size:14px;padding-left:20px;margin:0">' +
@@ -1352,6 +1823,137 @@ input, textarea {
           "<li>Insiste en <b>un número por cada destello</b>, sin saltarse ninguno: es lo único que puede desajustarlo.</li>" +
           "<li>Si cuenta mal o va desincronizado, pulsa Repetir y vuelve a empezar con calma.</li>" +
           "</ul>")
+    },
+    mil89: {
+      ico: "🔢",
+      title: "Predicción 1089",
+      diff: "Dificultad: muy fácil · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>Dices que ya escribiste una predicción. El espectador crea un número de 3 cifras libre, hace unas operaciones y llega a un total. Tu predicción coincide: 1089.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Sea cual sea el número de 3 cifras (con la 1ª y última diferenciándose en 2 o más), al invertir y restar, y luego invertir y sumar, el resultado es <b>siempre 1089</b>. Matemática pura.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Anuncia que la predicción ya está hecha.</li>" +
+          "<li>Guíale: número de 3 cifras (1ª y última difieren ≥ 2), invertir y restar, invertir y sumar.</li>" +
+          "<li>Que se concentre en el total y abre la predicción: 1089.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Escribí algo hace un momento y lo dejé aquí. Elige tú los números, yo no toco nada…"</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Insiste en la regla de las cifras (diferencia ≥ 2) o puede fallar la resta.</li>" +
+          "<li>Si el resultado de la resta tiene 2 cifras, se completa con un 0 delante (099 → 990).</li></ul>")
+    },
+    edad: {
+      ico: "🎂",
+      title: "Adivino tu Edad",
+      diff: "Dificultad: fácil · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador piensa su edad (o un número del 1 al 63) y solo marca en qué cartas aparece. Al instante dices su número exacto.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Es binario. Cada carta representa un bit (1, 2, 4, 8, 16, 32). Cada carta contiene todos los números que incluyen ese bit. Sumando el <b>número más pequeño</b> de cada carta marcada obtienes su número. La app lo hace por ti.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Que piense un número del 1 al 63.</li>" +
+          "<li>Que toque todas las cartas donde aparezca.</li>" +
+          "<li>Pulsa Adivinar y aparece el número.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"No lo digas. Solo dime sí o no: ¿está en esta lista?"</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Asegúrate de que marca TODAS las cartas donde está su número, sin olvidar ninguna.</li></ul>")
+    },
+    cumple: {
+      ico: "📅",
+      title: "Cumpleaños Mágico",
+      diff: "Dificultad: fácil · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador hace unas cuentas en secreto con su mes y su día, te dice solo el total final y tú revelas su fecha de nacimiento exacta.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>La cadena de operaciones da <code>100 × mes + día + 165</code>. La app resta 165 y separa: las centenas son el mes y el resto es el día.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Dicta las operaciones (mes ×5, +6, ×4, +9, ×5, +día).</li>" +
+          "<li>Que escriba el total en la app.</li>" +
+          "<li>La app revela el día y el mes.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"De todos esos cálculos solo queda un número… y en ese número está escondido el día en que naciste."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Un error de cálculo del espectador da una fecha imposible: pídele que repita con calma.</li></ul>")
+    },
+    veintiuna: {
+      ico: "🃏",
+      title: "Las 21 Cartas",
+      diff: "Dificultad: media · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>Se muestran 21 cartas en 3 columnas. El espectador piensa una y solo dice en qué columna está, tres veces. Al final revelas su carta.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Cada vez que indica la columna, se recoge poniéndola en el <b>centro</b> y se reparte de nuevo. Tras 3 rondas, su carta queda siempre en la <b>posición central (la 11ª)</b>. La app lo hace automáticamente.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Que piense una de las 21 cartas.</li>" +
+          "<li>Que señale su columna (se repite 3 veces).</li>" +
+          "<li>La app revela la carta.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"No la toques, solo mírala. Dime únicamente en qué columna la ves."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Debe elegir bien la columna cada vez; si se equivoca, el truco falla.</li></ul>")
+    },
+    dados: {
+      ico: "🎲",
+      title: "Dados Rayos X",
+      diff: "Dificultad: fácil · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador apila 3 dados y te dice solo la cara de arriba. Tú \"ves a través\" de la torre y dices cuánto suman las 5 caras ocultas. Luego lo comprueba.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Las caras opuestas de un dado suman 7. En una torre de 3 dados, las 5 caras ocultas suman siempre <code>21 − (cara de arriba)</code>. La app lo calcula al decirle el número de arriba.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Que apile 3 dados donde tú no los veas.</li>" +
+          "<li>Que te diga la cara superior; tócala en la app.</li>" +
+          "<li>Revela el total oculto; que desarme y cuente.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Tápalas con la mano. Voy a mirar a través del plástico y el marfil…"</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Deben ser dados normales (caras opuestas suman 7). Vale con dados de casa.</li></ul>")
+    },
+    sellada: {
+      ico: "✉️",
+      title: "Predicción Sellada",
+      diff: "Dificultad: media · manejo secreto",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>Desde el principio hay una predicción \"sellada\" en pantalla. Ocurre una elección (una carta, una palabra) y, al abrir el sobre, coincide exactamente.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Tú cargas la predicción en secreto ANTES de presentar. En la pantalla del sobre, <b>desliza hacia abajo desde el borde superior</b> para abrir el panel de carga: toca la carta o escribe el texto. El sello pasa a 🔒 = cargado.</p>" +
+          "<p>Luego fuerzas esa misma carta/palabra por tu método (o revelas que \"ya lo sabías\"). Al abrir, coincide.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Decide qué vas a forzar y cárgalo en secreto.</li>" +
+          "<li>Presenta el sobre sellado desde el inicio.</li>" +
+          "<li>Fuerza la elección con tu técnica.</li>" +
+          "<li>Abre la predicción: coincide.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Esto lo escribí antes de conocerte. No lo he tocado desde entonces."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Carga la predicción antes de sacar el tema; nunca delante de todos.</li>" +
+          "<li>Ensaya el forzaje: la predicción solo acierta si controlas la elección.</li></ul>")
+    },
+    cuadrado: {
+      ico: "🔲",
+      title: "Cuadrado Mágico",
+      diff: "Herramienta · se usa con papel",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>Pides un número (su edad, un año). Rellenas un cuadrado de 4×4 y muestras que cada fila, columna y las dos diagonales suman ese número. Parece cálculo imposible.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Partes de un cuadrado mágico fijo (que suma 34) y solo cuatro casillas cambian sumándoles <code>número − 34</code>. La app te da el cuadrado ya hecho; tú lo copias en el papel con seguridad.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol><li>Pide el número. Genéralo en la app (el móvil en tu mano).</li>" +
+          "<li>Cópialo en un papel como si lo calcularas al vuelo.</li>" +
+          "<li>Ve señalando filas, columnas y diagonales: todas suman su número.</li></ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Dame un número con significado para ti… Voy a construir algo alrededor de él."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul><li>Es una herramienta, no la enseñes en el móvil: cópiala y guarda el teléfono.</li>" +
+          "<li>Finge dudar un poco al escribir; si va demasiado rápido, canta.</li></ul>")
     }
   };
 
@@ -1394,6 +1996,13 @@ input, textarea {
       if (h === "#/simbolo") return renderSimbolo();
       if (h === "#/lector") return renderLector();
       if (h === "#/reloj") return renderReloj();
+      if (h === "#/mil89") return renderMil89();
+      if (h === "#/edad") return renderEdad();
+      if (h === "#/cumple") return renderCumple();
+      if (h === "#/veintiuna") return renderVeintiuna();
+      if (h === "#/dados") return renderDados();
+      if (h === "#/sellada") return renderSellada();
+      if (h === "#/cuadrado") return renderCuadrado();
       if (h === "#/mago") return renderMago();
       if (h.indexOf("#/mago/") === 0) return renderTut(h.slice("#/mago/".length));
       renderHome();

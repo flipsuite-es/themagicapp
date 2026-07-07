@@ -39,9 +39,23 @@ El espectador piensa una hora (1–12) en secreto. La app ilumina números; él 
 
 ---
 
-## Manual del mago (dentro de la app)
+## Público vs. Mago (importante)
 
-Hay una pantalla secreta con las instrucciones de cada truco. Para abrirla: en la portada, **mantén pulsado el título "The Magic App"** durante ~1 segundo.
+La app está pensada para actuar: hay que separar lo que ve el espectador de lo que solo ve el mago.
+
+- **Escenario (lo que ve el público):** la portada y las pantallas de actuación de cada truco. Puedes dejar el móvil en manos del espectador sin miedo.
+- **Modo Mago (oculto):** tutoriales para **aprender cada truco** (efecto, qué ve el público, el secreto, paso a paso, guion y errores a evitar). Cada sección está etiquetada como *"Lo ve el público"* o *"Solo el mago"*.
+
+Para entrar al **Modo Mago**: en la portada, **mantén pulsado el título "The Magic App"** ~1 segundo. En modo app instalada (PWA) no hay barra de direcciones, así que el público no puede colarse escribiendo una URL.
+
+## Instalar como app (PWA)
+
+Es una PWA instalable, con service worker (funciona **100% offline** tras instalarla) e iconos nativos:
+
+- **iPhone (Safari):** Compartir → "Añadir a pantalla de inicio". Se abre a pantalla completa, respetando el notch, sin barra del navegador.
+- **Android (Chrome):** aparece "Instalar app" (o menú ⋮ → "Instalar aplicación").
+
+> Para que la instalación sea perfecta necesita estar servida por HTTPS (p. ej. Vercel). Ver `vercel.json` y las instrucciones de despliegue.
 
 ---
 

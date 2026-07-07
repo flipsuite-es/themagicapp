@@ -63,6 +63,7 @@
       '<h1 id="brandTitle">The Magic App</h1>' +
       '<p>Mentalismo imposible — en su propio teléfono</p>' +
       "</div>" +
+      '<div id="installSlot"></div>' +
       '<div class="grid">' +
       trickCard("simbolo", "🜂", "Símbolo Imposible", "Adivino el símbolo que ha pensado. Sin tocar el teléfono.", "Autofuncional") +
       trickCard("lector", "🧠", "Lector Mental", "Su carta (o palabra) aparece en su pantalla como por arte de magia.", "Universal") +
@@ -71,8 +72,63 @@
       '<div class="foot"><span id="secretDoor">✦ Concentra tu energía ✦</span></div>' +
       "</div>";
 
-    // Puerta secreta al manual del mago: mantener pulsado el título 1.2s
+    // Puerta secreta al Modo Mago: mantener pulsado el título 1.2s
     armSecretDoor();
+    maybeShowInstall();
+  }
+
+  /* ---------------------------------------------------------------------
+     Aviso "instalar como app" (solo si aún no está instalada como PWA)
+     --------------------------------------------------------------------- */
+  var deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
+
+  function isStandalone() {
+    return (
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true
+    );
+  }
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  }
+
+  function maybeShowInstall() {
+    var slot = document.getElementById("installSlot");
+    if (!slot) return;
+    if (isStandalone()) return; // ya está instalada: no molestar
+    try { if (localStorage.getItem("magic_install_hidden") === "1") return; } catch (e) {}
+
+    var banner = el('<div class="install"></div>');
+    if (deferredPrompt) {
+      // Android / Chrome: instalación con un botón
+      banner.innerHTML =
+        '<div class="ic">📲</div>' +
+        '<div class="tx"><b>Instálala como app</b><br>Icono en tu inicio, pantalla completa y sin conexión.</div>' +
+        '<button id="instGo">Instalar</button>' +
+        '<button class="close" id="instX">×</button>';
+      banner.querySelector("#instGo").addEventListener("click", function () {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () { deferredPrompt = null; banner.remove(); });
+      });
+    } else if (isIOS()) {
+      // iPhone / Safari: instrucciones (Apple no permite instalar por botón)
+      banner.innerHTML =
+        '<div class="ic">📲</div>' +
+        '<div class="tx"><b>Tenla como app en tu iPhone</b><br>Pulsa <b>Compartir</b> ' +
+        '<span style="font-size:15px">⬆︎</span> y luego <b>“Añadir a pantalla de inicio”</b>.</div>' +
+        '<button class="close" id="instX">×</button>';
+    } else {
+      return; // en escritorio no mostramos nada
+    }
+    banner.querySelector("#instX").addEventListener("click", function () {
+      try { localStorage.setItem("magic_install_hidden", "1"); } catch (e) {}
+      banner.remove();
+    });
+    slot.appendChild(banner);
   }
 
   function trickCard(route, ico, title, desc, tag) {
@@ -93,7 +149,7 @@
       var timer = null;
       var start = function (e) {
         timer = setTimeout(function () {
-          location.hash = "#/manual";
+          location.hash = "#/mago";
         }, 1200);
       };
       var cancel = function () { clearTimeout(timer); };
@@ -545,49 +601,162 @@
   }
 
   /* =====================================================================
-     MANUAL DEL MAGO (oculto: mantener pulsado el título en la home)
+     MODO MAGO (backstage) — OCULTO al público.
+     Se entra manteniendo pulsado el título en la portada. Aquí el mago
+     APRENDE cada truco: efecto, qué ve el público, el método secreto,
+     paso a paso, guion y consejos. Nunca enlaza desde la actuación, y en
+     modo app (PWA) no hay barra de direcciones para colarse aquí.
      ===================================================================== */
-  function renderManual() {
+  function renderMago() {
     view.innerHTML =
-      '<div class="screen manual">' +
-      topbar("· Manual del mago ·") +
+      '<div class="screen">' +
+      topbar("Modo Mago") +
+      '<div class="backstage-bar"><span class="dot"></span> BACKSTAGE · solo para tus ojos — no lo enseñes al público</div>' +
       '<div class="panel">' +
-      '<h2>🎩 Manual secreto</h2>' +
-      '<p class="hint">Esta pantalla es solo para ti. Se abre manteniendo pulsado el título en la portada.</p>' +
+      '<h2 style="color:var(--gold)">🎩 Aprende tus trucos</h2>' +
+      '<p class="hint">Estudia aquí en privado. Cada truco explica qué ve el público, el secreto y cómo presentarlo. Cuando actúes, vuelve a la portada y usa solo las pantallas de actuación.</p>' +
+      '</div>' +
+      '<div class="tutlist">' +
+      tutRow("simbolo", "🜂", "Símbolo Imposible", "Autofuncional · para principiantes") +
+      tutRow("lector", "🧠", "Lector Mental", "El más potente · requiere práctica") +
+      tutRow("reloj", "🕛", "Reloj Mental", "Autofuncional · interactivo") +
+      '</div>' +
+      '<div class="panel" style="margin-top:16px">' +
+      '<h3 style="color:var(--violet-soft);margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px">Reglas de oro</h3>' +
+      '<ul style="color:var(--ink-soft);line-height:1.6;font-size:14px;padding-left:20px;margin:0">' +
+      '<li>Deja el móvil en manos del espectador siempre que puedas: es lo que hace que parezca imposible.</li>' +
+      '<li>Nunca repitas el mismo truco para el mismo público.</li>' +
+      '<li>Nunca reveles el método. "Un mago jamás cuenta sus secretos".</li>' +
+      '<li>Ensaya hasta que el manejo secreto te salga sin mirar y sin pensar.</li>' +
+      '</ul></div>' +
+      '<button class="btn" onclick="location.hash=\'#/\'">Salir del Modo Mago</button>' +
+      "</div>";
+  }
 
-      '<h3>1 · Símbolo Imposible</h3>' +
-      '<ul>' +
-      '<li><b>Es 100% automático.</b> No tienes que hacer nada en secreto.</li>' +
-      '<li>Cualquier número de dos cifras, tras "número − suma de sus dígitos", da siempre un múltiplo de 9 (9, 18, 27… 81).</li>' +
-      '<li>Todos esos números comparten el mismo símbolo en la tabla, y el símbolo <b>cambia cada vez</b>, así que nadie puede descubrirlo repitiendo.</li>' +
-      '<li>Presenta: "piensa un número, haz la resta, mira el símbolo" → la app lo revela.</li>' +
-      '</ul>' +
+  function tutRow(id, ico, title, sub) {
+    return (
+      '<div class="tutrow" onclick="location.hash=\'#/mago/' + id + "'\">" +
+      '<div class="ic">' + ico + "</div>" +
+      "<div><h3>" + title + "</h3><p>" + sub + "</p></div>" +
+      '<div class="arrow">›</div></div>'
+    );
+  }
 
-      '<h3>2 · Lector Mental <span class="tag">el más potente</span></h3>' +
-      '<p>Convierte cualquier carta forzada o vislumbrada (peek) en una "lectura de mente" tecnológica en el móvil del espectador.</p>' +
-      '<div class="secret-note"><b>Cargar en secreto:</b> en la pantalla del orbe, <b>desliza hacia abajo desde el borde superior</b> de la pantalla. Se abre un panel translúcido. Toca la carta (o escribe la palabra/número). Se cierra solo y el orbe se vuelve <b>dorado</b> = cargado. Para cerrarlo a mano, desliza hacia arriba.</div>' +
-      '<ol>' +
-      '<li>Averigua la carta por tu método favorito: forzaje clásico, carta a la vista (peek), un papelito que el espectador escribe y tú vislumbras, etc.</li>' +
-      '<li>Mientras "calibras el sensor" (teléfono en tu mano), desliza y carga la carta. Un segundo, sin mirar apenas.</li>' +
-      '<li>Entrega el teléfono. El espectador pone el dedo en el orbe y pulsa. La app "lee su mente" y muestra su carta exacta.</li>' +
-      '<li>Si no cargas nada, la app elige una carta al azar (para no quedar en blanco): úsalo solo como salida de emergencia.</li>' +
-      '</ol>' +
-      '<p class="hint">Idea avanzada: con el modo palabra puedes revelar CUALQUIER cosa (un nombre, una fecha, una palabra de un libro). Es un "cerebro" universal.</p>' +
+  var TUTS = {
+    simbolo: {
+      ico: "🜂",
+      title: "Símbolo Imposible",
+      diff: "Dificultad: muy fácil · 100% automático",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador piensa un número de dos cifras totalmente libre, hace una pequeña resta y se fija en el símbolo que hay junto a su resultado en una tabla. Sin decir nada, tú (o la app) adivináis el símbolo exacto en el que está pensando.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Es matemática disfrazada. Para cualquier número de dos cifras <code>N</code>, al restarle la suma de sus dígitos el resultado es <b>siempre un múltiplo de 9</b>: solo puede salir 9, 18, 27, 36, 45, 54, 63, 72 u 81.</p>" +
+          "<p>La razón: un número es <code>10a + b</code>, y <code>(10a + b) − (a + b) = 9a</code>. Siempre 9 × las decenas.</p>" +
+          "<p>En la tabla, <b>todos esos múltiplos de 9 llevan el mismo símbolo</b>. Elija el número que elija, acaba en ese símbolo. Y ese símbolo <b>cambia cada vez</b> que abres el truco, con algunos señuelos repartidos, para que nadie lo descubra.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol>" +
+          "<li>Entrega el móvil abierto en el truco (o léelo tú).</li>" +
+          "<li>Pídele que piense un número del 10 al 99.</li>" +
+          "<li>Que sume sus dígitos y lo reste al número. Da un ejemplo: <code>48 → 4+8 = 12 → 48−12 = 36</code>.</li>" +
+          "<li>Que busque su resultado en la tabla y <b>se concentre solo en el símbolo</b>.</li>" +
+          "<li>Pulsa \"Que la app lo lea\" y aparece su símbolo.</li>" +
+          "</ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Haz unas cuentas para crear un número al azar dentro de tu cabeza… Yo no puedo saberlo. Ahora olvida el número y concéntrate solo en la <i>forma</i>, en el símbolo. Visualízalo con fuerza…"</div>' +
+          "<p class='hint'>Cuanto menos hables de la resta y más de \"visualizar el símbolo\", más mágico parece.</p>") +
+        section("⚠ Errores a evitar", "",
+          "<ul>" +
+          "<li>No lo repitas: si sale el mismo símbolo dos veces podrían sospechar (aunque cambia, no arriesgues).</li>" +
+          "<li>Asegúrate de que hace bien la resta; si dudan, pon tú el ejemplo.</li>" +
+          "<li>Úsalo de apertura: es infalible y te da credibilidad para el Lector Mental.</li>" +
+          "</ul>")
+    },
+    lector: {
+      ico: "🧠",
+      title: "Lector Mental",
+      diff: "Dificultad: media · el truco más potente",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador piensa una carta (o una palabra, un nombre, una fecha…). Pone el dedo en una esfera de energía de SU teléfono, la app \"lee su mente\" y revela en pantalla exactamente lo que pensaba.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>La app no adivina nada: <b>tú le dices en secreto qué debe revelar</b>. Es un motor de revelación. Lo potente es que funciona con CUALQUIER técnica que ya conozcas para saber la carta.</p>" +
+          "<p><b>Cómo cargar en secreto:</b> en la pantalla de la esfera, <b>desliza hacia abajo desde el borde superior</b>. Se abre un panel translúcido: toca la carta o escribe la palabra. Se cierra solo y la esfera se vuelve <b>dorada</b> (= cargada). Para cerrar a mano, desliza hacia arriba.</p>") +
+        section("🎓 Cómo saber la carta (elige tu método)", "sec",
+          "<ul>" +
+          "<li><b>Forzaje:</b> obliga (sin que lo note) a que elija la carta que tú quieres, con una baraja física. Es el método clásico.</li>" +
+          "<li><b>Peek:</b> vislumbra qué carta mira.</li>" +
+          "<li><b>Papelito:</b> que escriba algo en un papel; tú lo vislumbras y lo cargas en modo palabra.</li>" +
+          "<li><b>Equívoco:</b> técnicas de \"magician's choice\" para dirigir la elección.</li>" +
+          "</ul>" +
+          "<p class='hint'>La app es el final impactante; el secreto de \"saber\" la info lo pones tú con una técnica de magia clásica.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol>" +
+          "<li>Averigua la carta/palabra con tu método.</li>" +
+          "<li>Con el móvil en tu mano, di que \"calibras el sensor\". En ese momento desliza desde arriba y carga la carta. Un segundo, sin apenas mirar.</li>" +
+          "<li>Comprueba de reojo que la esfera está dorada.</li>" +
+          "<li>Entrega el móvil. Que ponga el dedo en la esfera, se concentre y pulse.</li>" +
+          "<li>La app revela su carta exacta. Reacciona tú también con asombro.</li>" +
+          "</ol>" +
+          "<p class='hint'>Salida de emergencia: si no cargas nada, la app elige una carta al azar (no queda en blanco), pero entonces no será \"su\" carta. Úsalo solo si algo falla.</p>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"Este aparato mide micro-señales de tu piel. Piensa con fuerza en tu carta y no la digas. Pon el dedo aquí… relájate… deja que la lea."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul>" +
+          "<li>Ensaya el gesto de carga hasta hacerlo sin mirar: es el único momento delicado.</li>" +
+          "<li>No mires la pantalla mientras cargas; mira al espectador y habla.</li>" +
+          "<li>No entregues el móvil hasta ver la esfera dorada.</li>" +
+          "</ul>")
+    },
+    reloj: {
+      ico: "🕛",
+      title: "Reloj Mental",
+      diff: "Dificultad: fácil · autofuncional",
+      html:
+        section("👁 Qué ve el público", "pub",
+          "<p>El espectador piensa una hora del reloj (1–12) en absoluto secreto. La app va iluminando números aparentemente al azar; él cuenta mentalmente y, al llegar a 20, dice basta. El número que la app está señalando en ese instante es justo su hora secreta.</p>") +
+        section("🔒 El secreto", "sec",
+          "<p>Es autofuncional, no tienes que hacer nada. La app ilumina 7 números al azar y a partir del octavo empieza a contar hacia atrás: 12, 11, 10, 9…</p>" +
+          "<p>Por matemática, si el espectador empieza a contar en su hora y suma 1 por cada destello, cuando llega a 20 el número iluminado es siempre el suyo. Funciona con las 12 horas, garantizado.</p>") +
+        section("🎬 Paso a paso", "",
+          "<ol>" +
+          "<li>Que piense una hora del 1 al 12 y la guarde en secreto.</li>" +
+          "<li>Explica: \"cuando empiecen los destellos, cuenta en silencio empezando por tu hora, +1 en cada número\".</li>" +
+          "<li>\"Cuando tu cuenta llegue a 20, pulsa BASTA\".</li>" +
+          "<li>Pulsa Empezar y deja que cuente. Al pulsar BASTA, la app revela su hora.</li>" +
+          "</ol>") +
+        section("🗣 Guion sugerido", "",
+          '<div class="script">"No me digas tu hora. Confía en el conteo, deja que los números te guíen… y para cuando llegues a veinte."</div>') +
+        section("⚠ Errores a evitar", "",
+          "<ul>" +
+          "<li>Insiste en <b>un número por cada destello</b>, sin saltarse ninguno: es lo único que puede desajustarlo.</li>" +
+          "<li>Si cuenta mal o va desincronizado, pulsa Repetir y vuelve a empezar con calma.</li>" +
+          "</ul>")
+    }
+  };
 
-      '<h3>3 · Reloj Mental</h3>' +
-      '<ul>' +
-      '<li><b>Automático.</b> El espectador piensa una hora (1–12), cuenta en silencio +1 por cada número que se ilumina, empezando por SU hora, y pulsa BASTA al llegar a 20.</li>' +
-      '<li>La app ilumina 7 números al azar y luego cuenta hacia atrás (12, 11, 10…). Por matemática, el número iluminado justo cuando él llega a 20 es siempre su hora.</li>' +
-      '<li>Insiste en que cuente <b>un número por cada destello</b> y que no se salte ninguno. Si se mueve mal, "Repetir".</li>' +
-      '</ul>' +
+  function section(title, eye, body) {
+    var badge = "";
+    if (eye === "pub") badge = '<span class="eye pub">Lo ve el público</span><br>';
+    if (eye === "sec") badge = '<span class="eye sec">Solo el mago</span><br>';
+    return "<section><h3>" + title + "</h3>" + badge + body + "</section>";
+  }
 
-      '<h3>Consejos de presentación</h3>' +
-      '<ul>' +
-      '<li>El teléfono es del espectador siempre que puedas: refuerza que "no hay trampa".</li>' +
-      '<li>Da la app por una URL (o guárdala en pantalla de inicio). Funciona sin conexión.</li>' +
-      '<li>Nunca repitas el mismo truco dos veces para el mismo público.</li>' +
-      '</ul>' +
-      '<button class="btn" onclick="location.hash=\'#/\'">Volver</button>' +
+  function renderTut(id) {
+    var t = TUTS[id];
+    if (!t) { location.hash = "#/mago"; return; }
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar">' +
+      '<button class="back" onclick="location.hash=\'#/mago\'">‹</button>' +
+      '<div class="title">Modo Mago</div></div>' +
+      '<div class="backstage-bar"><span class="dot"></span> BACKSTAGE · no muestres esta pantalla</div>' +
+      '<div class="panel tut">' +
+      "<h2>" + t.ico + " " + t.title + "</h2>" +
+      '<div class="diff">' + t.diff + "</div>" +
+      t.html +
+      '<button class="btn" onclick="location.hash=\'#/' + id + '\'">▶ Practicar este truco</button>' +
+      '<button class="btn ghost" onclick="location.hash=\'#/mago\'">Volver a los trucos</button>' +
       "</div></div>";
   }
 
@@ -604,7 +773,8 @@
     if (h === "#/simbolo") return renderSimbolo();
     if (h === "#/lector") return renderLector();
     if (h === "#/reloj") return renderReloj();
-    if (h === "#/manual") return renderManual();
+    if (h === "#/mago") return renderMago();
+    if (h.indexOf("#/mago/") === 0) return renderTut(h.slice("#/mago/".length));
     renderHome();
   }
 

@@ -712,3 +712,17 @@ input, textarea {
   color: var(--gold-soft);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Menús (categoría / dificultad) ---------- */
+.trick .chev {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 26px;
+  padding-left: 8px;
+}
+.trick .meta { flex: 1; }
+
+/* Acento de color en las filas de dificultad */
+.diffrow.facil { border-left: 3px solid #4ad991; }
+.diffrow.medio { border-left: 3px solid var(--gold); }
+.diffrow.dificil { border-left: 3px solid var(--red); }

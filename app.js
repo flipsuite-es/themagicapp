@@ -55,41 +55,73 @@
   /* =====================================================================
      HOME
      ===================================================================== */
-  // Catálogo de trucos, agrupado por categoría (dirige portada y Modo Mago)
+  // Niveles de dificultad (orden y estilo)
+  var DIFS = [
+    { key: "facil", label: "Fácil", ico: "🟢", sub: "Sale solo, para empezar" },
+    { key: "medio", label: "Medio", ico: "🟡", sub: "Un poco de manejo o pasos" },
+    { key: "dificil", label: "Difícil", ico: "🔴", sub: "Requiere práctica y técnica" }
+  ];
+
+  // Catálogo: categorías con slug e icono; cada truco con su dificultad (dif).
   var CATALOG = [
     {
-      cat: "Autofuncionales · nunca fallan",
+      slug: "auto", cat: "Autofuncionales", ico: "🎯",
+      sub: "Funcionan solos — nunca fallan",
       items: [
-        { id: "simbolo", ico: "🜂", title: "Símbolo Imposible", desc: "Adivino el símbolo que ha pensado. Sin tocar el teléfono.", tag: "Fácil" },
-        { id: "reloj", ico: "🕛", title: "Reloj Mental", desc: "Piensa una hora en secreto. La app la encuentra sola.", tag: "Fácil" },
-        { id: "mil89", ico: "🔢", title: "Predicción 1089", desc: "Haga cuentas con un número libre: la predicción ya estaba escrita.", tag: "Fácil" },
-        { id: "edad", ico: "🎂", title: "Adivino tu Edad", desc: "Señala unas cartas y la app dice tu edad (o cualquier número).", tag: "Fácil" },
-        { id: "cumple", ico: "📅", title: "Cumpleaños Mágico", desc: "Extraigo tu fecha de nacimiento de un solo número.", tag: "Fácil" },
-        { id: "veintiuna", ico: "🃏", title: "Las 21 Cartas", desc: "Piensa una carta; tras tres rondas, la encuentro.", tag: "Medio" },
-        { id: "dados", ico: "🎲", title: "Dados Rayos X", desc: "Apila tres dados: veo la suma de las caras ocultas.", tag: "Fácil" }
+        { id: "simbolo", ico: "🜂", title: "Símbolo Imposible", desc: "Adivino el símbolo que ha pensado. Sin tocar el teléfono.", dif: "facil" },
+        { id: "reloj", ico: "🕛", title: "Reloj Mental", desc: "Piensa una hora en secreto. La app la encuentra sola.", dif: "facil" },
+        { id: "mil89", ico: "🔢", title: "Predicción 1089", desc: "Haga cuentas con un número libre: la predicción ya estaba escrita.", dif: "facil" },
+        { id: "edad", ico: "🎂", title: "Adivino tu Edad", desc: "Señala unas cartas y la app dice tu edad (o cualquier número).", dif: "facil" },
+        { id: "cumple", ico: "📅", title: "Cumpleaños Mágico", desc: "Extraigo tu fecha de nacimiento de un solo número.", dif: "facil" },
+        { id: "dados", ico: "🎲", title: "Dados Rayos X", desc: "Apila tres dados: veo la suma de las caras ocultas.", dif: "facil" },
+        { id: "veintiuna", ico: "🃏", title: "Las 21 Cartas", desc: "Piensa una carta; tras tres rondas, la encuentro.", dif: "medio" }
       ]
     },
     {
-      cat: "Con manejo secreto · aprende en Modo Mago",
+      slug: "manejo", cat: "Con manejo secreto", ico: "🤫",
+      sub: "Aprende la técnica en Modo Mago",
       items: [
-        { id: "lector", ico: "🧠", title: "Lector Mental", desc: "Su carta o palabra aparece en su pantalla como magia.", tag: "Potente" },
-        { id: "sellada", ico: "✉️", title: "Predicción Sellada", desc: "Escribes la predicción antes. Al abrirla, coincide.", tag: "Potente" }
+        { id: "sellada", ico: "✉️", title: "Predicción Sellada", desc: "Escribes la predicción antes. Al abrirla, coincide.", dif: "medio" },
+        { id: "lector", ico: "🧠", title: "Lector Mental", desc: "Su carta o palabra aparece en su pantalla como magia.", dif: "dificil" }
       ]
     },
     {
-      cat: "Herramientas del mago",
+      slug: "tools", cat: "Herramientas del mago", ico: "🧰",
+      sub: "Utilidades para tus rutinas",
       items: [
-        { id: "cuadrado", ico: "🔲", title: "Cuadrado Mágico", desc: "Te genera un cuadrado que suma el número que elijan.", tag: "Utilidad" }
+        { id: "cuadrado", ico: "🔲", title: "Cuadrado Mágico", desc: "Te genera un cuadrado que suma el número que elijan.", dif: "medio" }
       ]
     }
   ];
 
+  function findCat(slug) {
+    for (var i = 0; i < CATALOG.length; i++) if (CATALOG[i].slug === slug) return CATALOG[i];
+    return null;
+  }
+  function difLabel(key) {
+    for (var i = 0; i < DIFS.length; i++) if (DIFS[i].key === key) return DIFS[i].label;
+    return key;
+  }
+  // Dificultades presentes en una categoría, en orden, con su recuento
+  function difsInCat(cat) {
+    return DIFS.map(function (d) {
+      var n = cat.items.filter(function (t) { return t.dif === d.key; }).length;
+      return { d: d, n: n };
+    }).filter(function (x) { return x.n > 0; });
+  }
+
+  // NIVEL 1 — Portada: menú de categorías
   function renderHome() {
-    var groups = CATALOG.map(function (g) {
-      var cards = g.items.map(function (t) {
-        return trickCard(t.id, t.ico, t.title, t.desc, t.tag);
-      }).join("");
-      return '<div class="cathead">' + g.cat + '</div><div class="grid">' + cards + "</div>";
+    var cards = CATALOG.map(function (g) {
+      var n = g.items.length;
+      return (
+        '<div class="trick" onclick="location.hash=\'#/c/' + g.slug + "'\">" +
+        '<div class="ico">' + g.ico + "</div>" +
+        '<div class="meta"><h3>' + g.cat + "</h3><p>" + g.sub + "</p>" +
+        '<span class="tag">' + n + (n === 1 ? " truco" : " trucos") + "</span></div>" +
+        '<div class="chev">›</div>' +
+        "</div>"
+      );
     }).join("");
 
     view.innerHTML =
@@ -100,13 +132,57 @@
       '<p>Mentalismo imposible — en su propio teléfono</p>' +
       "</div>" +
       '<div id="installSlot"></div>' +
-      groups +
+      '<div class="cathead">Elige una categoría</div>' +
+      '<div class="grid">' + cards + "</div>" +
       '<div class="foot"><span id="secretDoor">✦ Concentra tu energía ✦</span></div>' +
       "</div>";
 
-    // Puerta secreta al Modo Mago: mantener pulsado el título 1.2s
     armSecretDoor();
     maybeShowInstall();
+  }
+
+  // NIVEL 2 — Categoría: menú de dificultades
+  function renderCategory(slug) {
+    var cat = findCat(slug);
+    if (!cat) { location.hash = "#/"; return; }
+    var cards = difsInCat(cat).map(function (x) {
+      return (
+        '<div class="trick diffrow ' + x.d.key + '" onclick="location.hash=\'#/c/' + slug + "/" + x.d.key + "'\">" +
+        '<div class="ico">' + x.d.ico + "</div>" +
+        '<div class="meta"><h3>' + x.d.label + "</h3><p>" + x.d.sub + "</p>" +
+        '<span class="tag">' + x.n + (x.n === 1 ? " truco" : " trucos") + "</span></div>" +
+        '<div class="chev">›</div>' +
+        "</div>"
+      );
+    }).join("");
+
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar">' +
+      '<button class="back" onclick="location.hash=\'#/\'">‹</button>' +
+      '<div class="title">' + cat.ico + " " + cat.cat + "</div></div>" +
+      '<div class="cathead">Elige la dificultad</div>' +
+      '<div class="grid">' + cards + "</div>" +
+      "</div>";
+  }
+
+  // NIVEL 3 — Dificultad: lista de trucos
+  function renderDifficulty(slug, difKey) {
+    var cat = findCat(slug);
+    if (!cat) { location.hash = "#/"; return; }
+    var items = cat.items.filter(function (t) { return t.dif === difKey; });
+    if (!items.length) { location.hash = "#/c/" + slug; return; }
+    var cards = items.map(function (t) {
+      return trickCard(t.id, t.ico, t.title, t.desc, difLabel(t.dif));
+    }).join("");
+
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar">' +
+      '<button class="back" onclick="location.hash=\'#/c/' + slug + '\'">‹</button>' +
+      '<div class="title">' + cat.cat + " · " + difLabel(difKey) + "</div></div>" +
+      '<div class="grid">' + cards + "</div>" +
+      "</div>";
   }
 
   /* ---------------------------------------------------------------------
@@ -986,7 +1062,7 @@
       '</div>' +
       CATALOG.map(function (g) {
         var rows = g.items.map(function (t) {
-          return tutRow(t.id, t.ico, t.title, t.tag);
+          return tutRow(t.id, t.ico, t.title, difLabel(t.dif));
         }).join("");
         return '<div class="cathead">' + g.cat + '</div><div class="tutlist">' + rows + "</div>";
       }).join("") +
@@ -1271,6 +1347,11 @@
 
       var h = location.hash || "#/";
       if (h === "#/" || h === "") return renderHome();
+      if (h.indexOf("#/c/") === 0) {
+        var parts = h.slice(4).split("/"); // slug[/dif]
+        if (parts.length >= 2 && parts[1]) return renderDifficulty(parts[0], parts[1]);
+        return renderCategory(parts[0]);
+      }
       if (h === "#/simbolo") return renderSimbolo();
       if (h === "#/lector") return renderLector();
       if (h === "#/reloj") return renderReloj();

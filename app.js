@@ -764,18 +764,29 @@
      ROUTER
      ===================================================================== */
   function route() {
-    // Cerrar overlays huérfanos
-    var qs = document.getElementById("qs");
-    if (qs && !location.hash.startsWith("#/lector")) qs.classList.remove("open");
+    try {
+      // Cerrar overlays huérfanos
+      var qs = document.getElementById("qs");
+      if (qs && !location.hash.startsWith("#/lector")) qs.classList.remove("open");
 
-    var h = location.hash || "#/";
-    if (h === "#/" || h === "") return renderHome();
-    if (h === "#/simbolo") return renderSimbolo();
-    if (h === "#/lector") return renderLector();
-    if (h === "#/reloj") return renderReloj();
-    if (h === "#/mago") return renderMago();
-    if (h.indexOf("#/mago/") === 0) return renderTut(h.slice("#/mago/".length));
-    renderHome();
+      var h = location.hash || "#/";
+      if (h === "#/" || h === "") return renderHome();
+      if (h === "#/simbolo") return renderSimbolo();
+      if (h === "#/lector") return renderLector();
+      if (h === "#/reloj") return renderReloj();
+      if (h === "#/mago") return renderMago();
+      if (h.indexOf("#/mago/") === 0) return renderTut(h.slice("#/mago/".length));
+      renderHome();
+    } catch (err) {
+      // Nunca dejar la pantalla en blanco: mostrar salida de recuperación
+      if (view) {
+        view.innerHTML =
+          '<div class="screen"><div class="panel">' +
+          '<h2>Vaya…</h2><p>Algo se atascó. Vuelve al inicio.</p>' +
+          '<button class="btn" onclick="location.hash=\'#/\';location.reload()">Reiniciar</button>' +
+          "</div></div>";
+      }
+    }
   }
 
   window.addEventListener("hashchange", route);

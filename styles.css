@@ -31,15 +31,16 @@
   touch-action: manipulation; /* elimina el retardo de 300ms y el doble-tap zoom */
 }
 
-html, body {
+html { height: 100%; }
+body {
   margin: 0;
   padding: 0;
   height: 100%;
-  width: 100%;
-  position: fixed;          /* app-shell: bloquea el scroll de página y el rebote */
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow: hidden;             /* el scroll ocurre dentro de .app */
+  overscroll-behavior: none;    /* sin pull-to-refresh ni rebote */
 }
+/* NOTA: NO usar position:fixed en html/body: en iOS Safari provoca
+   pantalla en blanco. El app-shell se consigue con height:100% + overflow. */
 
 body {
   font-family: var(--font);

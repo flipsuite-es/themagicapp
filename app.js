@@ -1563,6 +1563,60 @@
     view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
     refreshNotifBadge(); refreshMsgBadge();
   }
+  /* ---------------------------- Historias --------------------------- */
+  function storiesBarHtml(groups) {
+    var add = '<div class="story-add" id="storyAdd"><span class="sa-ring">' + icon("plus") + '</span><span class="st-n">Añadir</span></div>';
+    var rings = (groups || []).map(function (g, i) {
+      return '<div class="story-item ' + (g.seen ? "seen" : "") + '" data-si="' + i + '"><span class="st-ring">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "") + "</span><span class=\"st-n\">" + (g.is_me ? "Tú" : esc((g.name || g.handle || "Mago").split(" ")[0])) + "</span></div>";
+    }).join("");
+    return '<div class="stories-bar">' + add + rings + "</div>";
+  }
+  function bindStories(scope, groups) {
+    var a = scope.querySelector("#storyAdd"); if (a) a.addEventListener("click", renderStoryCreate);
+    scope.querySelectorAll(".story-item[data-si]").forEach(function (it) { it.addEventListener("click", function () { openStories(groups, parseInt(it.getAttribute("data-si"), 10)); }); });
+  }
+  function openStories(groups, idx) {
+    var gi = idx, si = 0, timer = null;
+    var ov = el('<div class="story-viewer" id="storyViewer"></div>'); document.body.appendChild(ov);
+    var close = function () { if (timer) clearTimeout(timer); ov.remove(); };
+    function render() {
+      var g = groups[gi]; if (!g) { close(); return; }
+      var st = g.stories || [];
+      if (si >= st.length) { gi++; si = 0; if (gi >= groups.length) { close(); return; } return render(); }
+      if (si < 0) { gi--; if (gi < 0) { close(); return; } si = (groups[gi].stories || []).length - 1; return render(); }
+      var s = st[si], m = s.media || {};
+      var mediaHtml = (m.kind === "video" && m.embed) ? '<div class="sv-media"><iframe src="' + esc(m.embed) + '" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>' : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + esc(m.url || "") + ')"></div></div>';
+      ov.innerHTML = '<div class="sv-top"><div class="sv-bars">' + st.map(function (_, k) { return '<i class="' + (k < si ? "done" : k === si ? "cur" : "") + '"></i>'; }).join("") + "</div>" +
+        '<div class="sv-head">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "sm") + "<span>" + esc(g.name || g.handle || "Mago") + '</span><span class="sv-t">' + timeAgo(s.created_at) + '</span><button class="sv-x">✕</button></div></div>' +
+        mediaHtml + (s.caption ? '<div class="sv-cap">' + esc(s.caption) + "</div>" : "") +
+        '<div class="sv-nav"><div class="sv-prev"></div><div class="sv-next"></div></div>';
+      ov.querySelector(".sv-x").addEventListener("click", close);
+      ov.querySelector(".sv-prev").addEventListener("click", function () { si--; render(); });
+      ov.querySelector(".sv-next").addEventListener("click", function () { si++; render(); });
+      Cloud.viewStory(s.id).catch(function () {});
+      if (timer) clearTimeout(timer);
+      if (m.kind !== "video") timer = setTimeout(function () { si++; render(); }, 5000);
+    }
+    render();
+  }
+  function renderStoryCreate() {
+    var media = null;
+    var ov = el('<div class="modal-ov"><div class="modal"><h3>Nueva historia</h3><div id="scPrev" class="sc-prev"></div>' +
+      '<div class="pc-attach"><button class="btn ghost" id="scPhoto">' + icon("plus", "i-sm") + ' Foto</button><button class="btn ghost" id="scVid">' + icon("play", "i-sm") + ' Vídeo</button></div>' +
+      '<input type="file" id="scFile" accept="image/*" style="display:none">' +
+      '<input id="scCap" placeholder="Añade un texto (opcional)" class="sc-cap">' +
+      '<div class="modal-act"><button class="btn" id="scPost">Publicar historia</button><button class="btn ghost" id="scCancel">Cancelar</button></div></div></div>');
+    document.body.appendChild(ov);
+    var close = function () { ov.remove(); };
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    document.getElementById("scCancel").addEventListener("click", close);
+    var prev = function () { document.getElementById("scPrev").innerHTML = media ? (media.kind === "video" ? '<div class="sc-vid">' + icon("play") + " Vídeo añadido</div>" : '<div class="sv-img sc-img" style="background-image:url(' + esc(media.url) + ')"></div>') : ""; };
+    document.getElementById("scPhoto").addEventListener("click", function () { document.getElementById("scFile").click(); });
+    document.getElementById("scFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo…"); Cloud.uploadSocial(fl).then(function (r) { media = { kind: "image", url: r.url, path: r.path }; prev(); }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("scVid").addEventListener("click", function () { var url = prompt("Enlace de YouTube o Vimeo:"); if (!url) return; var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo"); return; } media = { kind: "video", embed: v.embed, url: v.url, thumb: v.thumb }; prev(); });
+    document.getElementById("scPost").addEventListener("click", function () { if (!media) { toast("Añade una foto o vídeo"); return; } var btn = document.getElementById("scPost"); btn.disabled = true; btn.textContent = "Publicando…"; Cloud.createStory(media, (document.getElementById("scCap").value || "").trim()).then(function () { toast("Historia publicada"); close(); var h = location.hash || ""; if (h === "#/comunidad" || h === "#/siguiendo") route(); }).catch(function () { btn.disabled = false; btn.textContent = "Publicar historia"; toast("No se pudo publicar"); }); });
+  }
+
   function renderCommunity(mode) {
     mountTabbar("com"); var f = document.getElementById("fabEl"); if (f) f.remove();
     composeChallenge = null;
@@ -1580,28 +1634,32 @@
         bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
     } else if (mode === "discover") {
-      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; })]).then(function (res) {
-        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6), rec = res[4];
+      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; }), Cloud.getStories().catch(function () { return []; })]).then(function (res) {
+        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6), rec = res[4], stories = res[5] || [];
+        var bar = storiesBarHtml(stories);
         var recap = (rec && (rec.likes + rec.followers + rec.posts) > 0) ? '<div class="recap"><div class="rc-t">Tu semana</div><div class="rc-stats"><span><b>' + rec.likes + '</b> me gusta</span><span><b>' + rec.followers + '</b> seguidores</span>' + (rec.streak >= 2 ? '<span class="rc-fire">' + icon("flame", "i-sm") + "<b>" + rec.streak + "</b> días</span>" : "") + "</div></div>" : "";
         var banner = chal ? '<div class="chal-banner" id="chalBanner"><span class="cb-ic">' + icon("flame") + '</span><div class="cb-b"><div class="cb-t">' + esc(chal.title) + '</div><div class="cb-p">' + esc(chal.prompt || "") + '</div><div class="cb-m">' + chal.participants + " participando · toca para ver</div></div>" + icon("chev") + "</div>" : "";
         var top = lead.length ? '<div class="sec-label sec-row">Top magos de la semana <a class="seeall" id="seeTop">Ver ranking</a></div><div class="top-strip">' + lead.map(function (m) { return '<div class="top-m" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle, "big") + '<div class="tm-n">' + esc(m.name || m.handle || "Mago") + "</div></div>"; }).join("") + "</div>" : "";
         var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
-        bodyEl.innerHTML = recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
-        bindPostCards(bodyEl);
+        bodyEl.innerHTML = bar + recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
+        bindPostCards(bodyEl); bindStories(bodyEl, stories);
         var cbn = document.getElementById("chalBanner"); if (cbn) cbn.addEventListener("click", function () { location.hash = "#/reto"; });
         var st = document.getElementById("seeTop"); if (st) st.addEventListener("click", function () { location.hash = "#/top"; });
         bodyEl.querySelectorAll(".top-m[data-mago]").forEach(function (m) { m.addEventListener("click", function () { location.hash = "#/mago/" + m.getAttribute("data-mago"); }); });
         bodyEl.querySelectorAll(".chip[data-tag]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/tag/" + c.getAttribute("data-tag"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
     } else {
-      Cloud.getFeed(null, "following").then(function (rows) {
+      Promise.all([Cloud.getFeed(null, "following"), Cloud.getStories().catch(function () { return []; })]).then(function (res) {
+        var rows = res[0], stories = res[1] || [];
+        var bar = storiesBarHtml(stories);
         if (!rows.length) {
-          bodyEl.innerHTML = '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Llena tu feed</h3><p>Sigue a magos para ver aquí sus publicaciones.</p></div><div class="sec-label">Sugerencias para seguir</div><div id="sugg"><div class="splash" style="padding:20px 0"><div class="spin"></div></div></div>';
+          bodyEl.innerHTML = bar + '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Llena tu feed</h3><p>Sigue a magos para ver aquí sus publicaciones.</p></div><div class="sec-label">Sugerencias para seguir</div><div id="sugg"><div class="splash" style="padding:20px 0"><div class="spin"></div></div></div>';
+          bindStories(bodyEl, stories);
           Cloud.suggestMagicians().then(function (mg) { var s = document.getElementById("sugg"); s.innerHTML = mg.length ? '<div class="mago-list">' + mg.map(magicianRow).join("") + "</div>" : '<p class="hint">Aún no hay más magos. ¡Invita a otros!</p>'; bindMagicianRows(s); }).catch(function () {});
           return;
         }
-        bodyEl.innerHTML = '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
-        bindPostCards(bodyEl);
+        bodyEl.innerHTML = bar + '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
+        bindPostCards(bodyEl); bindStories(bodyEl, stories);
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
     }
   }

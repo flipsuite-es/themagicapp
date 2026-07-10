@@ -270,6 +270,9 @@ window.Cloud = (function () {
   function likeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").insert({ comment_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function unlikeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").delete().eq("comment_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function getWeekRecap() { return sb.rpc("get_week_recap").then(function (r) { if (r.error) throw r.error; return r.data; }).catch(function () { return null; }); }
+  function getStories() { return sb.rpc("get_stories").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function createStory(media, caption) { return sb.from("stories").insert({ media: media, caption: caption || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function viewStory(id) { return currentUser().then(function (u) { return sb.from("story_views").upsert({ story_id: id, viewer: u.id }, { onConflict: "story_id,viewer" }).then(function () { return true; }).catch(function () { return false; }); }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function createListing(listing, content) {
@@ -312,6 +315,7 @@ window.Cloud = (function () {
     openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
     getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
-    likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap
+    likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap,
+    getStories: getStories, createStory: createStory, viewStory: viewStory
   };
 })();

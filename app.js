@@ -51,7 +51,8 @@
     list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.1" fill="currentColor" stroke="none"/>',
     up: '<path d="M6 15l6-6 6 6"/>',
     down: '<path d="M6 9l6 6 6-6"/>',
-    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/>'
+    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/>',
+    calendar: '<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -73,10 +74,10 @@
 
   /* ------------------------------ estado ------------------------------ */
   function load() {
-    var s = { version: 1, tricks: [], categories: DEFAULT_CATS.slice(), routines: [] };
+    var s = { version: 1, tricks: [], categories: DEFAULT_CATS.slice(), routines: [], gigs: [] };
     try {
       var raw = localStorage.getItem(STORE_KEY);
-      if (raw) { var p = JSON.parse(raw); s.tricks = p.tricks || []; s.categories = (p.categories && p.categories.length) ? p.categories : DEFAULT_CATS.slice(); s.routines = p.routines || []; }
+      if (raw) { var p = JSON.parse(raw); s.tricks = p.tricks || []; s.categories = (p.categories && p.categories.length) ? p.categories : DEFAULT_CATS.slice(); s.routines = p.routines || []; s.gigs = p.gigs || []; }
     } catch (e) {}
     return s;
   }
@@ -84,6 +85,7 @@
   var state = load();
   function getTrick(id) { return state.tricks.filter(function (t) { return t.id === id; })[0]; }
   function getRoutine(id) { return state.routines.filter(function (r) { return r.id === id; })[0]; }
+  function getGig(id) { return state.gigs.filter(function (g) { return g.id === id; })[0]; }
   // Texto indexado para búsqueda: incluye notas, ficha y transcripciones/capítulos de vídeos
   function searchText(t) {
     var parts = [t.title, t.notes || "", t.category || "", (t.tags || []).join(" ")];
@@ -111,12 +113,16 @@
   }
   function toRoutineRow(r) { return { id: r.id, name: r.name, notes: r.notes || "", trick_ids: r.trickIds || [] }; }
   function routineRowToLocal(r) { return { id: r.id, name: r.name, notes: r.notes || "", trickIds: r.trick_ids || [], createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true }; }
+  function toGigRow(g) { return { id: g.id, date: g.date || null, client: g.client || "", venue: g.venue || "", fee: (g.fee === "" || g.fee == null) ? null : Number(g.fee), notes: g.notes || "", trick_ids: g.trickIds || [] }; }
+  function gigRowToLocal(g) { return { id: g.id, date: g.date || "", client: g.client || "", venue: g.venue || "", fee: g.fee == null ? "" : g.fee, notes: g.notes || "", trickIds: g.trick_ids || [], createdAt: Date.parse(g.created_at) || Date.now(), updatedAt: Date.parse(g.updated_at) || Date.now(), remote: true }; }
 
   // Escritura a la nube (best-effort; si falla, queda local y se resube al sincronizar)
   function syncTrick(t) { if (logged() && cloudReady()) Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {}); }
   function syncDelete(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteTrick(id).catch(function () {}); }
   function syncRoutine(r) { if (logged() && cloudReady()) Cloud.upsertRoutine(toRoutineRow(r)).then(function () { r.remote = true; }).catch(function () {}); }
   function syncDeleteRoutine(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteRoutine(id).catch(function () {}); }
+  function syncGig(g) { if (logged() && cloudReady()) Cloud.upsertGig(toGigRow(g)).then(function () { g.remote = true; }).catch(function () {}); }
+  function syncDeleteGig(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteGig(id).catch(function () {}); }
 
   var syncing = false;
   function reflectSync() { var bl = document.getElementById("syncBtn"); if (bl) bl.classList.toggle("spinning", syncing); }
@@ -141,6 +147,12 @@
         return Cloud.upsertRoutine(toRoutineRow(r)).then(function () { r.remote = true; }).catch(function () {});
       });
     });
+    state.gigs.filter(function (g) { return !g.remote; }).forEach(function (g) {
+      chain = chain.then(function () {
+        if (!isUuid(g.id)) g.id = uid();
+        return Cloud.upsertGig(toGigRow(g)).then(function () { g.remote = true; }).catch(function () {});
+      });
+    });
     return chain.then(function () { return Cloud.listTricks(); }).then(function (rows) {
       var byId = {};
       state.tricks.forEach(function (t) { if (!t.remote) byId[t.id] = t; }); // conserva pendientes
@@ -152,13 +164,21 @@
       state.routines.forEach(function (r) { if (!r.remote) rById[r.id] = r; });
       rrows.forEach(function (r) { rById[r.id] = routineRowToLocal(r); });
       state.routines = Object.keys(rById).map(function (k) { return rById[k]; });
+      return Cloud.listGigs();
+    }).then(function (grows) {
+      var gById = {};
+      state.gigs.forEach(function (g) { if (!g.remote) gById[g.id] = g; });
+      grows.forEach(function (g) { gById[g.id] = gigRowToLocal(g); });
+      state.gigs = Object.keys(gById).map(function (k) { return gById[k]; });
       save();
       syncing = false; reflectSync();
       if (isMain()) route();
       if (!silent) toast("Sincronizado");
     }).catch(function () { syncing = false; reflectSync(); if (!silent) toast("No se pudo sincronizar"); });
   }
-  function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/ajustes" || h === "#/cuenta"; }
+  function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/bolos" || h === "#/ajustes" || h === "#/cuenta"; }
+  var MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  function fmtDate(d) { if (!d) return "Sin fecha"; var p = String(d).split("-"); if (p.length < 3) return d; return (+p[2]) + " " + (MONTHS[(+p[1]) - 1] || "") + " " + p[0]; }
 
   /* --------------------------- parseo de vídeo ------------------------ */
   function parseVideo(url) {
@@ -188,6 +208,7 @@
     var tabs = [
       { h: "#/", ic: "library", t: "Biblioteca", k: "lib" },
       { h: "#/rutinas", ic: "list", t: "Rutinas", k: "rut" },
+      { h: "#/bolos", ic: "calendar", t: "Bolos", k: "gig" },
       { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
       { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
     ];
@@ -746,6 +767,96 @@
   }
   function exitPerform() { releaseWake(); var id = perfState ? perfState.id : null; perfState = null; location.hash = id ? "#/rutina/" + id : "#/rutinas"; }
 
+  /* ============================== BOLOS ============================== */
+  function renderGigs() {
+    mountTabbar("gig"); mountFab("#/bolo-nuevo");
+    var gs = state.gigs.slice().sort(function (a, b) { return (b.date || "").localeCompare(a.date || ""); });
+    var body;
+    if (!gs.length) {
+      body = '<div class="empty"><div class="big">' + icon("calendar") + '</div><h3>Sin bolos todavía</h3>' +
+        "<p>Lleva tu agenda: fecha, cliente, caché y qué actuaste (para no repetir con el mismo público).</p>" +
+        '<button class="btn" onclick="location.hash=\'#/bolo-nuevo\'">Añadir un bolo</button></div>';
+    } else {
+      body = '<div class="rlist">' + gs.map(function (g) {
+        return '<div class="rrow" data-id="' + g.id + '"><div class="ri">' + icon("calendar") + "</div>" +
+          '<div class="rt"><div class="n">' + esc(g.client || "Bolo") + '</div><div class="d">' + fmtDate(g.date) + (g.venue ? " · " + esc(g.venue) : "") + (g.fee !== "" && g.fee != null ? " · " + esc(g.fee) + " €" : "") + "</div></div>" +
+          '<span class="go">' + icon("chev") + "</span></div>";
+      }).join("") + "</div>";
+    }
+    view.innerHTML = '<div class="screen"><h1 class="title">Bolos</h1><p class="subtitle">Tu agenda de actuaciones.</p>' + body + "</div>";
+    view.querySelectorAll(".rrow[data-id]").forEach(function (row) { row.addEventListener("click", function () { location.hash = "#/bolo/" + row.getAttribute("data-id"); }); });
+  }
+
+  function renderGigForm(id) {
+    clearTabbar();
+    var g = id ? getGig(id) : null;
+    if (id && !g) { location.hash = "#/bolos"; return; }
+    var sel = g ? (g.trickIds || []).slice() : [];
+    var chips = state.tricks.map(function (t) {
+      return '<button type="button" class="tchip ' + (sel.indexOf(t.id) >= 0 ? "on" : "") + '" data-id="' + t.id + '">' + esc(t.title) + "</button>";
+    }).join("");
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar bolo" : "Nuevo bolo") + "</h1></div>" +
+      '<div class="row"><div class="field"><label>Fecha</label><input id="gDate" type="date" value="' + esc(g ? g.date : "") + '"></div>' +
+      '<div class="field"><label>Caché (€)</label><input id="gFee" type="number" inputmode="decimal" placeholder="0" value="' + esc(g && g.fee !== "" && g.fee != null ? g.fee : "") + '"></div></div>' +
+      '<div class="field"><label>Cliente</label><input id="gClient" placeholder="Nombre / empresa" value="' + esc(g ? g.client : "") + '"></div>' +
+      '<div class="field"><label>Lugar</label><input id="gVenue" placeholder="Local, ciudad…" value="' + esc(g ? g.venue : "") + '"></div>' +
+      '<div class="field"><label>Notas</label><textarea id="gNotes" placeholder="Detalles del bolo…">' + esc(g ? g.notes : "") + "</textarea></div>" +
+      '<div class="field"><label>Qué actué</label>' + (state.tricks.length ? '<div class="tchips" id="gTricks">' + chips + "</div>" : '<div class="hint">Aún no tienes trucos en la biblioteca.</div>') + "</div>" +
+      '<button class="btn" id="gSave">' + (id ? "Guardar" : "Crear bolo") + "</button>" +
+      '<button class="btn ghost" onclick="history.back()">Cancelar</button></div>';
+    view.querySelectorAll("#gTricks .tchip").forEach(function (c) { c.addEventListener("click", function () { c.classList.toggle("on"); }); });
+    document.getElementById("gSave").addEventListener("click", function () {
+      var trickIds = Array.prototype.map.call(view.querySelectorAll("#gTricks .tchip.on"), function (c) { return c.getAttribute("data-id"); });
+      var data = {
+        date: document.getElementById("gDate").value, client: document.getElementById("gClient").value.trim(),
+        venue: document.getElementById("gVenue").value.trim(), fee: document.getElementById("gFee").value.trim(),
+        notes: document.getElementById("gNotes").value.trim(), trickIds: trickIds, updatedAt: Date.now()
+      };
+      if (!data.date && !data.client) { toast("Pon al menos fecha o cliente"); return; }
+      if (id) { Object.keys(data).forEach(function (k) { g[k] = data[k]; }); save(); syncGig(g); location.hash = "#/bolo/" + id; }
+      else { data.id = uid(); data.createdAt = Date.now(); data.remote = false; state.gigs.push(data); save(); syncGig(data); location.hash = "#/bolo/" + data.id; }
+    });
+  }
+
+  function renderGigDetail(id) {
+    var g = getGig(id);
+    if (!g) { location.hash = "#/bolos"; return; }
+    clearTabbar();
+    var performed = (g.trickIds || []).map(getTrick).filter(Boolean);
+    // Aviso de repetición: trucos que ya actuaste para el mismo cliente en otros bolos
+    var repeated = [];
+    if (g.client) {
+      var cl = g.client.trim().toLowerCase();
+      var prevIds = {};
+      state.gigs.forEach(function (o) { if (o.id !== id && (o.client || "").trim().toLowerCase() === cl) (o.trickIds || []).forEach(function (tid) { prevIds[tid] = true; }); });
+      repeated = performed.filter(function (t) { return prevIds[t.id]; });
+    }
+    var perfHtml = performed.length
+      ? '<div class="ritems">' + performed.map(function (t) {
+          var rep = repeated.indexOf(t) >= 0;
+          return '<div class="ritem"><div class="rc" data-open="' + t.id + '"><div class="n">' + esc(t.title) + (rep ? ' <span class="reptag">ya actuado</span>' : "") + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>";
+        }).join("") + "</div>"
+      : '<div class="hint">No registraste qué actuaste.</div>';
+
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/bolos\'">' + icon("back") + '</button><h1>Bolo</h1>' +
+      '<span style="flex:1"></span><button class="iconbtn" id="gEdit">' + icon("edit") + "</button></div>" +
+      '<h1 class="title">' + esc(g.client || "Bolo") + "</h1>" +
+      '<div class="detail-badges"><span class="tagchip">' + fmtDate(g.date) + "</span>" +
+      (g.venue ? '<span class="tagchip">' + esc(g.venue) + "</span>" : "") +
+      (g.fee !== "" && g.fee != null ? '<span class="pill df">' + esc(g.fee) + " €</span>" : "") + "</div>" +
+      (g.notes ? '<div class="notes">' + esc(g.notes) + "</div>" : "") +
+      (repeated.length ? '<div class="backstage-bar" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:color-mix(in srgb,var(--danger) 10%,transparent)"><span class="dot" style="background:var(--danger);box-shadow:none"></span> Ojo: ' + repeated.length + " truco(s) ya se los hiciste a este cliente.</div>" : "") +
+      '<div class="sec-label">Qué actué</div>' + perfHtml +
+      '<button class="btn danger" id="gDel">Eliminar bolo</button></div>';
+    document.getElementById("gEdit").addEventListener("click", function () { location.hash = "#/bolo-edit/" + id; });
+    view.querySelectorAll(".rc[data-open]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-open"); }); });
+    document.getElementById("gDel").addEventListener("click", function () {
+      if (confirm("¿Eliminar este bolo?")) { var wr = g.remote; state.gigs = state.gigs.filter(function (x) { return x.id !== id; }); save(); syncDeleteGig(id, wr); toast("Bolo eliminado"); location.hash = "#/bolos"; }
+    });
+  }
+
   /* ========================= TRUCOS INCLUIDOS ======================== */
   function renderIncluded() {
     mountTabbar("inc"); var f = document.getElementById("fabEl"); if (f) f.remove();
@@ -1200,6 +1311,10 @@
       if (h.indexOf("#/rutina-add/") === 0) return renderRoutineAdd(h.slice(13));
       if (h.indexOf("#/actuar/") === 0) return renderPerform(h.slice(9));
       if (h.indexOf("#/rutina/") === 0) return renderRoutineDetail(h.slice(9));
+      if (h === "#/bolos") return renderGigs();
+      if (h === "#/bolo-nuevo") return renderGigForm(null);
+      if (h.indexOf("#/bolo-edit/") === 0) return renderGigForm(h.slice(12));
+      if (h.indexOf("#/bolo/") === 0) return renderGigDetail(h.slice(7));
       if (h === "#/nuevo") return renderForm(null);
       if (h.indexOf("#/editar/") === 0) return renderForm(h.slice(9));
       if (h.indexOf("#/truco/") === 0) return renderDetail(h.slice(8));

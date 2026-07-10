@@ -457,3 +457,9 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .photocell .ph-img { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
 .photocell .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .mini-spin { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--brand); animation: spin .8s linear infinite; }
+
+/* Bolos: selector de trucos actuados */
+.tchips { display: flex; flex-wrap: wrap; gap: 7px; }
+.tchip { border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); border-radius: 999px; padding: 7px 13px; font-size: 13px; cursor: pointer; }
+.tchip.on { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.reptag { font-size: 10.5px; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); border-radius: 6px; padding: 1px 6px; vertical-align: middle; margin-left: 4px; }

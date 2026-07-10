@@ -790,3 +790,34 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .li-owner .btn { margin: 0; flex: 1; min-width: 96px; padding: 12px 10px; }
 .li-owner .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .c-edit { background: none; border: 0; color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
+
+/* ============ Clips (feed vertical estilo TikTok) ============ */
+.clips-screen { position: fixed; inset: 0; z-index: 60; background: #000; }
+.clips-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 12px; z-index: 4; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: rgba(0,0,0,.4); color: #fff; cursor: pointer; }
+.clips-x .i { width: 22px; height: 22px; }
+.clips-title { position: absolute; top: calc(18px + env(safe-area-inset-top)); left: 0; right: 0; text-align: center; z-index: 3; color: #fff; font-weight: 800; font-size: 17px; letter-spacing: .3px; text-shadow: 0 1px 6px rgba(0,0,0,.5); pointer-events: none; }
+.clips { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.clips::-webkit-scrollbar { display: none; }
+.clip { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; background: #000; overflow: hidden; }
+.clip-video { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+.clip-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.clip-poster { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(.72); }
+.clip-tap { position: absolute; inset: 0; z-index: 1; }
+.clip-rail { position: absolute; right: 10px; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.clip-av { width: 48px; height: 48px; padding: 0; border: 2px solid #fff; border-radius: 999px; background: none; cursor: pointer; overflow: hidden; }
+.clip-av .avatar { width: 100%; height: 100%; }
+.clip-act { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.clip-act .i { width: 32px; height: 32px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.45)); }
+.clip-act.on { color: var(--danger); }
+.clip-act.clip-save.on { color: var(--brand); }
+.clip-act.clip-like.on { color: #ff4d6d; }
+.clip-meta { position: absolute; left: 14px; right: 78px; bottom: calc(30px + env(safe-area-inset-bottom)); z-index: 3; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.clip-meta .cm-user { font-size: 15.5px; margin-bottom: 6px; cursor: pointer; }
+.clip-meta .cm-user span { opacity: .8; font-weight: 600; }
+.clip-meta .cm-body { font-size: 14.5px; line-height: 1.4; max-height: 4.2em; overflow: hidden; }
+.clip-meta .cm-body a { color: #fff; font-weight: 700; }
+.clips-load { display: flex; align-items: center; justify-content: center; height: 100%; }
+.clips-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; padding: 0 30px; gap: 6px; }
+.clips-empty .big { opacity: .5; } .clips-empty .big .i { width: 54px; height: 54px; }
+.clips-empty h3 { margin: 6px 0 0; } .clips-empty p { color: rgba(255,255,255,.7); margin: 0 0 14px; }
+.seg.big button { white-space: nowrap; font-size: 14px; }

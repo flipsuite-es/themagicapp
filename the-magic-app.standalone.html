@@ -799,6 +799,37 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .li-owner .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .c-edit { background: none; border: 0; color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
 
+/* ============ Clips (feed vertical estilo TikTok) ============ */
+.clips-screen { position: fixed; inset: 0; z-index: 60; background: #000; }
+.clips-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 12px; z-index: 4; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: rgba(0,0,0,.4); color: #fff; cursor: pointer; }
+.clips-x .i { width: 22px; height: 22px; }
+.clips-title { position: absolute; top: calc(18px + env(safe-area-inset-top)); left: 0; right: 0; text-align: center; z-index: 3; color: #fff; font-weight: 800; font-size: 17px; letter-spacing: .3px; text-shadow: 0 1px 6px rgba(0,0,0,.5); pointer-events: none; }
+.clips { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.clips::-webkit-scrollbar { display: none; }
+.clip { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; background: #000; overflow: hidden; }
+.clip-video { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+.clip-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.clip-poster { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(.72); }
+.clip-tap { position: absolute; inset: 0; z-index: 1; }
+.clip-rail { position: absolute; right: 10px; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.clip-av { width: 48px; height: 48px; padding: 0; border: 2px solid #fff; border-radius: 999px; background: none; cursor: pointer; overflow: hidden; }
+.clip-av .avatar { width: 100%; height: 100%; }
+.clip-act { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.clip-act .i { width: 32px; height: 32px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.45)); }
+.clip-act.on { color: var(--danger); }
+.clip-act.clip-save.on { color: var(--brand); }
+.clip-act.clip-like.on { color: #ff4d6d; }
+.clip-meta { position: absolute; left: 14px; right: 78px; bottom: calc(30px + env(safe-area-inset-bottom)); z-index: 3; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+.clip-meta .cm-user { font-size: 15.5px; margin-bottom: 6px; cursor: pointer; }
+.clip-meta .cm-user span { opacity: .8; font-weight: 600; }
+.clip-meta .cm-body { font-size: 14.5px; line-height: 1.4; max-height: 4.2em; overflow: hidden; }
+.clip-meta .cm-body a { color: #fff; font-weight: 700; }
+.clips-load { display: flex; align-items: center; justify-content: center; height: 100%; }
+.clips-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; padding: 0 30px; gap: 6px; }
+.clips-empty .big { opacity: .5; } .clips-empty .big .i { width: 54px; height: 54px; }
+.clips-empty h3 { margin: 6px 0 0; } .clips-empty p { color: rgba(255,255,255,.7); margin: 0 0 14px; }
+.seg.big button { white-space: nowrap; font-size: 14px; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -1097,6 +1128,7 @@ window.Cloud = (function () {
   function pingStreak() { return sb.rpc("ping_streak").then(function (r) { if (r.error) throw r.error; return r.data || 0; }).catch(function () { return 0; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket(seller) { return sb.rpc("get_market", { lim: 40, seller_id: seller || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getClips(before) { return sb.rpc("get_clips", { lim: 20, before: before || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
@@ -1159,7 +1191,7 @@ window.Cloud = (function () {
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
     subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
     publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
-    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
+    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getClips: getClips, getProfileInfo: getProfileInfo,
     createPost: createPost, deletePost: deletePost, updatePost: updatePost, updateComment: updateComment, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     updateListing: updateListing, updateListingContent: updateListingContent, deleteListing: deleteListing,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
@@ -1221,6 +1253,8 @@ window.Cloud = (function () {
     edit: '<path d="M14.5 5.5l4 4M4 20l1-4L16 4.5l3.5 3.5L8 19.5z"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     pause: '<path d="M9 5v14M15 5v14"/>',
+    sound: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 010 7M18.5 6a7 7 0 010 12"/>',
+    mute: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
     cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
     theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
     disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
@@ -2811,14 +2845,14 @@ window.Cloud = (function () {
       '<button class="iconbtn" id="msgBtn" aria-label="Mensajes">' + icon("chat") + '<span class="badge" id="msgBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="notifBtn" aria-label="Notificaciones">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="meBtn" aria-label="Mi perfil">' + icon("user") + "</button></div>" +
-      '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
+      '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="clips" class="' + (mode === "clips" ? "on" : "") + '">Clips</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
   }
   function bindCommunityHeader() {
     document.getElementById("searchBtn").addEventListener("click", function () { location.hash = "#/descubrir"; });
     document.getElementById("msgBtn").addEventListener("click", function () { location.hash = "#/mensajes"; });
     document.getElementById("notifBtn").addEventListener("click", function () { location.hash = "#/avisos"; });
     document.getElementById("meBtn").addEventListener("click", function () { if (myProfile) location.hash = "#/mago/" + myProfile.user_id; });
-    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
+    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : m === "clips" ? "#/clips" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
     refreshNotifBadge(); refreshMsgBadge();
   }
   /* ---------------------------- Historias --------------------------- */
@@ -2933,6 +2967,117 @@ window.Cloud = (function () {
         appendMore(bodyEl, bodyEl.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "following", null, null, before); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
     }
+  }
+
+  /* ---------------------------- Clips ------------------------------- */
+  // Feed vertical a pantalla completa (estilo TikTok) de vídeos de la comunidad.
+  var clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
+  function clipVideoOf(p) { return ((p && p.media) || []).filter(function (m) { return m.kind === "video" && m.embed; })[0]; }
+  function clipEmbedSrc(m, muted) {
+    var e = m.embed || "", mu = muted ? 1 : 0;
+    var yt = e.match(/embed\/([\w-]{11})/);
+    if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1] + "?autoplay=1&loop=1&playlist=" + yt[1] + "&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1&mute=" + mu;
+    var vm = e.match(/video\/(\d+)/);
+    if (vm) return "https://player.vimeo.com/video/" + vm[1] + "?autoplay=1&loop=1&controls=0&title=0&byline=0&portrait=0&muted=" + mu;
+    return e + (e.indexOf("?") >= 0 ? "&" : "?") + "autoplay=1&mute=" + mu;
+  }
+  function clipHtml(p, i) {
+    var m = clipVideoOf(p);
+    return '<section class="clip" data-post="' + esc(p.id) + '" data-idx="' + i + '">' +
+      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(m.thumb || "") + ')"></div></div>' +
+      '<div class="clip-tap" data-tap></div>' +
+      '<div class="clip-rail">' +
+        '<button class="clip-av" data-mago="' + esc(p.author) + '" aria-label="Ver perfil">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "") + "</button>" +
+        '<button class="clip-act clip-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '" aria-label="Me gusta">' + icon(p.liked ? "heartfill" : "heart") + "<span>" + (p.likes || 0) + "</span></button>" +
+        '<button class="clip-act" data-cmt="' + esc(p.id) + '" aria-label="Comentarios">' + icon("chat") + "<span>" + (p.comments || 0) + "</span></button>" +
+        '<button class="clip-act" data-rep="' + esc(p.id) + '" aria-label="Repostear">' + icon("repost") + "</button>" +
+        '<button class="clip-act clip-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '" aria-label="Guardar">' + icon(p.saved ? "bookmarkfill" : "bookmark") + "</button>" +
+        '<button class="clip-act clip-mute" data-mute aria-label="Sonido">' + icon("mute") + "</button></div>" +
+      '<div class="clip-meta"><div class="cm-user" data-mago="' + esc(p.author) + '"><b>' + esc(p.name || p.handle || "Mago") + "</b>" + (p.handle ? ' <span>@' + esc(p.handle) + "</span>" : "") + "</div>" +
+        (p.body ? '<div class="cm-body">' + linkify(p.body) + "</div>" : "") + "</div></section>";
+  }
+  function clipDeactivate(list, idx) {
+    var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
+    var m = clipVideoOf(clipsState.rows[idx]);
+    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>';
+  }
+  function clipActivate(list, idx) {
+    if (clipsState.active === idx) return;
+    if (clipsState.active >= 0) clipDeactivate(list, clipsState.active);
+    clipsState.active = idx;
+    var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
+    var m = clipVideoOf(clipsState.rows[idx]);
+    var vd = node.querySelector(".clip-video");
+    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>' +
+      '<iframe src="' + esc(clipEmbedSrc(m, clipsState.muted)) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    if (idx >= clipsState.rows.length - 2) clipsLoadMore(list);
+  }
+  function clipSetSound(list, muted) {
+    clipsState.muted = muted;
+    var node = list.querySelector('.clip[data-idx="' + clipsState.active + '"]');
+    var ifr = node && node.querySelector("iframe");
+    if (ifr && ifr.contentWindow) {
+      try {
+        var m = clipVideoOf(clipsState.rows[clipsState.active]);
+        if (m && /youtube/.test(m.embed)) ifr.contentWindow.postMessage(JSON.stringify({ event: "command", func: muted ? "mute" : "unMute", args: [] }), "*");
+        else { ifr.contentWindow.postMessage(JSON.stringify({ method: "setMuted", value: muted }), "*"); ifr.contentWindow.postMessage(JSON.stringify({ method: "setVolume", value: muted ? 0 : 1 }), "*"); }
+      } catch (e) {}
+    }
+    list.querySelectorAll(".clip-mute").forEach(function (b) { b.innerHTML = icon(muted ? "mute" : "sound"); });
+  }
+  function clipsLoadMore(list) {
+    if (clipsState.loading || clipsState.done) return;
+    var rows = clipsState.rows; if (!rows.length) return;
+    clipsState.loading = true;
+    Cloud.getClips(rows[rows.length - 1].created_at).then(function (more) {
+      clipsState.loading = false;
+      more = (more || []).filter(clipVideoOf);
+      if (!more.length) { clipsState.done = true; return; }
+      var base = rows.length; clipsState.rows = rows.concat(more);
+      var frag = document.createElement("div"); frag.innerHTML = more.map(function (p, k) { return clipHtml(p, base + k); }).join("");
+      while (frag.firstChild) { var c = frag.firstChild; list.appendChild(c); if (c.nodeType === 1) { bindClip(list, c); clipsState.io && clipsState.io.observe(c); } }
+    }).catch(function () { clipsState.loading = false; });
+  }
+  function bindClip(list, node) {
+    node.querySelectorAll("[data-mago]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/mago/" + a.getAttribute("data-mago"); }); });
+    node.querySelectorAll("a.tag[data-tag]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/tag/" + a.getAttribute("data-tag"); }); });
+    node.querySelectorAll("a.mention[data-h]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); openHandle(a.getAttribute("data-h")); }); });
+    var likeB = node.querySelector("[data-like]");
+    if (likeB) likeB.addEventListener("click", function (e) {
+      e.stopPropagation(); var id = likeB.getAttribute("data-like"); var on = likeB.classList.contains("on");
+      var sp = likeB.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0;
+      likeB.classList.toggle("on"); likeB.innerHTML = icon(on ? "heart" : "heartfill") + "<span>" + (on ? Math.max(0, n - 1) : n + 1) + "</span>";
+      if (!on) burstHearts(likeB);
+      (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
+    });
+    var saveB = node.querySelector("[data-save]");
+    if (saveB) saveB.addEventListener("click", function (e) { e.stopPropagation(); var id = saveB.getAttribute("data-save"); var on = saveB.classList.contains("on"); saveB.classList.toggle("on"); saveB.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () {}); });
+    var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/post/" + cmtB.getAttribute("data-cmt"); });
+    var repB = node.querySelector("[data-rep]"); if (repB) repB.addEventListener("click", function (e) { e.stopPropagation(); var id = repB.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
+    var muteB = node.querySelector("[data-mute]"); if (muteB) muteB.addEventListener("click", function (e) { e.stopPropagation(); clipSetSound(list, !clipsState.muted); });
+    var tap = node.querySelector("[data-tap]"); if (tap) tap.addEventListener("click", function () { clipSetSound(list, !clipsState.muted); });
+  }
+  function renderClips(startId) {
+    clearTabbar(); var fab = document.getElementById("fabEl"); if (fab) fab.remove();
+    if (clipsState.io) { clipsState.io.disconnect(); clipsState.io = null; }
+    clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
+    view.innerHTML = '<div class="clips-screen"><button class="clips-x" id="clipsX" aria-label="Cerrar">' + icon("x") + '</button><div class="clips-title">Clips</div><div class="clips" id="clipsList"><div class="clips-load"><div class="spin"></div></div></div></div>';
+    document.getElementById("clipsX").addEventListener("click", function () { location.hash = "#/comunidad"; });
+    Cloud.getClips().then(function (rows) {
+      var list = document.getElementById("clipsList"); if (!list) return;
+      rows = (rows || []).filter(clipVideoOf);
+      if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Comparte un vídeo de YouTube o Vimeo en la comunidad y aparecerá aquí.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Publicar un vídeo</button></div>'; return; }
+      clipsState.rows = rows;
+      list.innerHTML = rows.map(clipHtml).join("");
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { if (en.isIntersecting && en.intersectionRatio >= 0.6) { var idx = parseInt(en.target.getAttribute("data-idx"), 10); clipActivate(list, idx); } });
+      }, { root: list, threshold: [0.6] });
+      clipsState.io = io;
+      list.querySelectorAll(".clip").forEach(function (c) { bindClip(list, c); io.observe(c); });
+      var startIdx = startId ? rows.map(function (r) { return r.id; }).indexOf(startId) : -1;
+      if (startIdx > 0) { var sn = list.querySelector('.clip[data-idx="' + startIdx + '"]'); if (sn) sn.scrollIntoView(); }
+      else clipActivate(list, 0);
+    }).catch(function () { var list = document.getElementById("clipsList"); if (list) list.innerHTML = '<div class="clips-empty"><p>No se pudieron cargar los clips.</p></div>'; });
   }
 
   /* ------------------- Avisos / Descubrir / Tag --------------------- */
@@ -3899,6 +4044,8 @@ window.Cloud = (function () {
       if (h === "#/mensajes") return socialEnabled ? renderMessages() : renderLibrary();
       if (h.indexOf("#/chat/") === 0) return socialEnabled ? renderChat(h.slice(7)) : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
+      if (h === "#/clips") return socialEnabled ? renderClips() : renderLibrary();
+      if (h.indexOf("#/clips/") === 0) return socialEnabled ? renderClips(h.slice(8)) : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
       if (h.indexOf("#/vender/") === 0) return socialEnabled ? renderSellForm(h.slice(9)) : renderLibrary();
       if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));

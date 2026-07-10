@@ -283,6 +283,7 @@ window.Cloud = (function () {
   function pingStreak() { return sb.rpc("ping_streak").then(function (r) { if (r.error) throw r.error; return r.data || 0; }).catch(function () { return 0; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket(seller) { return sb.rpc("get_market", { lim: 40, seller_id: seller || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getClips(before) { return sb.rpc("get_clips", { lim: 20, before: before || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
@@ -345,7 +346,7 @@ window.Cloud = (function () {
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
     subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
     publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
-    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
+    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getClips: getClips, getProfileInfo: getProfileInfo,
     createPost: createPost, deletePost: deletePost, updatePost: updatePost, updateComment: updateComment, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     updateListing: updateListing, updateListingContent: updateListingContent, deleteListing: deleteListing,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,

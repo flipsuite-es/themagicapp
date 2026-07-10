@@ -41,6 +41,8 @@
     edit: '<path d="M14.5 5.5l4 4M4 20l1-4L16 4.5l3.5 3.5L8 19.5z"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     pause: '<path d="M9 5v14M15 5v14"/>',
+    sound: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 010 7M18.5 6a7 7 0 010 12"/>',
+    mute: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
     cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
     theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
     disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
@@ -1631,14 +1633,14 @@
       '<button class="iconbtn" id="msgBtn" aria-label="Mensajes">' + icon("chat") + '<span class="badge" id="msgBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="notifBtn" aria-label="Notificaciones">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="meBtn" aria-label="Mi perfil">' + icon("user") + "</button></div>" +
-      '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
+      '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="clips" class="' + (mode === "clips" ? "on" : "") + '">Clips</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
   }
   function bindCommunityHeader() {
     document.getElementById("searchBtn").addEventListener("click", function () { location.hash = "#/descubrir"; });
     document.getElementById("msgBtn").addEventListener("click", function () { location.hash = "#/mensajes"; });
     document.getElementById("notifBtn").addEventListener("click", function () { location.hash = "#/avisos"; });
     document.getElementById("meBtn").addEventListener("click", function () { if (myProfile) location.hash = "#/mago/" + myProfile.user_id; });
-    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
+    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : m === "clips" ? "#/clips" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
     refreshNotifBadge(); refreshMsgBadge();
   }
   /* ---------------------------- Historias --------------------------- */
@@ -1753,6 +1755,117 @@
         appendMore(bodyEl, bodyEl.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "following", null, null, before); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
     }
+  }
+
+  /* ---------------------------- Clips ------------------------------- */
+  // Feed vertical a pantalla completa (estilo TikTok) de vídeos de la comunidad.
+  var clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
+  function clipVideoOf(p) { return ((p && p.media) || []).filter(function (m) { return m.kind === "video" && m.embed; })[0]; }
+  function clipEmbedSrc(m, muted) {
+    var e = m.embed || "", mu = muted ? 1 : 0;
+    var yt = e.match(/embed\/([\w-]{11})/);
+    if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1] + "?autoplay=1&loop=1&playlist=" + yt[1] + "&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1&mute=" + mu;
+    var vm = e.match(/video\/(\d+)/);
+    if (vm) return "https://player.vimeo.com/video/" + vm[1] + "?autoplay=1&loop=1&controls=0&title=0&byline=0&portrait=0&muted=" + mu;
+    return e + (e.indexOf("?") >= 0 ? "&" : "?") + "autoplay=1&mute=" + mu;
+  }
+  function clipHtml(p, i) {
+    var m = clipVideoOf(p);
+    return '<section class="clip" data-post="' + esc(p.id) + '" data-idx="' + i + '">' +
+      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(m.thumb || "") + ')"></div></div>' +
+      '<div class="clip-tap" data-tap></div>' +
+      '<div class="clip-rail">' +
+        '<button class="clip-av" data-mago="' + esc(p.author) + '" aria-label="Ver perfil">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "") + "</button>" +
+        '<button class="clip-act clip-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '" aria-label="Me gusta">' + icon(p.liked ? "heartfill" : "heart") + "<span>" + (p.likes || 0) + "</span></button>" +
+        '<button class="clip-act" data-cmt="' + esc(p.id) + '" aria-label="Comentarios">' + icon("chat") + "<span>" + (p.comments || 0) + "</span></button>" +
+        '<button class="clip-act" data-rep="' + esc(p.id) + '" aria-label="Repostear">' + icon("repost") + "</button>" +
+        '<button class="clip-act clip-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '" aria-label="Guardar">' + icon(p.saved ? "bookmarkfill" : "bookmark") + "</button>" +
+        '<button class="clip-act clip-mute" data-mute aria-label="Sonido">' + icon("mute") + "</button></div>" +
+      '<div class="clip-meta"><div class="cm-user" data-mago="' + esc(p.author) + '"><b>' + esc(p.name || p.handle || "Mago") + "</b>" + (p.handle ? ' <span>@' + esc(p.handle) + "</span>" : "") + "</div>" +
+        (p.body ? '<div class="cm-body">' + linkify(p.body) + "</div>" : "") + "</div></section>";
+  }
+  function clipDeactivate(list, idx) {
+    var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
+    var m = clipVideoOf(clipsState.rows[idx]);
+    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>';
+  }
+  function clipActivate(list, idx) {
+    if (clipsState.active === idx) return;
+    if (clipsState.active >= 0) clipDeactivate(list, clipsState.active);
+    clipsState.active = idx;
+    var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
+    var m = clipVideoOf(clipsState.rows[idx]);
+    var vd = node.querySelector(".clip-video");
+    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>' +
+      '<iframe src="' + esc(clipEmbedSrc(m, clipsState.muted)) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    if (idx >= clipsState.rows.length - 2) clipsLoadMore(list);
+  }
+  function clipSetSound(list, muted) {
+    clipsState.muted = muted;
+    var node = list.querySelector('.clip[data-idx="' + clipsState.active + '"]');
+    var ifr = node && node.querySelector("iframe");
+    if (ifr && ifr.contentWindow) {
+      try {
+        var m = clipVideoOf(clipsState.rows[clipsState.active]);
+        if (m && /youtube/.test(m.embed)) ifr.contentWindow.postMessage(JSON.stringify({ event: "command", func: muted ? "mute" : "unMute", args: [] }), "*");
+        else { ifr.contentWindow.postMessage(JSON.stringify({ method: "setMuted", value: muted }), "*"); ifr.contentWindow.postMessage(JSON.stringify({ method: "setVolume", value: muted ? 0 : 1 }), "*"); }
+      } catch (e) {}
+    }
+    list.querySelectorAll(".clip-mute").forEach(function (b) { b.innerHTML = icon(muted ? "mute" : "sound"); });
+  }
+  function clipsLoadMore(list) {
+    if (clipsState.loading || clipsState.done) return;
+    var rows = clipsState.rows; if (!rows.length) return;
+    clipsState.loading = true;
+    Cloud.getClips(rows[rows.length - 1].created_at).then(function (more) {
+      clipsState.loading = false;
+      more = (more || []).filter(clipVideoOf);
+      if (!more.length) { clipsState.done = true; return; }
+      var base = rows.length; clipsState.rows = rows.concat(more);
+      var frag = document.createElement("div"); frag.innerHTML = more.map(function (p, k) { return clipHtml(p, base + k); }).join("");
+      while (frag.firstChild) { var c = frag.firstChild; list.appendChild(c); if (c.nodeType === 1) { bindClip(list, c); clipsState.io && clipsState.io.observe(c); } }
+    }).catch(function () { clipsState.loading = false; });
+  }
+  function bindClip(list, node) {
+    node.querySelectorAll("[data-mago]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/mago/" + a.getAttribute("data-mago"); }); });
+    node.querySelectorAll("a.tag[data-tag]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/tag/" + a.getAttribute("data-tag"); }); });
+    node.querySelectorAll("a.mention[data-h]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); openHandle(a.getAttribute("data-h")); }); });
+    var likeB = node.querySelector("[data-like]");
+    if (likeB) likeB.addEventListener("click", function (e) {
+      e.stopPropagation(); var id = likeB.getAttribute("data-like"); var on = likeB.classList.contains("on");
+      var sp = likeB.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0;
+      likeB.classList.toggle("on"); likeB.innerHTML = icon(on ? "heart" : "heartfill") + "<span>" + (on ? Math.max(0, n - 1) : n + 1) + "</span>";
+      if (!on) burstHearts(likeB);
+      (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
+    });
+    var saveB = node.querySelector("[data-save]");
+    if (saveB) saveB.addEventListener("click", function (e) { e.stopPropagation(); var id = saveB.getAttribute("data-save"); var on = saveB.classList.contains("on"); saveB.classList.toggle("on"); saveB.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () {}); });
+    var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/post/" + cmtB.getAttribute("data-cmt"); });
+    var repB = node.querySelector("[data-rep]"); if (repB) repB.addEventListener("click", function (e) { e.stopPropagation(); var id = repB.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
+    var muteB = node.querySelector("[data-mute]"); if (muteB) muteB.addEventListener("click", function (e) { e.stopPropagation(); clipSetSound(list, !clipsState.muted); });
+    var tap = node.querySelector("[data-tap]"); if (tap) tap.addEventListener("click", function () { clipSetSound(list, !clipsState.muted); });
+  }
+  function renderClips(startId) {
+    clearTabbar(); var fab = document.getElementById("fabEl"); if (fab) fab.remove();
+    if (clipsState.io) { clipsState.io.disconnect(); clipsState.io = null; }
+    clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
+    view.innerHTML = '<div class="clips-screen"><button class="clips-x" id="clipsX" aria-label="Cerrar">' + icon("x") + '</button><div class="clips-title">Clips</div><div class="clips" id="clipsList"><div class="clips-load"><div class="spin"></div></div></div></div>';
+    document.getElementById("clipsX").addEventListener("click", function () { location.hash = "#/comunidad"; });
+    Cloud.getClips().then(function (rows) {
+      var list = document.getElementById("clipsList"); if (!list) return;
+      rows = (rows || []).filter(clipVideoOf);
+      if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Comparte un vídeo de YouTube o Vimeo en la comunidad y aparecerá aquí.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Publicar un vídeo</button></div>'; return; }
+      clipsState.rows = rows;
+      list.innerHTML = rows.map(clipHtml).join("");
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { if (en.isIntersecting && en.intersectionRatio >= 0.6) { var idx = parseInt(en.target.getAttribute("data-idx"), 10); clipActivate(list, idx); } });
+      }, { root: list, threshold: [0.6] });
+      clipsState.io = io;
+      list.querySelectorAll(".clip").forEach(function (c) { bindClip(list, c); io.observe(c); });
+      var startIdx = startId ? rows.map(function (r) { return r.id; }).indexOf(startId) : -1;
+      if (startIdx > 0) { var sn = list.querySelector('.clip[data-idx="' + startIdx + '"]'); if (sn) sn.scrollIntoView(); }
+      else clipActivate(list, 0);
+    }).catch(function () { var list = document.getElementById("clipsList"); if (list) list.innerHTML = '<div class="clips-empty"><p>No se pudieron cargar los clips.</p></div>'; });
   }
 
   /* ------------------- Avisos / Descubrir / Tag --------------------- */
@@ -2719,6 +2832,8 @@
       if (h === "#/mensajes") return socialEnabled ? renderMessages() : renderLibrary();
       if (h.indexOf("#/chat/") === 0) return socialEnabled ? renderChat(h.slice(7)) : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
+      if (h === "#/clips") return socialEnabled ? renderClips() : renderLibrary();
+      if (h.indexOf("#/clips/") === 0) return socialEnabled ? renderClips(h.slice(8)) : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
       if (h.indexOf("#/vender/") === 0) return socialEnabled ? renderSellForm(h.slice(9)) : renderLibrary();
       if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));

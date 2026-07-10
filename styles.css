@@ -80,12 +80,14 @@ body {
 input, textarea, select { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; font-family: inherit; }
 
 .app {
-  position: relative; height: 100%; max-width: 640px; margin: 0 auto;
+  position: relative; height: 100%; max-width: 860px; margin: 0 auto;
   overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none;
   padding: calc(16px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right))
            calc(96px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
 }
-.screen { animation: fade .3s ease; }
+/* Legibilidad: las pantallas de texto se limitan; las anchas (rejillas) no */
+.screen { animation: fade .3s ease; max-width: 720px; margin: 0 auto; }
+.screen.wide { max-width: none; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* Iconos SVG (línea) */
@@ -98,6 +100,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; -webkit-
 .appbar .brandmark .i { width: 26px; height: 26px; color: var(--brand); stroke-width: 1.6; }
 .appbar .wm { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
 .appbar .spacer { flex: 1; }
+.pagetitle { display: none; font-family: var(--display); font-weight: 600; margin: 0; }
 .iconbtn {
   width: 40px; height: 40px; border-radius: var(--radius-sm);
   border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
@@ -132,8 +135,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 
 /* ---------- Grid ---------- */
 .count { color: var(--ink-faint); font-size: 12.5px; margin: 14px 2px 12px; letter-spacing: .01em; }
-.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
-@media (max-width: 400px) { .cards { grid-template-columns: 1fr; } }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 13px; }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; box-shadow: var(--shadow); transition: transform .14s ease, border-color .2s ease; display: flex; flex-direction: column; }
 .card:active { transform: scale(.985); }
@@ -385,3 +387,63 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .transcript summary::before { content: "▸ "; color: var(--brand); }
 .transcript[open] summary::before { content: "▾ "; }
 .transcript .tr { padding: 0 14px 14px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
+
+/* ==========================================================================
+   Responsive: móvil (barra inferior) → escritorio (barra lateral)
+   ========================================================================== */
+
+/* Centrar el contenido del panel de carga en pantallas anchas */
+.qs { align-items: center; }
+.qs > * { width: 100%; max-width: 680px; }
+
+/* Marca en la nav: solo visible como barra lateral (escritorio) */
+.tbbrand { display: none; }
+
+/* Tablet: un poco más de aire */
+@media (min-width: 680px) {
+  .cards { gap: 16px; }
+}
+
+/* Escritorio: barra lateral fija a la izquierda, contenido a lo ancho */
+@media (min-width: 1000px) {
+  .tabbar {
+    top: 0; bottom: 0; right: auto; left: 0; width: 236px;
+    flex-direction: column; justify-content: flex-start; align-items: stretch;
+    gap: 4px; padding: 26px 16px calc(26px + env(safe-area-inset-bottom));
+    border-top: none; border-right: 1px solid var(--line);
+    background: var(--surface); backdrop-filter: none;
+  }
+  .tbbrand {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px 22px;
+    font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: -0.02em;
+  }
+  .tbbrand .i { width: 24px; height: 24px; color: var(--brand); }
+  .tabbar a {
+    flex: 0 0 auto; max-width: none; flex-direction: row; justify-content: flex-start;
+    gap: 12px; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; font-weight: 500;
+  }
+  .tabbar a.on { background: color-mix(in srgb, var(--brand) 13%, transparent); }
+  .tabbar a .i { width: 21px; height: 21px; }
+
+  .app {
+    margin: 0 auto 0 236px; max-width: 1180px;
+    padding: 30px 40px 56px;
+  }
+  .screen { max-width: 760px; }
+  .screen.wide { max-width: 1100px; }
+
+  .fab { left: auto; right: 40px; bottom: 40px; width: 58px; height: 58px; }
+
+  /* En escritorio, el detalle usa dos columnas cuando hay espacio */
+  .perform { max-width: 820px; }
+}
+
+/* Pantallas muy anchas: centrar el área de contenido tras la barra lateral */
+@media (min-width: 1500px) {
+  .app { margin-left: max(236px, calc((100% - 1100px) / 2)); }
+}
+
+@media (min-width: 1000px) {
+  .appbar .brandmark { display: none; }
+  .pagetitle { display: block; font-size: 24px; letter-spacing: -0.02em; }
+}

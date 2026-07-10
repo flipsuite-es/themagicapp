@@ -174,7 +174,7 @@
       { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
       { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
     ];
-    return '<nav class="tabbar">' + tabs.map(function (x) {
+    return '<nav class="tabbar"><div class="tbbrand">' + icon("hat") + "<span>The Magic App</span></div>" + tabs.map(function (x) {
       return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
@@ -230,8 +230,9 @@
     }
 
     view.innerHTML =
-      '<div class="screen">' +
+      '<div class="screen wide">' +
       '<div class="appbar"><span class="brandmark">' + icon("hat") + '<span class="wm">The Magic App</span></span>' +
+      '<h1 class="pagetitle">Biblioteca</h1>' +
       '<span class="spacer"></span>' +
       '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" title="Favoritos">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
       '<button class="iconbtn" id="acctBtn" title="Cuenta">' + icon("user") + "</button></div>" +

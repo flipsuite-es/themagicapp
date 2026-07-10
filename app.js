@@ -47,7 +47,11 @@
     book: '<path d="M4.5 5.2C4.5 4.5 5 4 5.7 4H19v14.5H6.2c-.9 0-1.7.5-1.7 1.5z"/><path d="M4.5 20V5.2"/>',
     logout: '<path d="M14 5H6v14h8"/><path d="M18 12H10M15 9l3 3-3 3"/>',
     refresh: '<path d="M20 11a8 8 0 10-1 4"/><path d="M20 5v6h-6"/>',
-    cards: '<rect x="6" y="4.5" width="10" height="14" rx="2" transform="rotate(-8 11 11)"/><rect x="9" y="6" width="10" height="14" rx="2" transform="rotate(6 14 13)"/>'
+    cards: '<rect x="6" y="4.5" width="10" height="14" rx="2" transform="rotate(-8 11 11)"/><rect x="9" y="6" width="10" height="14" rx="2" transform="rotate(6 14 13)"/>',
+    list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.1" fill="currentColor" stroke="none"/>',
+    up: '<path d="M6 15l6-6 6 6"/>',
+    down: '<path d="M6 9l6 6 6-6"/>',
+    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -69,15 +73,17 @@
 
   /* ------------------------------ estado ------------------------------ */
   function load() {
+    var s = { version: 1, tricks: [], categories: DEFAULT_CATS.slice(), routines: [] };
     try {
       var raw = localStorage.getItem(STORE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) { var p = JSON.parse(raw); s.tricks = p.tricks || []; s.categories = (p.categories && p.categories.length) ? p.categories : DEFAULT_CATS.slice(); s.routines = p.routines || []; }
     } catch (e) {}
-    return { version: 1, tricks: [], categories: DEFAULT_CATS.slice() };
+    return s;
   }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast("No se pudo guardar"); } }
   var state = load();
   function getTrick(id) { return state.tricks.filter(function (t) { return t.id === id; })[0]; }
+  function getRoutine(id) { return state.routines.filter(function (r) { return r.id === id; })[0]; }
 
   /* ----------------------- sesión / sincronización -------------------- */
   var session = null;                 // usuario actual (o null si offline/local)
@@ -90,9 +96,14 @@
   function rowToLocal(r) {
     return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], favorite: !!r.favorite, meta: r.meta || {}, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
   }
+  function toRoutineRow(r) { return { id: r.id, name: r.name, notes: r.notes || "", trick_ids: r.trickIds || [] }; }
+  function routineRowToLocal(r) { return { id: r.id, name: r.name, notes: r.notes || "", trickIds: r.trick_ids || [], createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true }; }
+
   // Escritura a la nube (best-effort; si falla, queda local y se resube al sincronizar)
   function syncTrick(t) { if (logged() && cloudReady()) Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {}); }
   function syncDelete(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteTrick(id).catch(function () {}); }
+  function syncRoutine(r) { if (logged() && cloudReady()) Cloud.upsertRoutine(toRoutineRow(r)).then(function () { r.remote = true; }).catch(function () {}); }
+  function syncDeleteRoutine(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteRoutine(id).catch(function () {}); }
 
   function syncOnLogin(silent) {
     if (!logged() || !cloudReady()) return Promise.resolve();
@@ -107,17 +118,30 @@
       });
     });
     // 2) traer todo de la nube y fusionar (la nube manda)
+    // subir rutinas locales pendientes
+    state.routines.filter(function (r) { return !r.remote; }).forEach(function (r) {
+      chain = chain.then(function () {
+        if (!isUuid(r.id)) r.id = uid();
+        return Cloud.upsertRoutine(toRoutineRow(r)).then(function () { r.remote = true; }).catch(function () {});
+      });
+    });
     return chain.then(function () { return Cloud.listTricks(); }).then(function (rows) {
       var byId = {};
       state.tricks.forEach(function (t) { if (!t.remote) byId[t.id] = t; }); // conserva pendientes
       rows.forEach(function (r) { byId[r.id] = rowToLocal(r); });
       state.tricks = Object.keys(byId).map(function (k) { return byId[k]; });
+      return Cloud.listRoutines();
+    }).then(function (rrows) {
+      var rById = {};
+      state.routines.forEach(function (r) { if (!r.remote) rById[r.id] = r; });
+      rrows.forEach(function (r) { rById[r.id] = routineRowToLocal(r); });
+      state.routines = Object.keys(rById).map(function (k) { return rById[k]; });
       save();
       if (isMain()) route();
-      if (!silent) toast("Biblioteca sincronizada");
+      if (!silent) toast("Sincronizado");
     }).catch(function () { if (!silent) toast("No se pudo sincronizar"); });
   }
-  function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/ajustes" || h === "#/cuenta"; }
+  function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/ajustes" || h === "#/cuenta"; }
 
   /* --------------------------- parseo de vídeo ------------------------ */
   function parseVideo(url) {
@@ -146,6 +170,7 @@
   function tabbar(active) {
     var tabs = [
       { h: "#/", ic: "library", t: "Biblioteca", k: "lib" },
+      { h: "#/rutinas", ic: "list", t: "Rutinas", k: "rut" },
       { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
       { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
     ];
@@ -158,10 +183,10 @@
     var n = el(tabbar(active)); n.id = "tabbarEl"; document.body.appendChild(n);
   }
   function clearTabbar() { var old = document.getElementById("tabbarEl"); if (old) old.remove(); var f = document.getElementById("fabEl"); if (f) f.remove(); }
-  function mountFab() {
+  function mountFab(hash) {
     var old = document.getElementById("fabEl"); if (old) old.remove();
-    var f = el('<button class="fab" id="fabEl" title="Nuevo truco">' + icon("plus") + "</button>");
-    f.addEventListener("click", function () { location.hash = "#/nuevo"; });
+    var f = el('<button class="fab" id="fabEl">' + icon("plus") + "</button>");
+    f.addEventListener("click", function () { location.hash = hash || "#/nuevo"; });
     document.body.appendChild(f);
   }
 
@@ -485,6 +510,154 @@
       state.tricks.push(data); save(); syncTrick(data); toast("Truco creado"); location.hash = "#/truco/" + data.id;
     }
   }
+
+  /* ============================ RUTINAS ============================== */
+  function renderRoutines() {
+    mountTabbar("rut"); mountFab("#/rutina-nueva");
+    var rs = state.routines.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+    var body;
+    if (!rs.length) {
+      body = '<div class="empty"><div class="big">' + icon("list") + '</div><h3>Sin rutinas todavía</h3>' +
+        "<p>Monta tus espectáculos ordenando trucos, y ten las chuletas a mano en escena.</p>" +
+        '<button class="btn" onclick="location.hash=\'#/rutina-nueva\'">Crear una rutina</button></div>';
+    } else {
+      body = '<div class="rlist">' + rs.map(function (r) {
+        var n = (r.trickIds || []).length;
+        return '<div class="rrow" data-id="' + r.id + '"><div class="ri">' + icon("list") + "</div>" +
+          '<div class="rt"><div class="n">' + esc(r.name) + '</div><div class="d">' + n + (n === 1 ? " truco" : " trucos") + "</div></div>" +
+          '<span class="go">' + icon("chev") + "</span></div>";
+      }).join("") + "</div>";
+    }
+    view.innerHTML = '<div class="screen"><h1 class="title">Rutinas</h1><p class="subtitle">Tus sets y espectáculos.</p>' + body + "</div>";
+    view.querySelectorAll(".rrow[data-id]").forEach(function (row) { row.addEventListener("click", function () { location.hash = "#/rutina/" + row.getAttribute("data-id"); }); });
+  }
+
+  function renderRoutineForm(id) {
+    clearTabbar();
+    var r = id ? getRoutine(id) : null;
+    if (id && !r) { location.hash = "#/rutinas"; return; }
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar rutina" : "Nueva rutina") + "</h1></div>" +
+      '<div class="field"><label>Nombre</label><input id="rName" placeholder="Ej. Set de close-up (15 min)" value="' + esc(r ? r.name : "") + '"></div>' +
+      '<div class="field"><label>Notas</label><textarea id="rNotes" placeholder="Notas del set, transiciones, orden…">' + esc(r ? r.notes : "") + "</textarea></div>" +
+      '<button class="btn" id="rSave">' + (id ? "Guardar" : "Crear rutina") + "</button>" +
+      '<button class="btn ghost" onclick="history.back()">Cancelar</button></div>';
+    document.getElementById("rSave").addEventListener("click", function () {
+      var name = document.getElementById("rName").value.trim();
+      if (!name) { toast("Ponle un nombre"); return; }
+      var notes = document.getElementById("rNotes").value.trim();
+      if (id) { r.name = name; r.notes = notes; r.updatedAt = Date.now(); save(); syncRoutine(r); location.hash = "#/rutina/" + id; }
+      else {
+        var nr = { id: uid(), name: name, notes: notes, trickIds: [], createdAt: Date.now(), updatedAt: Date.now(), remote: false };
+        state.routines.push(nr); save(); syncRoutine(nr); location.hash = "#/rutina/" + nr.id;
+      }
+    });
+  }
+
+  function renderRoutineDetail(id) {
+    var r = getRoutine(id);
+    if (!r) { location.hash = "#/rutinas"; return; }
+    clearTabbar();
+    var items = (r.trickIds || []).map(function (tid, i) {
+      var t = getTrick(tid);
+      if (!t) return "";
+      return '<div class="ritem"><div class="idx">' + (i + 1) + "</div>" +
+        '<div class="rc" data-open="' + tid + '"><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + (t.meta && t.meta.duration ? " · " + esc(t.meta.duration) : "") + "</div></div>" +
+        '<div class="ract"><button data-up="' + i + '">' + icon("up", "i-sm") + '</button><button data-down="' + i + '">' + icon("down", "i-sm") + '</button><button data-del="' + i + '">' + icon("x", "i-sm") + "</button></div></div>";
+    }).join("");
+    var empty = !(r.trickIds || []).length;
+
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/rutinas\'">' + icon("back") + '</button><h1>Rutina</h1>' +
+      '<span style="flex:1"></span><button class="iconbtn" id="rEdit">' + icon("edit") + "</button></div>" +
+      '<h1 class="title">' + esc(r.name) + "</h1>" +
+      (r.notes ? '<div class="notes" style="margin:6px 0 4px">' + esc(r.notes) + "</div>" : "") +
+      (empty ? '<div class="empty" style="padding:36px 10px"><div class="big">' + icon("cards") + "</div><p>Aún no has añadido trucos.</p></div>"
+        : '<div class="sec-label">Orden del set</div><div class="ritems">' + items + "</div>") +
+      '<button class="btn ghost" id="rAdd">Añadir truco</button>' +
+      (empty ? "" : '<button class="btn" id="rPerform">' + icon("play", "i-sm") + " Actuar</button>") +
+      '<button class="btn danger" id="rDel">Eliminar rutina</button></div>';
+
+    document.getElementById("rEdit").addEventListener("click", function () { location.hash = "#/rutina-edit/" + id; });
+    document.getElementById("rAdd").addEventListener("click", function () { location.hash = "#/rutina-add/" + id; });
+    var perf = document.getElementById("rPerform"); if (perf) perf.addEventListener("click", function () { location.hash = "#/actuar/" + id; });
+    document.getElementById("rDel").addEventListener("click", function () {
+      if (confirm("¿Eliminar la rutina “" + r.name + "”? (los trucos NO se borran)")) {
+        var wr = r.remote; state.routines = state.routines.filter(function (x) { return x.id !== id; }); save(); syncDeleteRoutine(id, wr); toast("Rutina eliminada"); location.hash = "#/rutinas";
+      }
+    });
+    view.querySelectorAll(".rc[data-open]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-open"); }); });
+    var move = function (i, dir) { var a = r.trickIds; var j = i + dir; if (j < 0 || j >= a.length) return; var tmp = a[i]; a[i] = a[j]; a[j] = tmp; r.updatedAt = Date.now(); save(); syncRoutine(r); renderRoutineDetail(id); };
+    view.querySelectorAll("[data-up]").forEach(function (b) { b.addEventListener("click", function () { move(parseInt(b.getAttribute("data-up"), 10), -1); }); });
+    view.querySelectorAll("[data-down]").forEach(function (b) { b.addEventListener("click", function () { move(parseInt(b.getAttribute("data-down"), 10), 1); }); });
+    view.querySelectorAll("[data-del]").forEach(function (b) { b.addEventListener("click", function () { r.trickIds.splice(parseInt(b.getAttribute("data-del"), 10), 1); r.updatedAt = Date.now(); save(); syncRoutine(r); renderRoutineDetail(id); }); });
+  }
+
+  function renderRoutineAdd(id) {
+    var r = getRoutine(id);
+    if (!r) { location.hash = "#/rutinas"; return; }
+    clearTabbar();
+    var pool = state.tricks.filter(function (t) { return (r.trickIds || []).indexOf(t.id) < 0; });
+    var body = pool.length
+      ? '<div class="rlist">' + pool.map(function (t) {
+          return '<div class="rrow" data-add="' + t.id + '"><div class="ri">' + icon("cards") + "</div>" +
+            '<div class="rt"><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div><span class=\"go\">" + icon("plus", "i-sm") + "</span></div>";
+        }).join("") + "</div>"
+      : '<div class="empty" style="padding:40px 10px"><p>Ya has añadido todos tus trucos, o tu biblioteca está vacía.</p></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/rutina/' + id + '\'">' + icon("back") + '</button><h1>Añadir a la rutina</h1></div>' + body + "</div>";
+    view.querySelectorAll(".rrow[data-add]").forEach(function (row) {
+      row.addEventListener("click", function () { r.trickIds.push(row.getAttribute("data-add")); r.updatedAt = Date.now(); save(); syncRoutine(r); toast("Añadido"); location.hash = "#/rutina/" + id; });
+    });
+  }
+
+  /* -------------------------- MODO ACTUACIÓN ------------------------- */
+  var wakeLock = null;
+  function requestWake() { try { if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (w) { wakeLock = w; }).catch(function () {}); } catch (e) {} }
+  function releaseWake() { try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {} }
+
+  var perfState = null;
+  function renderPerform(id) {
+    var r = getRoutine(id);
+    if (!r) { location.hash = "#/rutinas"; return; }
+    var tricks = (r.trickIds || []).map(getTrick).filter(Boolean);
+    if (!tricks.length) { location.hash = "#/rutina/" + id; return; }
+    clearTabbar(); requestWake();
+    perfState = { id: id, tricks: tricks, i: 0 };
+    paintPerform();
+  }
+  function paintPerform() {
+    var s = perfState; if (!s) return;
+    var t = s.tricks[s.i];
+    var meta = t.meta || {};
+    var chips = META_ORDER.filter(function (k) { return meta[k]; }).slice(0, 4).map(function (k) { return '<span class="pchip">' + esc(meta[k]) + "</span>"; }).join("");
+    document.getElementById("view").innerHTML =
+      '<div class="screen perform" id="perf">' +
+      '<div class="ptop"><span>' + (s.i + 1) + " / " + s.tricks.length + "</span>" +
+      '<button class="pexit" id="pExit">' + icon("x") + "</button></div>" +
+      '<div class="pbody" id="pBody">' +
+      '<div class="pcat">' + esc(t.category || "") + "</div>" +
+      '<h1 class="ptitle">' + esc(t.title) + "</h1>" +
+      (chips ? '<div class="pchips">' + chips + "</div>" : "") +
+      '<div class="pnotes">' + (t.notes ? esc(t.notes) : "<span style=\"opacity:.5\">— sin notas —</span>") + "</div>" +
+      "</div>" +
+      '<div class="pnav"><button id="pPrev" ' + (s.i === 0 ? "disabled" : "") + ">" + icon("back") + " Anterior</button>" +
+      '<button id="pNext" ' + (s.i === s.tricks.length - 1 ? "disabled" : "") + ">Siguiente " + icon("chev") + "</button></div>" +
+      "</div>";
+    document.getElementById("pExit").addEventListener("click", exitPerform);
+    var prev = document.getElementById("pPrev"), next = document.getElementById("pNext");
+    prev.addEventListener("click", function () { if (s.i > 0) { s.i--; paintPerform(); } });
+    next.addEventListener("click", function () { if (s.i < s.tricks.length - 1) { s.i++; paintPerform(); } });
+    // swipe horizontal
+    var x0 = null;
+    var body = document.getElementById("pBody");
+    body.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    body.addEventListener("touchend", function (e) {
+      if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (dx < -50 && s.i < s.tricks.length - 1) { s.i++; paintPerform(); }
+      else if (dx > 50 && s.i > 0) { s.i--; paintPerform(); }
+    });
+  }
+  function exitPerform() { releaseWake(); var id = perfState ? perfState.id : null; perfState = null; location.hash = id ? "#/rutina/" + id : "#/rutinas"; }
 
   /* ========================= TRUCOS INCLUIDOS ======================== */
   function renderIncluded() {
@@ -931,8 +1104,15 @@
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
       if (cloudReady() && !logged()) return renderGate();
       var h = location.hash || "#/";
+      if (perfState && h.indexOf("#/actuar/") !== 0) { releaseWake(); perfState = null; }
       if (h === "#/pin") return renderSetPin();
       if (h === "#/" || h === "") return renderLibrary();
+      if (h === "#/rutinas") return renderRoutines();
+      if (h === "#/rutina-nueva") return renderRoutineForm(null);
+      if (h.indexOf("#/rutina-edit/") === 0) return renderRoutineForm(h.slice(14));
+      if (h.indexOf("#/rutina-add/") === 0) return renderRoutineAdd(h.slice(13));
+      if (h.indexOf("#/actuar/") === 0) return renderPerform(h.slice(9));
+      if (h.indexOf("#/rutina/") === 0) return renderRoutineDetail(h.slice(9));
       if (h === "#/nuevo") return renderForm(null);
       if (h.indexOf("#/editar/") === 0) return renderForm(h.slice(9));
       if (h.indexOf("#/truco/") === 0) return renderDetail(h.slice(8));

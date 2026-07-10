@@ -337,3 +337,39 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .keypad button:active { background: var(--surface-2); transform: scale(.95); }
 .keypad button.blank { border: none; background: transparent; cursor: default; }
 .keypad button.act .i { width: 24px; height: 24px; color: var(--ink-soft); }
+
+/* ---------- Rutinas ---------- */
+.rlist { display: flex; flex-direction: column; gap: 10px; }
+.rrow { display: flex; align-items: center; gap: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 15px; cursor: pointer; box-shadow: var(--shadow); }
+.rrow:active { transform: scale(.99); }
+.rrow .ri { color: var(--brand); display: flex; }
+.rrow .rt { flex: 1; min-width: 0; }
+.rrow .rt .n { font-family: var(--display); font-weight: 600; font-size: 16px; }
+.rrow .rt .d { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+.rrow .go { color: var(--ink-faint); display: flex; }
+
+.ritems { display: flex; flex-direction: column; gap: 8px; }
+.ritem { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 10px 10px 6px; }
+.ritem .idx { width: 24px; text-align: center; color: var(--ink-faint); font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
+.ritem .rc { flex: 1; min-width: 0; cursor: pointer; }
+.ritem .rc .n { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ritem .rc .d { font-size: 12px; color: var(--ink-faint); }
+.ritem .ract { display: flex; gap: 2px; }
+.ritem .ract button { background: none; border: none; color: var(--ink-faint); padding: 7px 5px; cursor: pointer; display: flex; }
+.ritem .ract button:active { color: var(--ink); }
+
+/* ---------- Modo actuación ---------- */
+.perform { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; padding: calc(14px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; }
+.perform .ptop { display: flex; align-items: center; justify-content: space-between; color: var(--ink-faint); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.perform .pexit { background: none; border: none; color: var(--ink-faint); cursor: pointer; display: flex; padding: 4px; }
+.perform .pbody { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; padding: 10px 0; }
+.perform .pcat { color: var(--brand); font-size: 13px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; margin-bottom: 8px; }
+.perform .ptitle { font-family: var(--display); font-size: 34px; line-height: 1.1; margin: 0 0 16px; font-weight: 600; letter-spacing: -0.02em; }
+.perform .pchips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.perform .pchip { font-size: 12.5px; padding: 5px 11px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-soft); }
+.perform .pnotes { font-size: 20px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
+.perform .pnav { display: flex; gap: 10px; }
+.perform .pnav button { flex: 1; min-height: 56px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.perform .pnav button:active { background: var(--surface-2); }
+.perform .pnav button:disabled { opacity: .35; }
+.perform .pnav button .i { width: 20px; height: 20px; }

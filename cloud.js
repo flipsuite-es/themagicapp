@@ -48,6 +48,18 @@ window.Cloud = (function () {
     return sb.from("tricks").delete().eq("id", id)
       .then(function (r) { if (r.error) throw r.error; return true; });
   }
+  function listRoutines() {
+    return sb.from("routines").select("*").order("updated_at", { ascending: false })
+      .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+  }
+  function upsertRoutine(row) {
+    return sb.from("routines").upsert(row).select().single()
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function deleteRoutine(id) {
+    return sb.from("routines").delete().eq("id", id)
+      .then(function (r) { if (r.error) throw r.error; return true; });
+  }
 
   /* ------------------------------ vídeos ---------------------------- */
   function uid() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + "" + Math.floor(Math.random() * 1e9); }
@@ -97,6 +109,7 @@ window.Cloud = (function () {
     available: available, currentUser: currentUser, onChange: onChange,
     signUp: signUp, verifySignup: verifySignup, resend: resend, signIn: signIn, signOut: signOut,
     listTricks: listTricks, upsertTrick: upsertTrick, deleteTrick: deleteTrick,
+    listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
     uploadVideo: uploadVideo, signedUrl: signedUrl, removeVideo: removeVideo
   };
 })();

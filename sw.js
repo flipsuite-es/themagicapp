@@ -1,7 +1,7 @@
 /* Service worker de The Magic App.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v18";
+var CACHE = "magic-v19";
 var ASSETS = [
   "./",
   "./index.html",
@@ -32,6 +32,37 @@ self.addEventListener("activate", function (e) {
       return Promise.all(keys.filter(function (k) { return k !== CACHE; })
         .map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
+  );
+});
+
+// Recibe un aviso push y muestra la notificación.
+self.addEventListener("push", function (e) {
+  var data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text ? e.data.text() : "" }; }
+  var title = data.title || "The Magic App";
+  var opts = {
+    body: data.body || "Tienes trucos para repasar.",
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: data.url || "./#/practica" },
+    tag: "practice-reminder",
+    renotify: true
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+// Al pulsar la notificación, abre (o enfoca) la app en la pantalla indicada.
+self.addEventListener("notificationclick", function (e) {
+  e.notification.close();
+  var target = (e.notification.data && e.notification.data.url) || "./#/practica";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if ("focus" in c) { try { c.navigate && c.navigate(target); } catch (err) {} return c.focus(); }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
   );
 });
 

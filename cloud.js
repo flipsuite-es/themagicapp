@@ -145,6 +145,19 @@ window.Cloud = (function () {
     return sb.storage.from(bucket || "videos").createSignedUrl(path, seconds || 2592000)
       .then(function (r) { return (r.data && r.data.signedUrl) || null; }).catch(function () { return null; });
   }
+
+  /* ------------------------ notificaciones -------------------------- */
+  // Clave pública VAPID (segura de publicar; la privada vive solo en el servidor).
+  var VAPID_PUBLIC = "BJc-7eYOjc_72UOdIKE20Q2fj7Xp0K410Kom2tfdnhtCTHrT1475p1O-VPcLwqDlNhMpam_bBFCvU7I3_HCkbYs";
+  function pushKey() { return VAPID_PUBLIC; }
+  function savePushSub(sub) {
+    return sb.from("push_subscriptions").upsert(sub, { onConflict: "endpoint" }).select("id").single()
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function deletePushSub(endpoint) {
+    return sb.from("push_subscriptions").delete().eq("endpoint", endpoint)
+      .then(function (r) { if (r.error) throw r.error; return true; });
+  }
   // Extracción de contenido didáctico desde una URL (Edge Function)
   function extract(url) {
     return sb.functions.invoke("extract", { body: { url: url } })
@@ -158,6 +171,7 @@ window.Cloud = (function () {
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
     listGigs: listGigs, upsertGig: upsertGig, deleteGig: deleteGig,
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
-    createShare: createShare, getShare: getShare
+    createShare: createShare, getShare: getShare,
+    pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub
   };
 })();

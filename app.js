@@ -57,6 +57,7 @@
     check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
     chart: '<path d="M4 4v16h16"/><path d="M8 16v-4M13 16v-7M18 16v-3"/>',
     share: '<circle cx="6.5" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.7 10.9l6.1-3.5M8.7 13.1l6.1 3.5"/>',
+    bell: '<path d="M18 16V11a6 6 0 1 0-12 0v5l-1.6 2.4h15.2L18 16zM9.5 19.5a2.5 2.5 0 0 0 5 0"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
@@ -203,6 +204,58 @@
     t.updatedAt = Date.now(); save(); syncTrick(t);
   }
   function postponePractice(t) { t.practice = t.practice || {}; t.practice.due = Date.now() + DAY; t.updatedAt = Date.now(); save(); syncTrick(t); }
+
+  /* --------------------- Notificaciones (Web Push) ------------------- */
+  function pushSupported() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent || ""); }
+  function urlB64ToUint8(base64) {
+    var pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    var b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    var raw = atob(b64), arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+  function currentPushSub() {
+    if (!pushSupported()) return Promise.resolve(null);
+    return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).catch(function () { return null; });
+  }
+  function refreshPushToggle() {
+    var btn = document.getElementById("pushToggle"), desc = document.getElementById("pushDesc");
+    if (!btn) return;
+    if (!pushSupported()) { btn.style.display = "none"; if (desc) desc.textContent = "Tu navegador no admite notificaciones"; return; }
+    currentPushSub().then(function (sub) {
+      var on = !!sub && (typeof Notification !== "undefined") && Notification.permission === "granted";
+      if (on) { btn.textContent = "Desactivar recordatorios"; btn.className = "btn ghost"; btn.onclick = disablePush; }
+      else { btn.textContent = "Activar recordatorios"; btn.className = "btn"; btn.onclick = enablePush; }
+    });
+  }
+  function enablePush() {
+    if (!logged()) { toast("Inicia sesión primero"); return; }
+    if (!pushSupported()) { toast("No compatible en este navegador"); return; }
+    var btn = document.getElementById("pushToggle"); if (btn) { btn.disabled = true; btn.textContent = "Activando…"; }
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") { toast("Permiso de notificaciones denegado"); if (btn) btn.disabled = false; refreshPushToggle(); return; }
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(Cloud.pushKey()) });
+      }).then(function (sub) {
+        var j = sub.toJSON();
+        return Cloud.savePushSub({ endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: (navigator.userAgent || "").slice(0, 200) });
+      }).then(function () { toast("Recordatorios activados"); if (btn) btn.disabled = false; refreshPushToggle(); });
+    }).catch(function () {
+      if (btn) btn.disabled = false;
+      toast(isIOS() ? "En iPhone añade antes la app a la pantalla de inicio" : "No se pudieron activar");
+      refreshPushToggle();
+    });
+  }
+  function disablePush() {
+    var btn = document.getElementById("pushToggle"); if (btn) { btn.disabled = true; btn.textContent = "Desactivando…"; }
+    currentPushSub().then(function (sub) {
+      if (!sub) { if (btn) btn.disabled = false; refreshPushToggle(); return; }
+      var endpoint = sub.endpoint;
+      return sub.unsubscribe().then(function () { return Cloud.deletePushSub(endpoint).catch(function () {}); })
+        .then(function () { toast("Recordatorios desactivados"); if (btn) btn.disabled = false; refreshPushToggle(); });
+    }).catch(function () { if (btn) btn.disabled = false; toast("No se pudo desactivar"); refreshPushToggle(); });
+  }
 
   /* --------------------------- parseo de vídeo ------------------------ */
   function parseVideo(url) {
@@ -1212,6 +1265,12 @@
       (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go">' + icon("chev") + "</span></div>" +
       '<div class="sec-label">Progreso</div>' +
       '<div class="setrow" id="statsRow"><span class="si">' + icon("chart") + '</span><div class="st"><div class="t">Estadísticas</div><div class="d">Tu repertorio, aprendizaje y bolos en números</div></div><span class="go">' + icon("chev") + "</span></div>" +
+      (cloudReady()
+        ? '<div class="sec-label">Notificaciones</div>' +
+          '<div class="setrow"><span class="si">' + icon("bell") + '</span><div class="st"><div class="t">Recordatorios de práctica</div><div class="d" id="pushDesc">' +
+          (logged() ? "Un aviso diario cuando tengas trucos para repasar" : "Inicia sesión para activarlos") + "</div></div></div>" +
+          (logged() ? '<button class="btn ghost" id="pushToggle">Comprobando…</button>' : "")
+        : "") +
       '<div class="sec-label">Apariencia</div>' +
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
@@ -1235,6 +1294,7 @@
     var acct = document.getElementById("acctRow");
     if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
     var sr = document.getElementById("statsRow"); if (sr) sr.addEventListener("click", function () { location.hash = "#/stats"; });
+    if (document.getElementById("pushToggle")) refreshPushToggle();
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
     });

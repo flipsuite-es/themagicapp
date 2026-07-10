@@ -3191,7 +3191,13 @@
   var a11yScheduled = false;
   function scheduleA11y() { if (a11yScheduled) return; a11yScheduled = true; setTimeout(function () { a11yScheduled = false; a11yPass(); }, 60); }
   try { new MutationObserver(scheduleA11y).observe(view, { childList: true, subtree: true }); } catch (e) {}
-  window.addEventListener("hashchange", route);
+  // Transiciones suaves entre pantallas (View Transitions, mejora progresiva)
+  window.addEventListener("hashchange", function () {
+    if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      try { document.startViewTransition(function () { route(); }); return; } catch (e) {}
+    }
+    route();
+  });
   // Ponerse al día al volver a la app o recuperar conexión (por si el realtime
   // perdió algún cambio mientras estaba en segundo plano).
   document.addEventListener("visibilitychange", function () {

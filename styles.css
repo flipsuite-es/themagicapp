@@ -1297,3 +1297,61 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 
 /* Panel de carga secreta: radio dentro de la escala */
 .qs .cellbtn { border-radius: 9px; }
+
+/* ==========================================================================
+   v7 — Movimiento y escena: transiciones entre pantallas, entrada escalonada,
+   chat premium, miniaturas con crest y modo actuación "escenario".
+   ========================================================================== */
+
+/* Transiciones de navegación (View Transitions): crossfade breve y elegante */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .18s; animation-timing-function: ease; }
+
+/* Entrada escalonada: las primeras tarjetas/filas aparecen en cascada */
+@keyframes riseCard { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.cards .card, .feed .postcard, .market .listcard, .rlist .rrow, .mago-list .mago-row,
+.notif-list .notif, .conv-list .conv, .sharelist .shareitem, .inv-list .inv-row {
+  animation: riseCard .34s cubic-bezier(.2,.7,.3,1) both;
+}
+.cards > :nth-child(1), .feed > :nth-child(1), .market > :nth-child(1), .rlist > :nth-child(1), .mago-list > :nth-child(1), .notif-list > :nth-child(1), .conv-list > :nth-child(1), .sharelist > :nth-child(1), .inv-list > :nth-child(1) { animation-delay: .02s; }
+.cards > :nth-child(2), .feed > :nth-child(2), .market > :nth-child(2), .rlist > :nth-child(2), .mago-list > :nth-child(2), .notif-list > :nth-child(2), .conv-list > :nth-child(2), .sharelist > :nth-child(2), .inv-list > :nth-child(2) { animation-delay: .06s; }
+.cards > :nth-child(3), .feed > :nth-child(3), .market > :nth-child(3), .rlist > :nth-child(3), .mago-list > :nth-child(3), .notif-list > :nth-child(3), .conv-list > :nth-child(3), .sharelist > :nth-child(3), .inv-list > :nth-child(3) { animation-delay: .10s; }
+.cards > :nth-child(4), .feed > :nth-child(4), .market > :nth-child(4), .rlist > :nth-child(4), .mago-list > :nth-child(4), .notif-list > :nth-child(4), .conv-list > :nth-child(4), .sharelist > :nth-child(4), .inv-list > :nth-child(4) { animation-delay: .14s; }
+.cards > :nth-child(5), .feed > :nth-child(5), .market > :nth-child(5), .rlist > :nth-child(5), .mago-list > :nth-child(5), .notif-list > :nth-child(5), .conv-list > :nth-child(5), .sharelist > :nth-child(5), .inv-list > :nth-child(5) { animation-delay: .18s; }
+.cards > :nth-child(6), .feed > :nth-child(6), .market > :nth-child(6), .rlist > :nth-child(6), .mago-list > :nth-child(6), .notif-list > :nth-child(6), .conv-list > :nth-child(6), .sharelist > :nth-child(6), .inv-list > :nth-child(6) { animation-delay: .22s; }
+
+/* Miniaturas de trucos sin foto: crest de la marca en filigrana (con :has) */
+.card .thumb:has(> .ph) { position: relative; }
+.card .thumb:has(> .ph)::before {
+  content: ""; position: absolute; inset: 0; background: var(--brand); opacity: .30;
+  -webkit-mask: var(--spade) no-repeat center / auto 52%; mask: var(--spade) no-repeat center / auto 52%;
+}
+.card .thumb:has(> .ph) .ph { display: none; }
+.card .thumb:has(> .ph)::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px var(--hair); border-radius: inherit; }
+
+/* Chat premium: burbujas con degradado de latón y cola redondeada */
+.bubble { border-radius: 18px 18px 18px 6px; box-shadow: var(--shadow); line-height: 1.45; }
+.bubble.me { background: var(--grad-brand); border-radius: 18px 18px 6px 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.25), var(--shadow-brand); font-weight: 500; }
+.chat-in input:focus, .cmt-add input:focus, .cc-add input:focus { border-color: var(--brand); box-shadow: var(--ring); outline: none; }
+.chat-in { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+
+/* Modo actuación = escenario: siempre oscuro, con vignette y oro en escena.
+   Redefinimos los tokens localmente para que todo el contenido herede. */
+.perform {
+  --bg: #0c0b11; --bg-2: #070609; --surface: #17161f; --surface-2: #211f2b;
+  --ink: #efedf4; --ink-soft: #ada9ba; --ink-faint: #938ea1;
+  --line: rgba(255,255,255,.09); --hair: rgba(216,182,103,.26);
+  --brand: #d8b667; --brand-2: #f1d391; --brand-press: #bd9a48; --on-brand: #1a1408;
+  background: radial-gradient(120% 90% at 50% -10%, #191521 0%, #0c0b11 52%, #070609 100%);
+  color: var(--ink);
+}
+.perform::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(90% 55% at 50% 108%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 62%); }
+.perform > * { position: relative; }
+.perform .ptitle { color: var(--ink); }
+.perform .pcat { letter-spacing: .16em; }
+.perform .pchip { background: rgba(255,255,255,.05); }
+.perform .pnav button { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+/* Chat a pantalla completa: los mensajes llenan y la entrada queda abajo */
+.screen.chat { display: flex; flex-direction: column; min-height: calc(100dvh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+.screen.chat .chat-scroll > .bubble:first-child { margin-top: auto; }

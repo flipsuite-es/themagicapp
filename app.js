@@ -63,6 +63,9 @@
   var DIFF = { facil: "Fácil", medio: "Medio", dificil: "Difícil" };
   var STATUS = { poraprender: "Por aprender", aprendiendo: "Aprendiendo", dominado: "Dominado" };
   var DEFAULT_CATS = ["Cartomagia", "Mentalismo", "Monedas", "Close-up", "Escenario", "Otros"];
+  var KINDS = ["Close-up", "Salón", "Escenario", "Calle"];
+  var META_LABELS = { kind: "Tipo", duration: "Duración", reset: "Reset", angles: "Ángulos", props: "Materiales", sleights: "Técnicas", source: "Fuente" };
+  var META_ORDER = ["kind", "duration", "reset", "angles", "props", "sleights", "source"];
 
   /* ------------------------------ estado ------------------------------ */
   function load() {
@@ -82,10 +85,10 @@
   function cloudReady() { return window.Cloud && Cloud.available(); }
 
   function toRow(t) {
-    return { id: t.id, title: t.title, category: t.category, difficulty: t.difficulty, status: t.status, notes: t.notes || "", tags: t.tags || [], media: t.media || [], favorite: !!t.favorite };
+    return { id: t.id, title: t.title, category: t.category, difficulty: t.difficulty, status: t.status, notes: t.notes || "", tags: t.tags || [], media: t.media || [], favorite: !!t.favorite, meta: t.meta || {} };
   }
   function rowToLocal(r) {
-    return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], favorite: !!r.favorite, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
+    return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], favorite: !!r.favorite, meta: r.meta || {}, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
   }
   // Escritura a la nube (best-effort; si falla, queda local y se resube al sincronizar)
   function syncTrick(t) { if (logged() && cloudReady()) Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {}); }
@@ -279,6 +282,11 @@
     }).join("");
 
     var tags = (t.tags || []).length ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + t.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "";
+    var meta = t.meta || {};
+    var specRows = META_ORDER.filter(function (k) { return meta[k]; }).map(function (k) {
+      return '<div class="specrow"><span class="k">' + META_LABELS[k] + '</span><span class="v">' + esc(meta[k]) + "</span></div>";
+    }).join("");
+    var specs = specRows ? '<div class="sec-label">Ficha</div><div class="specs">' + specRows + "</div>" : "";
 
     view.innerHTML =
       '<div class="screen">' +
@@ -292,6 +300,7 @@
       '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span>" +
       '<span class="tagchip">' + esc(t.category || "Sin categoría") + "</span></div>" +
       (media ? '<div class="sec-label">Vídeos</div>' + media : "") +
+      specs +
       (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
       tags +
       '<div class="sec-label">Estado de aprendizaje</div>' +
@@ -339,6 +348,8 @@
     var t = editing ? getTrick(id) : null;
     if (editing && !t) { location.hash = "#/"; return; }
     draftMedia = t ? (t.media || []).slice() : [];
+    var m = (t && t.meta) ? t.meta : {};
+    var mv = function (k) { return esc(m[k] || ""); };
 
     var catOptions = state.categories.map(function (c) { return '<option value="' + esc(c) + '">'; }).join("");
 
@@ -363,6 +374,16 @@
       '<div class="hint">Se incrusta el reproductor y se intenta sacar la miniatura y el título automáticamente.</div></div>' +
       '<div class="field"><label>Notas / explicación</label><textarea id="fNotes" placeholder="El secreto, el manejo, la charla, tus recordatorios…">' + esc(t ? t.notes : "") + "</textarea></div>" +
       '<div class="field"><label>Etiquetas (separadas por comas)</label><input id="fTags" placeholder="control, empalme, doble volteo" value="' + esc(t && t.tags ? t.tags.join(", ") : "") + '"></div>' +
+      '<div class="sec-label">Detalles profesionales</div>' +
+      '<div class="field"><label>Tipo</label><div class="seg" id="mKind">' +
+      KINDS.map(function (k) { return '<button type="button" data-v="' + k + '" class="' + (m.kind === k ? "on" : "") + '">' + k + "</button>"; }).join("") +
+      "</div></div>" +
+      '<div class="row"><div class="field"><label>Duración</label><input id="mDuration" placeholder="p. ej. 3 min" value="' + mv("duration") + '"></div>' +
+      '<div class="field"><label>Reset</label><input id="mReset" placeholder="instantáneo / 30 s" value="' + mv("reset") + '"></div></div>' +
+      '<div class="field"><label>Ángulos</label><input id="mAngles" placeholder="todos / frontal / mesa" value="' + mv("angles") + '"></div>' +
+      '<div class="field"><label>Materiales / props</label><input id="mProps" placeholder="baraja, moneda, gimmick…" value="' + mv("props") + '"></div>' +
+      '<div class="field"><label>Técnicas (sleights)</label><input id="mSleights" placeholder="doble volteo, empalme…" value="' + mv("sleights") + '"></div>' +
+      '<div class="field"><label>Fuente / crédito</label><input id="mSource" placeholder="creador, libro, página… (respeta al creador)" value="' + mv("source") + '"></div>' +
       '<button class="btn" id="saveBtn">' + (editing ? "Guardar cambios" : "Crear truco") + "</button>" +
       '<button class="btn ghost" onclick="history.back()">Cancelar</button>' +
       "</div>";
@@ -371,6 +392,13 @@
 
     view.querySelectorAll("#fDiff button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fDiff", b); }); });
     view.querySelectorAll("#fStatus button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fStatus", b); }); });
+    view.querySelectorAll("#mKind button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var wasOn = b.classList.contains("on");
+        view.querySelectorAll("#mKind button").forEach(function (x) { x.classList.remove("on"); });
+        if (!wasOn) b.classList.add("on");
+      });
+    });
 
     document.getElementById("addVid").addEventListener("click", addVideoFromInput);
     document.getElementById("fVid").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addVideoFromInput(); } });
@@ -437,12 +465,16 @@
     var cat = document.getElementById("fCat").value.trim() || "Otros";
     if (state.categories.indexOf(cat) < 0) state.categories.push(cat);
     var tags = document.getElementById("fTags").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    var mval = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ""; };
+    var kindOn = view.querySelector("#mKind button.on");
+    var meta = { kind: kindOn ? kindOn.getAttribute("data-v") : "", duration: mval("mDuration"), reset: mval("mReset"), angles: mval("mAngles"), props: mval("mProps"), sleights: mval("mSleights"), source: mval("mSource") };
+    Object.keys(meta).forEach(function (k) { if (!meta[k]) delete meta[k]; });
     var data = {
       title: title, category: cat,
       difficulty: segValue("#fDiff") || "medio",
       status: segValue("#fStatus") || "poraprender",
       notes: document.getElementById("fNotes").value.trim(),
-      tags: tags, media: draftMedia.slice(), updatedAt: Date.now()
+      tags: tags, media: draftMedia.slice(), meta: meta, updatedAt: Date.now()
     };
     if (id) {
       var t = getTrick(id); if (!t) { location.hash = "#/"; return; }
@@ -591,6 +623,12 @@
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="sec-label">Seguridad</div>' +
+      '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
+      (hasPin() ? "Activado · se pide al abrir la app" : "Protege tus secretos si alguien coge tu móvil") + "</div></div></div>" +
+      (hasPin()
+        ? '<button class="btn ghost" id="lockNow">Bloquear ahora</button><button class="btn ghost" id="changePin">Cambiar PIN</button><button class="btn danger" id="removePin">Quitar PIN</button>'
+        : '<button class="btn ghost" id="setPin">Activar PIN</button>') +
       '<div class="sec-label">Tus datos</div>' +
       '<div class="setrow"><span class="si">' + icon("disk") + '</span><div class="st"><div class="t">Copia de seguridad</div><div class="d">Exporta tu biblioteca a un archivo, o restáurala.</div></div></div>' +
       '<button class="btn ghost" id="exportBtn">Exportar biblioteca</button>' +
@@ -605,6 +643,13 @@
     if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
+    });
+    var byId = function (id) { return document.getElementById(id); };
+    if (byId("setPin")) byId("setPin").addEventListener("click", function () { location.hash = "#/pin"; });
+    if (byId("changePin")) byId("changePin").addEventListener("click", function () { location.hash = "#/pin"; });
+    if (byId("lockNow")) byId("lockNow").addEventListener("click", function () { unlocked = false; renderLock(); });
+    if (byId("removePin")) byId("removePin").addEventListener("click", function () {
+      if (confirm("¿Quitar el PIN? La app dejará de pedirlo.")) { removePin(); toast("PIN eliminado"); renderSettings(); }
     });
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("importBtn").addEventListener("click", function () { document.getElementById("importFile").click(); });
@@ -724,6 +769,77 @@
     return "No se pudo completar";
   }
 
+  /* ========================= BLOQUEO CON PIN ========================= */
+  var unlocked = false, pinBuf = "";
+  function hasPin() { try { return !!localStorage.getItem("magic_pin"); } catch (e) { return false; } }
+  function pinHash(pin) {
+    var data = new TextEncoder().encode("tma:" + pin);
+    return crypto.subtle.digest("SHA-256", data).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+    });
+  }
+  function setPin(pin) { return pinHash(pin).then(function (h) { try { localStorage.setItem("magic_pin", h); } catch (e) {} }); }
+  function removePin() { try { localStorage.removeItem("magic_pin"); } catch (e) {} }
+  function checkPin(pin) { return pinHash(pin).then(function (h) { try { return h === localStorage.getItem("magic_pin"); } catch (e) { return false; } }); }
+
+  function keypadHtml() {
+    var keys = "";
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(function (n) { keys += '<button data-k="' + n + '">' + n + "</button>"; });
+    keys += '<button class="blank"></button><button data-k="0">0</button><button class="act" data-k="del">' + icon("back") + "</button>";
+    return keys;
+  }
+  function lockScreen(title, sub) {
+    var dots = "<i></i><i></i><i></i><i></i>";
+    return '<div class="screen lock" id="lockScreen"><div class="lk">' + icon("hat") + "</div>" +
+      "<h1>" + title + '</h1><p id="lkMsg">' + (sub || "") + "</p>" +
+      '<div class="pindots" id="pinDots">' + dots + "</div>" +
+      '<div class="keypad">' + keypadHtml() + "</div></div>";
+  }
+  function paintDots() {
+    var dots = document.querySelectorAll("#pinDots i");
+    dots.forEach(function (d, i) { d.classList.toggle("on", i < pinBuf.length); });
+  }
+  function shakeLock(msg) {
+    var s = document.getElementById("lockScreen"); if (s) { s.classList.add("shake"); setTimeout(function () { s.classList.remove("shake"); }, 420); }
+    var m = document.getElementById("lkMsg"); if (m) m.textContent = msg || "";
+    pinBuf = ""; paintDots();
+  }
+  function bindKeypad(onComplete) {
+    document.querySelectorAll(".keypad button[data-k]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-k");
+        if (k === "del") { pinBuf = pinBuf.slice(0, -1); paintDots(); return; }
+        if (pinBuf.length >= 4) return;
+        pinBuf += k; paintDots();
+        if (pinBuf.length === 4) setTimeout(function () { onComplete(pinBuf); }, 120);
+      });
+    });
+  }
+  function renderLock() {
+    clearTabbar(); pinBuf = "";
+    view.innerHTML = lockScreen("Introduce tu PIN", "");
+    bindKeypad(function (pin) {
+      checkPin(pin).then(function (ok) {
+        if (ok) { unlocked = true; boot(); } else { shakeLock("PIN incorrecto"); }
+      });
+    });
+  }
+  // Alta/cambio de PIN (2 pasos): introducir y confirmar
+  function renderSetPin() {
+    clearTabbar(); pinBuf = "";
+    var first = null, phase = 1;
+    view.innerHTML = lockScreen("Crea un PIN de 4 dígitos", "");
+    bindKeypad(function (pin) {
+      if (phase === 1) {
+        first = pin; phase = 2; pinBuf = ""; paintDots();
+        document.querySelector("#lockScreen h1").textContent = "Repite el PIN";
+      } else {
+        if (pin === first) { setPin(pin).then(function () { unlocked = true; toast("PIN activado"); location.hash = "#/ajustes"; }); }
+        else { phase = 1; first = null; document.querySelector("#lockScreen h1").textContent = "Crea un PIN de 4 dígitos"; shakeLock("No coinciden, prueba otra vez"); }
+      }
+    });
+  }
+
   /* ===================== PUERTA DE ENTRADA (login) =================== */
   function renderGate() {
     clearTabbar();
@@ -810,9 +926,12 @@
     try {
       var qs = document.getElementById("qs");
       if (qs && location.hash !== "#/lector") qs.classList.remove("open");
+      // Bloqueo con PIN: protege todo hasta desbloquear
+      if (hasPin() && !unlocked) return renderLock();
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
       if (cloudReady() && !logged()) return renderGate();
       var h = location.hash || "#/";
+      if (h === "#/pin") return renderSetPin();
       if (h === "#/" || h === "") return renderLibrary();
       if (h === "#/nuevo") return renderForm(null);
       if (h.indexOf("#/editar/") === 0) return renderForm(h.slice(9));
@@ -828,22 +947,28 @@
     }
   }
 
-  // Arranque
+  // Arranque de la app (tras desbloqueo si hay PIN)
+  var booted = false;
+  function boot() {
+    if (booted) return; booted = true;
+    if (cloudReady()) {
+      view.innerHTML = '<div class="screen splash"><div class="logo">' + icon("hat") + '</div><div class="wm">The Magic App</div><div class="spin"></div></div>';
+      Cloud.currentUser().then(function (u) {
+        session = u || null;
+        route();
+        if (session) syncOnLogin(true);
+        Cloud.onChange(function (u2) {
+          var was = logged(); session = u2 || null;
+          if (was !== logged()) route();
+        });
+      }).catch(function () { session = null; route(); });
+    } else {
+      route(); // sin nube (modo local/preview)
+    }
+  }
+
   applyTheme();
   window.addEventListener("hashchange", route);
-  if (cloudReady()) {
-    // Splash breve mientras resolvemos la sesión (evita parpadeo de la puerta)
-    view.innerHTML = '<div class="screen splash"><div class="logo">' + icon("hat") + '</div><div class="wm">The Magic App</div><div class="spin"></div></div>';
-    Cloud.currentUser().then(function (u) {
-      session = u || null;
-      route();
-      if (session) syncOnLogin(true);
-      Cloud.onChange(function (u2) {
-        var was = logged(); session = u2 || null;
-        if (was !== logged()) route(); // solo re-renderiza al entrar/salir de sesión
-      });
-    }).catch(function () { session = null; route(); });
-  } else {
-    route(); // sin nube (modo local/preview)
-  }
+  if (hasPin() && !unlocked) renderLock();
+  else boot();
 })();

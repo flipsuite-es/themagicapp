@@ -260,7 +260,7 @@ window.Cloud = (function () {
   // Racha
   function pingStreak() { return sb.rpc("ping_streak").then(function (r) { if (r.error) throw r.error; return r.data || 0; }).catch(function () { return 0; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
-  function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getMarket(seller) { return sb.rpc("get_market", { lim: 40, seller_id: seller || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }

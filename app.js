@@ -1699,6 +1699,8 @@
     if (n.type === "reply") return who + "respondió a tu comentario";
     if (n.type === "follow") return who + "empezó a seguirte";
     if (n.type === "repost") return who + "reposteó tu publicación";
+    if (n.type === "mention") return who + "te mencionó";
+    if (n.type === "sale") return who + "consiguió tu truco 🎉";
     return who + "interactuó contigo";
   }
   function renderNotifications() {
@@ -1708,11 +1710,13 @@
       var items = d.items || [];
       var b = document.getElementById("nBody");
       b.innerHTML = items.length ? '<div class="notif-list">' + items.map(function (n) {
-        return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + (n.type === "follow" ? "mago:" + esc(n.actor) : "post:" + esc(n.post_id || "")) + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
+        var go = n.type === "follow" ? "mago:" + esc(n.actor) : n.type === "sale" ? "list:" + esc(n.listing_id || "") : "post:" + esc(n.post_id || "");
+        var ic = n.type === "like" ? "heartfill" : (n.type === "comment" || n.type === "reply" || n.type === "mention") ? "chat" : n.type === "repost" ? "repost" : n.type === "sale" ? "bag" : "people";
+        return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + go + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
           '<div class="n-b"><div>' + notifText(n) + "</div>" + (n.snippet ? '<div class="n-s">' + esc(n.snippet) + "</div>" : "") + '<div class="n-t">' + timeAgo(n.created_at) + "</div></div>" +
-          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : (n.type === "comment" || n.type === "reply") ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
+          '<span class="n-ic">' + icon(ic, "i-sm") + "</span></div>";
       }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bell") + "</div><h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
-      b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
+      b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.indexOf("list:") === 0) { if (g.slice(5)) location.hash = "#/mercado/" + g.slice(5); } else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
       Cloud.markNotificationsRead().then(function () { unreadNotif = 0; }).catch(function () {});
     }).catch(function () { document.getElementById("nBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudieron cargar los avisos.</p></div>'; });
   }
@@ -1945,8 +1949,8 @@
   function renderProfile(uid) {
     clearTabbar();
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
-    Promise.all([Cloud.getProfileInfo(uid), Cloud.getFeed(uid)]).then(function (res) {
-      var p = res[0], posts = res[1] || [];
+    Promise.all([Cloud.getProfileInfo(uid), Cloud.getFeed(uid), Cloud.getMarket(uid).catch(function () { return []; })]).then(function (res) {
+      var p = res[0], posts = res[1] || [], listings = res[2] || [];
       var b = document.getElementById("prBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>Perfil no disponible.</p></div>'; return; }
       var spec = (p.specialty || []).map(function (s) { return '<span class="tagchip">' + esc(s) + "</span>"; }).join("");
       var links = p.links || {};
@@ -1964,8 +1968,10 @@
         '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div data-go="#/seguidores/' + esc(uid) + '"><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div data-go="#/seguidos/' + esc(uid) + '"><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
         (function () { var ach = achievementsFor(p, p.is_me); return ach.length ? '<div class="ach-row">' + ach.map(function (a) { return '<span class="ach">' + icon(a.i, "i-sm") + esc(a.t) + "</span>"; }).join("") + "</div>" : ""; })() +
         (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<div class="p-actions"><button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + '</button><button class="btn ghost" id="prMsg">' + icon("chat", "i-sm") + ' Mensaje</button><button class="iconbtn" id="prMore">' + icon("dots") + "</button></div>") + "</div>" +
+        (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(function (l) { return '<div class="listcard" data-l="' + esc(l.id) + '">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") + '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="price">' + money(l.price, l.currency) + "</div></div></div>"; }).join("") + "</div>" : "") +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
+      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
       if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });

@@ -666,6 +666,47 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .cmt { align-items: flex-start; } .cmt-body { flex: 1; min-width: 0; }
 .c-del { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px; flex: 0 0 auto; }
 
+/* ===================== Comunidad: DMs, reseñas, dopamina ===================== */
+.streak { display: inline-flex; align-items: center; gap: 3px; color: var(--brand); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.streak .i { width: 18px; height: 18px; }
+
+/* Medios múltiples */
+.pc-imgs.multi { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pc-imgs .post-img { aspect-ratio: 4/3; border-radius: var(--radius-sm); }
+.pc-imgs.multi .post-img { aspect-ratio: 1; }
+
+/* Mensajes */
+.conv-list { display: flex; flex-direction: column; }
+.conv { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.conv .cv-b { flex: 1; min-width: 0; } .conv .cv-b .n { font-weight: 600; font-size: 15px; } .conv .cv-b .d { font-size: 13px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv .cv-t { font-size: 12px; color: var(--ink-faint); flex: 0 0 auto; }
+.conv .cv-unread { background: var(--brand); color: var(--on-brand); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.screen.chat { display: flex; flex-direction: column; height: calc(100% - 12px); }
+.chat-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 12px; }
+.bubble { max-width: 78%; align-self: flex-start; background: var(--surface); border: 1px solid var(--line); padding: 10px 13px; border-radius: 16px 16px 16px 4px; font-size: 15px; }
+.bubble.me { align-self: flex-end; background: var(--brand); color: var(--on-brand); border-color: transparent; border-radius: 16px 16px 4px 16px; }
+.chat-in { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.chat-in input { flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 12px 15px; background: var(--surface); color: var(--ink); }
+.chat-in .btn { width: auto; margin: 0; padding: 0 16px; }
+
+/* Reseñas / valoración */
+.stars { color: var(--ink-faint); letter-spacing: 1px; } .stars .star.on { color: var(--brand); }
+.stars.pick { font-size: 30px; cursor: pointer; display: block; margin-bottom: 8px; } .stars.pick .star { cursor: pointer; }
+.li-top { display: flex; align-items: flex-start; gap: 10px; } .li-top .title { flex: 1; }
+.li-rating { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13.5px; margin: 2px 0 6px; }
+.rate-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; }
+.rate-box textarea { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px; background: var(--surface-2); color: var(--ink); margin-bottom: 8px; }
+.reviews { display: flex; flex-direction: column; gap: 12px; } .rev { display: flex; gap: 10px; }
+
+/* Logros */
+.ach-row { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin: 14px 0 4px; }
+.ach { display: inline-flex; align-items: center; gap: 5px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; }
+.ach .i { width: 15px; height: 15px; }
+
+/* Animación de me gusta */
+.heart-burst { position: fixed; z-index: 300; color: var(--danger); font-size: 18px; pointer-events: none; animation: heartUp .9s ease-out forwards; }
+@keyframes heartUp { 0% { opacity: 1; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(var(--dx), -70px) scale(1.3); } }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -918,6 +959,26 @@ window.Cloud = (function () {
   function suggestMagicians() { return sb.rpc("suggest_magicians", { lim: 12 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function trendingTags() { return sb.rpc("get_trending_tags", { lim: 8 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getFollowList(uid, which) { return sb.rpc("get_follow_list", { uid: uid, which: which, lim: 80 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  // Mensajería
+  function openConversation(other) { return sb.rpc("open_conversation", { other: other }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function getConversations() { return sb.rpc("get_conversations").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getMessages(cid) { return sb.rpc("get_messages", { cid: cid, lim: 200 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function sendMessage(cid, body) { return sb.from("messages").insert({ conversation_id: cid, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function markMessagesRead(cid) { return sb.rpc("mark_messages_read", { cid: cid }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function subscribeMessages(cid, cb) {
+    if (!sb) return null;
+    var ch = sb.channel("dm-" + cid);
+    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + cid }, function (pl) { try { cb(pl.new); } catch (e) {} });
+    ch.subscribe();
+    return ch;
+  }
+  // Reseñas y deseos
+  function getReviews(l) { return sb.rpc("get_reviews", { l: l }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function addReview(l, rating, body) { return currentUser().then(function (u) { return sb.from("reviews").upsert({ listing_id: l, author: u.id, rating: rating, body: body || null }, { onConflict: "listing_id,author" }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function wish(l) { return sb.from("wishlist").insert({ listing_id: l }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unwish(l) { return currentUser().then(function (u) { return sb.from("wishlist").delete().eq("listing_id", l).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  // Racha
+  function pingStreak() { return sb.rpc("ping_streak").then(function (r) { if (r.error) throw r.error; return r.data || 0; }).catch(function () { return 0; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -964,7 +1025,9 @@ window.Cloud = (function () {
     subscribeFeed: subscribeFeed,
     bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
     getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
-    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList
+    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
+    openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
+    getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak
   };
 })();
 
@@ -1043,6 +1106,7 @@ window.Cloud = (function () {
     dots: '<circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
     globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5S14.4 18.2 12 20.5C9.6 18.2 8.4 15.2 8.4 12S9.6 5.8 12 3.5Z"/>',
     trophy: '<path d="M7 4.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M7 6H4.5v1.5A2.5 2.5 0 0 0 7 10M17 6h2.5v1.5A2.5 2.5 0 0 1 17 10M9.5 13.5h5M12 12.5V16m-2.5 3.5h5"/>',
+    flame: '<path d="M12 3c1.2 3-1.6 4.6-1.6 7.2A2.4 2.4 0 0 0 13 12.4c.8-.6 1-1.7 1-1.7 1.5 1.3 3 3.1 3 5.7a5 5 0 1 1-10 0c0-3.7 3-5.5 3-8.7 0-2 .8-3.7 2-4.7Z"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
@@ -2333,8 +2397,10 @@ window.Cloud = (function () {
     return Cloud.getMyProfile().then(function (p) {
       myProfile = p;
       socialEnabled = p ? !!p.social_enabled : true;
+      myStreak = (p && p.streak) || 0;
       try { localStorage.setItem("magic_social", socialEnabled ? "1" : "0"); } catch (e) {}
       needsOnboarding = !p || !p.onboarded;
+      if (p && p.onboarded && socialEnabled && Cloud.pingStreak) return Cloud.pingStreak().then(function (s) { if (s) myStreak = s; });
     }).catch(function () { myProfile = null; });
   }
   function avatarHtml(url, name, cls) {
@@ -2434,8 +2500,15 @@ window.Cloud = (function () {
     return '<div class="listing-inline">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
       '<div class="lc-info"><div class="n">' + esc(l.title || "Truco") + '</div><div class="price">' + money(l.price, l.currency) + "</div></div><span class=\"go\">" + icon("chev") + "</span></div>";
   }
+  function mediaHtml(media) {
+    var imgs = (media || []).filter(function (m) { return m.kind !== "video" && m.url; });
+    var vids = (media || []).filter(function (m) { return m.kind === "video" && m.embed; });
+    var out = vids.map(function (m) { return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>'; }).join("");
+    if (imgs.length) out += '<div class="pc-imgs' + (imgs.length > 1 ? " multi" : "") + '">' + imgs.map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("") + "</div>";
+    return out;
+  }
   function postInnerHtml(p) {
-    var media = (p.media || []).filter(function (m) { return m.url; }).map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("");
+    var media = mediaHtml(p.media);
     var card = (p.listing_id && p.listing) ? listingInlineHtml(p.listing) : (p.trick_card ? trickCardHtml(p.trick_card) : "");
     return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + card;
   }
@@ -2474,6 +2547,7 @@ window.Cloud = (function () {
         var span = b.querySelector("span"); var n = parseInt(span.textContent, 10) || 0;
         b.classList.toggle("on"); span.textContent = on ? Math.max(0, n - 1) : n + 1;
         b.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + span.textContent + "</span>";
+        if (!on) burstHearts(b);
         (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
       });
     });
@@ -2498,18 +2572,22 @@ window.Cloud = (function () {
     Cloud.getNotifications().then(function (d) { unreadNotif = d.unread || 0; var b = document.getElementById("notifBadge"); if (b) { b.style.display = unreadNotif ? "flex" : "none"; b.textContent = unreadNotif > 9 ? "9+" : unreadNotif; } }).catch(function () {});
   }
   function communityHeader(mode) {
-    return '<div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1><span class="spacer"></span>' +
+    return '<div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1>' +
+      (myStreak >= 2 ? '<span class="streak" title="Racha de ' + myStreak + ' días">' + icon("flame", "i-sm") + myStreak + "</span>" : "") +
+      '<span class="spacer"></span>' +
       '<button class="iconbtn" id="searchBtn">' + icon("search") + "</button>" +
+      '<button class="iconbtn" id="msgBtn">' + icon("chat") + '<span class="badge" id="msgBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="notifBtn">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="meBtn">' + icon("user") + "</button></div>" +
       '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
   }
   function bindCommunityHeader() {
     document.getElementById("searchBtn").addEventListener("click", function () { location.hash = "#/descubrir"; });
+    document.getElementById("msgBtn").addEventListener("click", function () { location.hash = "#/mensajes"; });
     document.getElementById("notifBtn").addEventListener("click", function () { location.hash = "#/avisos"; });
     document.getElementById("meBtn").addEventListener("click", function () { if (myProfile) location.hash = "#/mago/" + myProfile.user_id; });
     view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
-    refreshNotifBadge();
+    refreshNotifBadge(); refreshMsgBadge();
   }
   function renderCommunity(mode) {
     mountTabbar("com"); var f = document.getElementById("fabEl"); if (f) f.remove();
@@ -2626,20 +2704,87 @@ window.Cloud = (function () {
     }).catch(function () { document.getElementById("svBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 
+  /* --------------------------- Mensajes ----------------------------- */
+  function refreshMsgBadge() {
+    if (!cloudReady() || !logged() || !Cloud.getConversations) return;
+    Cloud.getConversations().then(function (rows) { var n = rows.reduce(function (s, c) { return s + (c.unread || 0); }, 0); var b = document.getElementById("msgBadge"); if (b) { b.style.display = n ? "flex" : "none"; b.textContent = n > 9 ? "9+" : n; } }).catch(function () {});
+  }
+  function renderMessages() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Mensajes</h1></div><div id="msBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getConversations().then(function (rows) {
+      var b = document.getElementById("msBody");
+      b.innerHTML = rows.length ? '<div class="conv-list">' + rows.map(function (c) {
+        return '<div class="conv" data-cid="' + esc(c.id) + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle) +
+          '<div class="cv-b"><div class="n">' + esc(c.name || c.handle || "Mago") + '</div><div class="d">' + esc(c.last || "") + "</div></div>" +
+          (c.unread ? '<span class="cv-unread">' + c.unread + "</span>" : '<span class="cv-t">' + timeAgo(c.last_at) + "</span>") + "</div>";
+      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("chat") + "</div><h3>Sin mensajes</h3><p>Escribe a cualquier mago desde su perfil.</p></div>";
+      b.querySelectorAll(".conv[data-cid]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/chat/" + c.getAttribute("data-cid"); }); });
+    }).catch(function () { document.getElementById("msBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+  }
+  var chatCh = null;
+  function renderChat(cid) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen chat"><div class="pagehead"><button class="back" onclick="location.hash=\'#/mensajes\'">' + icon("back") + '</button><h1>Chat</h1></div><div class="chat-scroll" id="chatMsgs"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div><div class="chat-in"><input id="chIn" placeholder="Escribe un mensaje…"><button class="btn small" id="chSend">' + icon("send", "i-sm") + "</button></div></div>";
+    var paint = function (msgs) { var el0 = document.getElementById("chatMsgs"); if (!el0) return; el0.innerHTML = msgs.length ? msgs.map(function (m) { return '<div class="bubble ' + (m.mine ? "me" : "") + '">' + esc(m.body) + "</div>"; }).join("") : '<p class="hint" style="text-align:center;padding:20px">Empieza la conversación.</p>'; el0.scrollTop = el0.scrollHeight; };
+    Cloud.getMessages(cid).then(function (msgs) { paint(msgs); Cloud.markMessagesRead(cid).catch(function () {}); }).catch(function () {});
+    if (chatCh) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
+    chatCh = Cloud.subscribeMessages(cid, function () { Cloud.getMessages(cid).then(paint); Cloud.markMessagesRead(cid).catch(function () {}); });
+    var send = function () { var inp = document.getElementById("chIn"); var t = (inp.value || "").trim(); if (!t) return; inp.value = ""; Cloud.sendMessage(cid, t).then(function () { Cloud.getMessages(cid).then(paint); }).catch(function () { toast("No se pudo enviar"); }); };
+    document.getElementById("chSend").addEventListener("click", send);
+    document.getElementById("chIn").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+  }
+
+  /* --------------------- Racha / logros / dopamina ------------------ */
+  var myStreak = 0;
+  function achievementsFor(p, isMe) {
+    var a = [];
+    if ((p.posts || 0) >= 1) a.push({ i: "wand", t: "Primer paso" });
+    if ((p.posts || 0) >= 10) a.push({ i: "chat", t: "Activo" });
+    if ((p.followers || 0) >= 10) a.push({ i: "people", t: "Popular" });
+    if ((p.followers || 0) >= 100) a.push({ i: "trophy", t: "Estrella" });
+    if (isMe && myStreak >= 3) a.push({ i: "flame", t: "Racha " + myStreak });
+    return a;
+  }
+  function burstHearts(el0) {
+    try {
+      var r = el0.getBoundingClientRect();
+      for (var i = 0; i < 6; i++) {
+        var h = document.createElement("span"); h.className = "heart-burst"; h.textContent = "❤";
+        h.style.left = (r.left + r.width / 2) + "px"; h.style.top = (r.top) + "px";
+        h.style.setProperty("--dx", (Math.random() * 60 - 30) + "px");
+        h.style.animationDelay = (i * 30) + "ms";
+        document.body.appendChild(h);
+        (function (n) { setTimeout(function () { n.remove(); }, 900); })(h);
+      }
+    } catch (e) {}
+  }
+
   /* --------------------------- Compose ------------------------------ */
   var composeTrick = null;
   function renderCompose() {
     clearTabbar(); composeTrick = null;
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Nueva publicación</h1></div>' +
-      '<div class="field"><textarea id="cpBody" rows="4" placeholder="¿Qué quieres compartir con la comunidad?"></textarea></div>' +
-      '<div class="pc-attach"><button class="btn ghost" id="cpPhoto">' + icon("plus", "i-sm") + ' Foto</button><button class="btn ghost" id="cpTrick">' + icon("cards", "i-sm") + ' Adjuntar truco</button></div>' +
-      '<input type="file" id="cpFile" accept="image/*" style="display:none">' +
+      '<div class="field"><textarea id="cpBody" rows="4" placeholder="Comparte una idea, un logro, una pregunta… usa #hashtags y @menciones"></textarea></div>' +
+      '<div class="pc-attach"><button class="btn ghost" id="cpPhoto">' + icon("plus", "i-sm") + ' Fotos</button><button class="btn ghost" id="cpVid">' + icon("play", "i-sm") + ' Vídeo</button><button class="btn ghost" id="cpTrick">' + icon("cards", "i-sm") + ' Truco</button></div>' +
+      '<input type="file" id="cpFile" accept="image/*" multiple style="display:none">' +
       '<div id="cpPrev"></div>' +
       '<button class="btn" id="cpPost">Publicar</button></div>';
     var media = [];
-    var prev = function () { document.getElementById("cpPrev").innerHTML = (media.length ? '<div class="post-img" style="background-image:url(' + esc(media[0].url) + ')"></div>' : "") + (composeTrick ? '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(composeTrick.title) + '</div><div class="d">' + esc(composeTrick.category || "") + "</div></div></div>" : ""); };
+    var prev = function () {
+      document.getElementById("cpPrev").innerHTML = (media.length ? '<div class="pc-media">' + mediaHtml(media) + "</div>" : "") +
+        (composeTrick ? trickCardHtml({ title: composeTrick.title, category: composeTrick.category, difficulty: composeTrick.difficulty }) : "");
+    };
     document.getElementById("cpPhoto").addEventListener("click", function () { document.getElementById("cpFile").click(); });
-    document.getElementById("cpFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo foto…"); Cloud.uploadSocial(fl).then(function (r) { media = [{ url: r.url, path: r.path }]; prev(); }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("cpFile").addEventListener("change", function () {
+      var files = Array.prototype.slice.call(this.files || []); this.value = "";
+      files.forEach(function (fl) { toast("Subiendo foto…"); Cloud.uploadSocial(fl).then(function (r) { media.push({ kind: "image", url: r.url, path: r.path }); prev(); }).catch(function () { toast("No se pudo subir"); }); });
+    });
+    document.getElementById("cpVid").addEventListener("click", function () {
+      var url = prompt("Pega el enlace del vídeo (YouTube o Vimeo):"); if (!url) return;
+      var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo por ahora"); return; }
+      media.push({ kind: "video", embed: v.embed, url: v.url, thumb: v.thumb, provider: v.provider }); prev();
+    });
     document.getElementById("cpTrick").addEventListener("click", function () { pickTrick(function (t) { composeTrick = t; prev(); }); });
     document.getElementById("cpPost").addEventListener("click", function () {
       var body = (document.getElementById("cpBody").value || "").trim();
@@ -2701,7 +2846,8 @@ window.Cloud = (function () {
         (spec ? '<div class="tagchips" style="justify-content:center">' + spec + "</div>" : "") +
         (linkHtml ? '<div class="p-links">' + linkHtml + "</div>" : "") +
         '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div data-go="#/seguidores/' + esc(uid) + '"><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div data-go="#/seguidos/' + esc(uid) + '"><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
-        (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + "</button>") + "</div>" +
+        (function () { var ach = achievementsFor(p, p.is_me); return ach.length ? '<div class="ach-row">' + ach.map(function (a) { return '<span class="ach">' + icon(a.i, "i-sm") + esc(a.t) + "</span>"; }).join("") + "</div>" : ""; })() +
+        (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<div class="p-actions"><button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + '</button><button class="btn ghost" id="prMsg">' + icon("chat", "i-sm") + " Mensaje</button></div>") + "</div>" +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
@@ -2709,6 +2855,7 @@ window.Cloud = (function () {
       if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });
       var eb = document.getElementById("prEdit"); if (eb) eb.addEventListener("click", function () { onb.step = 1; onb.handle = p.handle || ""; onb.name = p.name || ""; onb.spec = (p.specialty || []).slice(); onb.city = p.city || ""; onb.social = socialEnabled; renderEditProfile(); });
       var sv = document.getElementById("prSaved"); if (sv) sv.addEventListener("click", function () { location.hash = "#/guardados"; });
+      var pm = document.getElementById("prMsg"); if (pm) pm.addEventListener("click", function () { pm.disabled = true; Cloud.openConversation(uid).then(function (cid) { location.hash = "#/chat/" + cid; }).catch(function () { pm.disabled = false; toast("No se pudo abrir el chat"); }); });
     }).catch(function () { document.getElementById("prBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el perfil.</p></div>'; });
   }
   function renderEditProfile() {
@@ -2742,21 +2889,27 @@ window.Cloud = (function () {
   }
 
   /* --------------------------- Mercado ------------------------------ */
+  function starsHtml(n, cls) { var o = ""; for (var i = 1; i <= 5; i++) o += '<span class="star ' + (i <= Math.round(n) ? "on" : "") + '" ' + (cls ? 'data-r="' + i + '"' : "") + ">★</span>"; return '<span class="stars ' + (cls || "") + '">' + o + "</span>"; }
   function renderListing(id) {
     clearTabbar();
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
-    Cloud.getMarket().then(function (rows) {
-      var l = rows.filter(function (x) { return x.id === id; })[0];
+    Promise.all([Cloud.getMarket(), Cloud.getReviews(id)]).then(function (res) {
+      var l = res[0].filter(function (x) { return x.id === id; })[0], reviews = res[1] || [];
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      var ratingLine = l.reviews ? '<div class="li-rating">' + starsHtml(l.rating || 0) + '<span>' + (l.rating || 0) + " · " + l.reviews + (l.reviews === 1 ? " reseña" : " reseñas") + "</span></div>" : "";
       b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
-        '<h1 class="title" style="margin-top:14px">' + esc(l.title) + "</h1>" +
+        '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
+        ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
         (l.description ? '<div class="notes">' + esc(l.description) + "</div>" : "") +
         '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + "</div>" +
         (l.owned ? '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>'
           : (l.price ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
-        (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "");
+        (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "") +
+        (l.owned && l.seller !== (myProfile && myProfile.user_id) ? '<div class="sec-label">Tu valoración</div><div class="rate-box" id="rateBox">' + starsHtml(0, "pick") + '<textarea id="revBody" rows="2" placeholder="¿Qué te ha parecido? (opcional)"></textarea><button class="btn small" id="revSend">Enviar valoración</button></div>' : "") +
+        '<div class="sec-label">Reseñas</div>' + (reviews.length ? '<div class="reviews">' + reviews.map(function (r) { return '<div class="rev">' + avatarHtml(Cloud.publicUrl(r.avatar), r.name || r.handle, "sm") + '<div><div class="c-who">' + esc(r.name || r.handle || "Mago") + " " + starsHtml(r.rating) + "</div>" + (r.body ? '<div class="c-b">' + esc(r.body) + "</div>" : "") + "</div></div>"; }).join("") + "</div>" : '<p class="hint">Aún no hay reseñas.</p>');
       var sel = b.querySelector(".li-seller[data-mago]"); if (sel) sel.addEventListener("click", function () { location.hash = "#/mago/" + l.seller; });
+      var wb = document.getElementById("liWish"); if (wb) wb.addEventListener("click", function () { var on = wb.classList.contains("on"); wb.classList.toggle("on"); wb.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unwish(id) : Cloud.wish(id)).then(function () { toast(on ? "Quitado de deseos" : "Añadido a deseos"); }).catch(function () {}); });
       var op = document.getElementById("liOpen"); if (op) op.addEventListener("click", function () { location.hash = "#/"; });
       var buy = document.getElementById("liBuy"); if (buy) buy.addEventListener("click", function () { toast("Pago con tarjeta muy pronto (Stripe)"); });
       var fr = document.getElementById("liFree"); if (fr) fr.addEventListener("click", function () {
@@ -2764,6 +2917,15 @@ window.Cloud = (function () {
         Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
           .catch(function () { fr.disabled = false; fr.textContent = "Obtener gratis"; toast("No se pudo obtener"); });
       });
+      var picked = 0, rb = document.getElementById("rateBox");
+      if (rb) {
+        rb.querySelectorAll(".stars.pick .star").forEach(function (st) { st.addEventListener("click", function () { picked = parseInt(st.getAttribute("data-r"), 10); rb.querySelectorAll(".stars.pick .star").forEach(function (x, i) { x.classList.toggle("on", i < picked); }); }); });
+        document.getElementById("revSend").addEventListener("click", function () {
+          if (!picked) { toast("Elige de 1 a 5 estrellas"); return; }
+          var btn = document.getElementById("revSend"); btn.disabled = true; btn.textContent = "Enviando…";
+          Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
+        });
+      }
     }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
   var sellTrick = null, sellCover = null;
@@ -3283,6 +3445,7 @@ window.Cloud = (function () {
       if (qs && location.hash !== "#/lector") qs.classList.remove("open");
       // Enlace compartido: contenido público de solo lectura; salta candado y login
       if ((location.hash || "").indexOf("#/s/") === 0) return renderShared((location.hash || "").slice(4));
+      if (chatCh && (location.hash || "").indexOf("#/chat/") !== 0) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
       // Bloqueo con PIN: protege todo hasta desbloquear
       if (hasPin() && !unlocked) return renderLock();
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
@@ -3315,6 +3478,8 @@ window.Cloud = (function () {
       if (h === "#/avisos") return socialEnabled ? renderNotifications() : renderLibrary();
       if (h === "#/descubrir") return socialEnabled ? renderDiscover() : renderLibrary();
       if (h === "#/guardados") return socialEnabled ? renderSaved() : renderLibrary();
+      if (h === "#/mensajes") return socialEnabled ? renderMessages() : renderLibrary();
+      if (h.indexOf("#/chat/") === 0) return socialEnabled ? renderChat(h.slice(7)) : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
       if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));

@@ -657,3 +657,44 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 /* Comentarios (borrar) */
 .cmt { align-items: flex-start; } .cmt-body { flex: 1; min-width: 0; }
 .c-del { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px; flex: 0 0 auto; }
+
+/* ===================== Comunidad: DMs, reseñas, dopamina ===================== */
+.streak { display: inline-flex; align-items: center; gap: 3px; color: var(--brand); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.streak .i { width: 18px; height: 18px; }
+
+/* Medios múltiples */
+.pc-imgs.multi { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pc-imgs .post-img { aspect-ratio: 4/3; border-radius: var(--radius-sm); }
+.pc-imgs.multi .post-img { aspect-ratio: 1; }
+
+/* Mensajes */
+.conv-list { display: flex; flex-direction: column; }
+.conv { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.conv .cv-b { flex: 1; min-width: 0; } .conv .cv-b .n { font-weight: 600; font-size: 15px; } .conv .cv-b .d { font-size: 13px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv .cv-t { font-size: 12px; color: var(--ink-faint); flex: 0 0 auto; }
+.conv .cv-unread { background: var(--brand); color: var(--on-brand); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.screen.chat { display: flex; flex-direction: column; height: calc(100% - 12px); }
+.chat-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 12px; }
+.bubble { max-width: 78%; align-self: flex-start; background: var(--surface); border: 1px solid var(--line); padding: 10px 13px; border-radius: 16px 16px 16px 4px; font-size: 15px; }
+.bubble.me { align-self: flex-end; background: var(--brand); color: var(--on-brand); border-color: transparent; border-radius: 16px 16px 4px 16px; }
+.chat-in { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.chat-in input { flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 12px 15px; background: var(--surface); color: var(--ink); }
+.chat-in .btn { width: auto; margin: 0; padding: 0 16px; }
+
+/* Reseñas / valoración */
+.stars { color: var(--ink-faint); letter-spacing: 1px; } .stars .star.on { color: var(--brand); }
+.stars.pick { font-size: 30px; cursor: pointer; display: block; margin-bottom: 8px; } .stars.pick .star { cursor: pointer; }
+.li-top { display: flex; align-items: flex-start; gap: 10px; } .li-top .title { flex: 1; }
+.li-rating { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13.5px; margin: 2px 0 6px; }
+.rate-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; }
+.rate-box textarea { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px; background: var(--surface-2); color: var(--ink); margin-bottom: 8px; }
+.reviews { display: flex; flex-direction: column; gap: 12px; } .rev { display: flex; gap: 10px; }
+
+/* Logros */
+.ach-row { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin: 14px 0 4px; }
+.ach { display: inline-flex; align-items: center; gap: 5px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; }
+.ach .i { width: 15px; height: 15px; }
+
+/* Animación de me gusta */
+.heart-burst { position: fixed; z-index: 300; color: var(--danger); font-size: 18px; pointer-events: none; animation: heartUp .9s ease-out forwards; }
+@keyframes heartUp { 0% { opacity: 1; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(var(--dx), -70px) scale(1.3); } }

@@ -237,6 +237,26 @@ window.Cloud = (function () {
   function suggestMagicians() { return sb.rpc("suggest_magicians", { lim: 12 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function trendingTags() { return sb.rpc("get_trending_tags", { lim: 8 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getFollowList(uid, which) { return sb.rpc("get_follow_list", { uid: uid, which: which, lim: 80 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  // Mensajería
+  function openConversation(other) { return sb.rpc("open_conversation", { other: other }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function getConversations() { return sb.rpc("get_conversations").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getMessages(cid) { return sb.rpc("get_messages", { cid: cid, lim: 200 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function sendMessage(cid, body) { return sb.from("messages").insert({ conversation_id: cid, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function markMessagesRead(cid) { return sb.rpc("mark_messages_read", { cid: cid }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function subscribeMessages(cid, cb) {
+    if (!sb) return null;
+    var ch = sb.channel("dm-" + cid);
+    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + cid }, function (pl) { try { cb(pl.new); } catch (e) {} });
+    ch.subscribe();
+    return ch;
+  }
+  // Reseñas y deseos
+  function getReviews(l) { return sb.rpc("get_reviews", { l: l }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function addReview(l, rating, body) { return currentUser().then(function (u) { return sb.from("reviews").upsert({ listing_id: l, author: u.id, rating: rating, body: body || null }, { onConflict: "listing_id,author" }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function wish(l) { return sb.from("wishlist").insert({ listing_id: l }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unwish(l) { return currentUser().then(function (u) { return sb.from("wishlist").delete().eq("listing_id", l).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  // Racha
+  function pingStreak() { return sb.rpc("ping_streak").then(function (r) { if (r.error) throw r.error; return r.data || 0; }).catch(function () { return 0; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -283,6 +303,8 @@ window.Cloud = (function () {
     subscribeFeed: subscribeFeed,
     bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
     getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
-    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList
+    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
+    openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
+    getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak
   };
 })();

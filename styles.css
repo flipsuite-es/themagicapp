@@ -1004,3 +1004,95 @@ h1.title { font-size: 31px; letter-spacing: -0.03em; line-height: 1.06; }
   .tabbar a.on { position: relative; }
   .tabbar a.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
 }
+
+/* ==========================================================================
+   REFINAMIENTO v3 — el último 10% que se nota: micro-interacciones,
+   materiales, cargas elegantes y accesibilidad. Solo CSS.
+   ========================================================================== */
+
+/* Respeto por quien reduce el movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+
+/* Foco de teclado visible y elegante (no pisa el halo de los campos) */
+a:focus-visible, button:focus-visible, .setrow:focus-visible, .card:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 12px;
+}
+a { color: var(--brand); text-underline-offset: 3px; }
+
+/* Barra de desplazamiento discreta (escritorio) */
+.app { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.app::-webkit-scrollbar { width: 10px; }
+.app::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+.app::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+/* Brillo sutil en los botones de latón */
+.btn { position: relative; overflow: hidden; }
+.btn::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%; background: linear-gradient(180deg, rgba(255,255,255,.20), transparent); pointer-events: none; }
+.btn.ghost::after, .btn.danger::after, .btn:disabled::after { display: none; }
+
+/* Cargas con más intención: doble anillo + latido del emblema */
+.splash .spin, .splash-spin { width: 30px; height: 30px; border-width: 3px; }
+.splash .logo .mk { animation: glowpulse 3.4s ease-in-out infinite; }
+@keyframes glowpulse {
+  0%, 100% { filter: drop-shadow(0 8px 20px color-mix(in srgb, var(--brand) 30%, transparent)); }
+  50% { filter: drop-shadow(0 10px 30px color-mix(in srgb, var(--brand) 55%, transparent)); }
+}
+/* Utilidad de esqueleto (para quien la use) */
+@keyframes shimmer { 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.4s ease infinite; border-radius: var(--radius-sm); }
+
+/* Segmentos y pestañas con transición suave del activo */
+.seg button, .gate-tabs button, .seg.big button { transition: background .2s ease, color .2s ease, box-shadow .2s ease; }
+.gate-tabs button.on { box-shadow: var(--shadow); }
+
+/* Anillos de historia: destello del activo, apagado del visto */
+.st-ring { box-shadow: 0 3px 12px color-mix(in srgb, var(--brand) 30%, transparent); }
+.story-item.seen .st-ring { box-shadow: none; opacity: .9; }
+.story-add:active .sa-ring, .story-item:active .st-ring { transform: scale(.94); }
+.sa-ring, .st-ring { transition: transform .12s ease; }
+
+/* Avatares con iniciales en degradado de latón */
+.avatar.ini { background: linear-gradient(150deg, color-mix(in srgb, var(--brand) 28%, var(--surface-2)), var(--surface-2)); }
+
+/* Racha como cápsula */
+.streak { background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 3px 10px 3px 8px; border-radius: 999px; }
+
+/* Recap y banner del reto: relieve y realce al pulsar */
+.recap { box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.recap::after { content: ""; position: absolute; right: -20px; top: -20px; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--brand) 26%, transparent), transparent 70%); pointer-events: none; }
+.chal-banner { box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .18s ease; }
+.chal-banner:active { transform: scale(.99); }
+.top-m .avatar { transition: transform .15s ease; } .top-m:active .avatar { transform: scale(.95); }
+
+/* Estadísticas: números con degradado de latón */
+.stat .num, .p-stats b { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Detalle: notas y ficha con más carácter */
+.notes { border-radius: 16px; box-shadow: var(--shadow); border-left: 3px solid var(--brand); }
+.specs { border-radius: 16px; box-shadow: var(--shadow); }
+.specrow { transition: background .15s ease; }
+.detail-badges { gap: 7px; }
+
+/* Pills de estado: forma de cápsula, un pelo más suaves */
+.pill { border-radius: 999px; padding: 4px 10px; }
+
+/* Modales con entrada suave */
+.modal-ov { animation: ovfade .2s ease; }
+.modal, .sheet-box, .cc-box { animation: modalpop .26s cubic-bezier(.2,.8,.3,1.1); }
+@keyframes ovfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalpop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Placeholder de campos más tenue y elegante */
+::placeholder { color: var(--ink-faint); opacity: .8; }
+
+/* Tarjetas del feed: separación del contenido y realce al pulsar el cuerpo */
+.postcard { transition: border-color .18s ease; }
+.postcard:hover { border-color: var(--hair); }
+.trick-card, .listing-inline { transition: transform .14s ease, border-color .18s ease; }
+.trick-card:active, .listing-inline:active { transform: scale(.99); }
+
+/* Perfil: portada con degradado y vídeo/imagen con esquinas nobles */
+.p-cover { border-radius: 0 0 22px 22px; }
+.post-img { border-radius: 14px; }

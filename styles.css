@@ -821,3 +821,9 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .clips-empty .big { opacity: .5; } .clips-empty .big .i { width: 54px; height: 54px; }
 .clips-empty h3 { margin: 6px 0 0; } .clips-empty p { color: rgba(255,255,255,.7); margin: 0 0 14px; }
 .seg.big button { white-space: nowrap; font-size: 14px; }
+
+/* ============ Enlace feed → Clips y seguir en el rail ============ */
+.clip-open { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 2px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-size: 13px; font-weight: 700; cursor: pointer; }
+.clip-open .i { width: 15px; height: 15px; color: var(--brand); }
+.clip-avw { position: relative; }
+.clip-follow { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); width: 22px; height: 22px; padding: 0; border: 2px solid #fff; border-radius: 999px; background: #ff4d6d; color: #fff; font-size: 16px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }

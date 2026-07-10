@@ -1486,8 +1486,10 @@
   }
   function postInnerHtml(p) {
     var media = mediaHtml(p.media);
+    var hasVideo = ((p.media || []).filter(function (m) { return m.kind === "video" && m.embed; }).length > 0);
+    var clipChip = hasVideo ? '<button class="clip-open" data-clip="' + esc(p.id) + '">' + icon("play", "i-sm") + " Ver en Clips</button>" : "";
     var card = (p.listing_id && p.listing) ? listingInlineHtml(p.listing) : (p.trick_card ? trickCardHtml(p.trick_card) : "");
-    return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + card;
+    return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + clipChip + card;
   }
   function postCardHtml(p) {
     var isRepost = !!p.repost_of && p.orig;
@@ -1540,6 +1542,9 @@
     });
     s.querySelectorAll("[data-more]").forEach(function (b) {
       b.addEventListener("click", function (e) { e.stopPropagation(); postMenu(b.getAttribute("data-more"), b.getAttribute("data-author"), b.getAttribute("data-handle"), b.closest(".postcard")); });
+    });
+    s.querySelectorAll("[data-clip]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/clips/" + b.getAttribute("data-clip"); });
     });
   }
   function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
@@ -1775,7 +1780,8 @@
       '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(m.thumb || "") + ')"></div></div>' +
       '<div class="clip-tap" data-tap></div>' +
       '<div class="clip-rail">' +
-        '<button class="clip-av" data-mago="' + esc(p.author) + '" aria-label="Ver perfil">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "") + "</button>" +
+        '<div class="clip-avw"><button class="clip-av" data-mago="' + esc(p.author) + '" aria-label="Ver perfil">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "") + "</button>" +
+        (!p.is_me && !p.following ? '<button class="clip-follow" data-cfollow="' + esc(p.author) + '" aria-label="Seguir">+</button>' : "") + "</div>" +
         '<button class="clip-act clip-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '" aria-label="Me gusta">' + icon(p.liked ? "heartfill" : "heart") + "<span>" + (p.likes || 0) + "</span></button>" +
         '<button class="clip-act" data-cmt="' + esc(p.id) + '" aria-label="Comentarios">' + icon("chat") + "<span>" + (p.comments || 0) + "</span></button>" +
         '<button class="clip-act" data-rep="' + esc(p.id) + '" aria-label="Repostear">' + icon("repost") + "</button>" +
@@ -1843,7 +1849,19 @@
     var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/post/" + cmtB.getAttribute("data-cmt"); });
     var repB = node.querySelector("[data-rep]"); if (repB) repB.addEventListener("click", function (e) { e.stopPropagation(); var id = repB.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
     var muteB = node.querySelector("[data-mute]"); if (muteB) muteB.addEventListener("click", function (e) { e.stopPropagation(); clipSetSound(list, !clipsState.muted); });
-    var tap = node.querySelector("[data-tap]"); if (tap) tap.addEventListener("click", function () { clipSetSound(list, !clipsState.muted); });
+    var followB = node.querySelector("[data-cfollow]");
+    if (followB) followB.addEventListener("click", function (e) { e.stopPropagation(); var id = followB.getAttribute("data-cfollow"); followB.remove(); toast("Siguiendo"); Cloud.follow(id).catch(function () {}); });
+    // Un toque alterna el sonido; doble toque da me gusta (gesto estilo TikTok).
+    var tap = node.querySelector("[data-tap]"), tapTimer = null;
+    if (tap) tap.addEventListener("click", function (e) {
+      if (tapTimer) {
+        clearTimeout(tapTimer); tapTimer = null;
+        var lb = node.querySelector("[data-like]");
+        if (lb && !lb.classList.contains("on")) lb.click(); else burstHearts(lb || tap);
+      } else {
+        tapTimer = setTimeout(function () { tapTimer = null; clipSetSound(list, !clipsState.muted); }, 260);
+      }
+    });
   }
   function renderClips(startId) {
     clearTabbar(); var fab = document.getElementById("fabEl"); if (fab) fab.remove();
@@ -1851,9 +1869,13 @@
     clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
     view.innerHTML = '<div class="clips-screen"><button class="clips-x" id="clipsX" aria-label="Cerrar">' + icon("x") + '</button><div class="clips-title">Clips</div><div class="clips" id="clipsList"><div class="clips-load"><div class="spin"></div></div></div></div>';
     document.getElementById("clipsX").addEventListener("click", function () { location.hash = "#/comunidad"; });
-    Cloud.getClips().then(function (rows) {
+    // Si se abre en un vídeo concreto, lo traemos aparte para garantizar que
+    // se reproduce primero (aunque no esté en la primera página del feed).
+    var pinned = startId ? Cloud.getPost(startId).then(function (pp) { return (pp && clipVideoOf(pp)) ? pp : null; }).catch(function () { return null; }) : Promise.resolve(null);
+    Promise.all([pinned, Cloud.getClips()]).then(function (res) {
+      var first = res[0], rest = (res[1] || []).filter(clipVideoOf);
+      var rows = first ? [first].concat(rest.filter(function (r) { return r.id !== first.id; })) : rest;
       var list = document.getElementById("clipsList"); if (!list) return;
-      rows = (rows || []).filter(clipVideoOf);
       if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Comparte un vídeo de YouTube o Vimeo en la comunidad y aparecerá aquí.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Publicar un vídeo</button></div>'; return; }
       clipsState.rows = rows;
       list.innerHTML = rows.map(clipHtml).join("");
@@ -1862,9 +1884,7 @@
       }, { root: list, threshold: [0.6] });
       clipsState.io = io;
       list.querySelectorAll(".clip").forEach(function (c) { bindClip(list, c); io.observe(c); });
-      var startIdx = startId ? rows.map(function (r) { return r.id; }).indexOf(startId) : -1;
-      if (startIdx > 0) { var sn = list.querySelector('.clip[data-idx="' + startIdx + '"]'); if (sn) sn.scrollIntoView(); }
-      else clipActivate(list, 0);
+      clipActivate(list, 0);
     }).catch(function () { var list = document.getElementById("clipsList"); if (list) list.innerHTML = '<div class="clips-empty"><p>No se pudieron cargar los clips.</p></div>'; });
   }
 

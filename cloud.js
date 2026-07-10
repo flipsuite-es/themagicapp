@@ -352,7 +352,7 @@ window.Cloud = (function () {
     if (!sb) return null;
     var ch = sb.channel("notif-" + Math.random().toString(36).slice(2));
     ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "user_id=eq." + uid }, function () { try { cb("notification"); } catch (e) {} });
-    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, function () { try { cb("message"); } catch (e) {} });
+    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, function (pl) { try { var m = pl && pl.new; if (m && (m.sender === uid || m.author === uid || m.user_id === uid)) return; cb("message"); } catch (e) {} });
     ch.subscribe();
     return ch;
   }

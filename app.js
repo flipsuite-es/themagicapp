@@ -96,7 +96,7 @@
   var toastTimer = null;
   function toast(msg) {
     var t = document.getElementById("toast");
-    if (!t) { t = el('<div class="toast" id="toast"></div>'); document.body.appendChild(t); }
+    if (!t) { t = el('<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>'); document.body.appendChild(t); }
     t.textContent = msg; t.classList.add("show");
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1900);
   }
@@ -420,7 +420,7 @@
   function clearTabbar() { var old = document.getElementById("tabbarEl"); if (old) old.remove(); var f = document.getElementById("fabEl"); if (f) f.remove(); }
   function mountFab(hash) {
     var old = document.getElementById("fabEl"); if (old) old.remove();
-    var f = el('<button class="fab" id="fabEl">' + icon("plus") + "</button>");
+    var f = el('<button class="fab" id="fabEl" aria-label="Crear">' + icon("plus") + "</button>");
     f.addEventListener("click", function () { location.hash = hash || "#/nuevo"; });
     document.body.appendChild(f);
   }
@@ -469,9 +469,9 @@
       '<div class="appbar"><span class="brandmark">' + mark() + '<span class="wm">App del Mago</span></span>' +
       '<h1 class="pagetitle">Biblioteca</h1>' +
       '<span class="spacer"></span>' +
-      (logged() && cloudReady() ? '<button class="iconbtn ' + (syncing ? "spinning" : "") + '" id="syncBtn" title="Sincronizar">' + icon("cloud") + "</button>" : "") +
-      '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" title="Favoritos">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
-      '<button class="iconbtn" id="acctBtn" title="Cuenta">' + icon("user") + "</button></div>" +
+      (logged() && cloudReady() ? '<button class="iconbtn ' + (syncing ? "spinning" : "") + '" id="syncBtn" aria-label="Sincronizar">' + icon("cloud") + "</button>" : "") +
+      '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" aria-label="Favoritos" aria-pressed="' + (filter.fav ? "true" : "false") + '">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
+      '<button class="iconbtn" id="acctBtn" aria-label="Cuenta">' + icon("user") + "</button></div>" +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
       (dueCount ? '<div class="pracbanner" id="pracBanner">' + icon("target", "i-sm") + "<span>" + dueCount + " truco" + (dueCount > 1 ? "s" : "") + " para practicar hoy</span>" + icon("chev", "i-sm") + "</div>" : "") +
       '<div class="chips">' + catChips + "</div>" +
@@ -677,10 +677,10 @@
         Cloud.signedUrl(box.getAttribute("data-path")).then(function (url) {
           box.innerHTML = url
             ? '<video controls playsinline preload="metadata" src="' + esc(url) + '" style="position:absolute;inset:0;width:100%;height:100%"></video>'
-            : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff">Vídeo no disponible</div>';
+            : '<div class="fallback">Vídeo no disponible</div>';
         });
       } else {
-        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff">Inicia sesión para ver este vídeo</div>';
+        box.innerHTML = '<div class="fallback">Inicia sesión para ver este vídeo</div>';
       }
     });
     // Cargar fotos con URL firmada (bucket photos)
@@ -883,7 +883,7 @@
       difficulty: segValue("#fDiff") || "medio",
       status: segValue("#fStatus") || "poraprender",
       notes: document.getElementById("fNotes").value.trim(),
-      tags: tags, media: draftMedia.slice(), photos: draftPhotos.filter(function (p) { return p.path; }).map(function (p) { return { path: p.path }; }), meta: meta, updatedAt: Date.now()
+      tags: tags, media: draftMedia.filter(function (m) { return !m.uploading && (m.path || m.embed || m.url); }), photos: draftPhotos.filter(function (p) { return p.path; }).map(function (p) { return { path: p.path }; }), meta: meta, updatedAt: Date.now()
     };
     if (id) {
       var t = getTrick(id); if (!t) { location.hash = "#/"; return; }
@@ -901,7 +901,7 @@
     var rs = state.routines.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
     var body;
     if (!rs.length) {
-      body = '<div class="empty"><div class="big">' + icon("list") + '</div><h3>Sin rutinas todavía</h3>' +
+      body = '<div class="empty">' + emptyArt() + '<h3>Sin rutinas todavía</h3>' +
         "<p>Monta tus espectáculos ordenando trucos, y ten las chuletas a mano en escena.</p>" +
         '<button class="btn" onclick="location.hash=\'#/rutina-nueva\'">Crear una rutina</button></div>';
     } else {
@@ -1051,7 +1051,7 @@
     var gs = state.gigs.slice().sort(function (a, b) { return (b.date || "").localeCompare(a.date || ""); });
     var body;
     if (!gs.length) {
-      body = '<div class="empty"><div class="big">' + icon("calendar") + '</div><h3>Sin bolos todavía</h3>' +
+      body = '<div class="empty">' + emptyArt() + '<h3>Sin bolos todavía</h3>' +
         "<p>Lleva tu agenda: fecha, cliente, caché y qué actuaste (para no repetir con el mismo público).</p>" +
         '<button class="btn" onclick="location.hash=\'#/bolo-nuevo\'">Añadir un bolo</button></div>';
     } else {
@@ -1125,7 +1125,7 @@
       (g.venue ? '<span class="tagchip">' + esc(g.venue) + "</span>" : "") +
       (g.fee !== "" && g.fee != null ? '<span class="pill df">' + esc(g.fee) + " €</span>" : "") + "</div>" +
       (g.notes ? '<div class="notes">' + esc(g.notes) + "</div>" : "") +
-      (repeated.length ? '<div class="backstage-bar" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:color-mix(in srgb,var(--danger) 10%,transparent)"><span class="dot" style="background:var(--danger);box-shadow:none"></span> Ojo: ' + repeated.length + " truco(s) ya se los hiciste a este cliente.</div>" : "") +
+      (repeated.length ? '<div class="backstage-bar danger"><span class="dot"></span> Ojo: ' + repeated.length + " truco(s) ya se los hiciste a este cliente.</div>" : "") +
       '<div class="sec-label">Qué actué</div>' + perfHtml +
       '<button class="btn danger" id="gDel">Eliminar bolo</button></div>';
     document.getElementById("gEdit").addEventListener("click", function () { location.hash = "#/bolo-edit/" + id; });
@@ -1146,7 +1146,7 @@
           return '<div class="pracrow"><div class="rc" data-open="' + t.id + '"><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + " · " + sub + "</div></div>" +
             '<div class="pracact"><button class="btn small" data-done="' + t.id + '">' + icon("check", "i-sm") + ' Hecho</button><button class="btn small ghost" data-snooze="' + t.id + '">Posponer</button></div></div>';
         }).join("") + "</div>"
-      : '<div class="empty"><div class="big">' + icon("target") + '</div><h3>¡Todo al día!</h3><p>No hay trucos para practicar hoy. Marca trucos como “Aprendiendo” para entrenarlos aquí con repetición espaciada.</p></div>';
+      : '<div class="empty">' + emptyArt() + '<h3>¡Todo al día!</h3><p>No hay trucos para practicar hoy. Marca trucos como “Aprendiendo” para entrenarlos aquí con repetición espaciada.</p></div>';
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Práctica</h1></div>' +
       '<p class="subtitle">' + (due.length ? due.length + " truco(s) para hoy" : "Repetición espaciada") + "</p>" + body + "</div>";
     view.querySelectorAll(".rc[data-open]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-open"); }); });
@@ -1313,7 +1313,7 @@
     clearTabbar();
     if (!logged()) { location.hash = "#/ajustes"; return; }
     var head = '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Enlaces compartidos</h1></div>';
-    view.innerHTML = '<div class="screen">' + head + '<div class="splash" style="padding:52px 0"><div class="spin"></div></div></div>';
+    view.innerHTML = '<div class="screen">' + head + skelRows(4) + '</div>';
     Cloud.listShares().then(function (rows) {
       var body;
       if (!rows.length) {
@@ -1373,9 +1373,10 @@
     }).catch(function () { myProfile = null; });
   }
   function avatarHtml(url, name, cls) {
-    if (url) return '<span class="avatar ' + (cls || "") + '" style="background-image:url(' + esc(url) + ')"></span>';
+    var lab = name ? ' role="img" aria-label="' + esc(name) + '"' : ' aria-hidden="true"';
+    if (url) return '<span class="avatar ' + (cls || "") + '"' + lab + ' style="background-image:url(' + esc(url) + ')"></span>';
     var ini = (name || "?").trim().charAt(0).toUpperCase();
-    return '<span class="avatar ' + (cls || "") + ' ini">' + esc(ini) + "</span>";
+    return '<span class="avatar ' + (cls || "") + ' ini"' + lab + ">" + esc(ini) + "</span>";
   }
   function money(cents, cur) {
     if (!cents) return "Gratis";
@@ -1420,7 +1421,7 @@
         '<button class="btn" id="onbFinish">' + (onb.social ? "Continuar" : "Entrar a App del Mago") + "</button>";
     } else {
       body = '<h1 class="title">Sigue a algunos magos</h1><p class="subtitle">Así tu feed empieza con vida. Puedes cambiarlo cuando quieras.</p>' +
-        '<div id="onbSugg"><div class="splash" style="padding:24px 0"><div class="spin"></div></div></div>' +
+        '<div id="onbSugg">' + skelRows(3) + '</div>' +
         '<button class="btn" id="onbEnter">Entrar a App del Mago</button>';
     }
     view.innerHTML = '<div class="screen onb">' + (step > 0 ? '<div class="onb-steps"><i class="on"></i><i class="' + (step >= 2 ? "on" : "") + '"></i><i class="' + (step >= 3 ? "on" : "") + '"></i></div>' : "") + body + "</div>";
@@ -1546,17 +1547,17 @@
       b.addEventListener("click", function (e) {
         e.stopPropagation(); var id = b.getAttribute("data-like"); var on = b.classList.contains("on");
         var span = b.querySelector("span"); var n = parseInt(span.textContent, 10) || 0;
-        b.classList.toggle("on"); span.textContent = on ? Math.max(0, n - 1) : n + 1;
-        b.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + span.textContent + "</span>";
+        var paint = function (liked, count) { b.classList.toggle("on", liked); b.innerHTML = icon(liked ? "heartfill" : "heart", "i-sm") + "<span>" + count + "</span>"; };
+        paint(!on, on ? Math.max(0, n - 1) : n + 1);
         if (!on) burstHearts(b);
-        (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
+        (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () { paint(on, n); toast("No se pudo, inténtalo de nuevo"); });
       });
     });
     s.querySelectorAll("[data-save]").forEach(function (b) {
       b.addEventListener("click", function (e) {
         e.stopPropagation(); var id = b.getAttribute("data-save"); var on = b.classList.contains("on");
         b.classList.toggle("on"); b.innerHTML = icon(on ? "bookmark" : "bookmarkfill", "i-sm");
-        (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () {});
+        (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () { b.classList.toggle("on", on); b.innerHTML = icon(on ? "bookmarkfill" : "bookmark", "i-sm"); toast("No se pudo, inténtalo de nuevo"); });
       });
     });
     s.querySelectorAll("[data-rep]").forEach(function (b) {
@@ -1568,19 +1569,22 @@
   }
   function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
   // Paginación: botón "Cargar más" que trae publicaciones anteriores y las añade.
-  function appendMore(bodyEl, feedEl, rows, fetcher) {
+  function appendMore(bodyEl, feedEl, rows, fetcher, seen) {
     if (!rows || rows.length < 40 || !feedEl) return;
+    seen = seen || {}; rows.forEach(function (r) { if (r && r.id) seen[r.id] = 1; });
     var btn = el('<button class="btn ghost loadmore">Cargar más</button>');
     bodyEl.appendChild(btn);
     btn.addEventListener("click", function () {
       var last = rows[rows.length - 1]; btn.disabled = true; btn.textContent = "Cargando…";
       fetcher(last.created_at).then(function (more) {
         btn.remove();
-        if (!more || !more.length) return;
+        more = (more || []).filter(function (r) { return r && r.id && !seen[r.id]; }); // evita duplicados en límites de página
+        if (!more.length) return;
+        more.forEach(function (r) { seen[r.id] = 1; });
         var frag = document.createElement("div"); frag.innerHTML = more.map(postCardHtml).join("");
         bindPostCards(frag);
         while (frag.firstChild) feedEl.appendChild(frag.firstChild);
-        appendMore(bodyEl, feedEl, more, fetcher);
+        appendMore(bodyEl, feedEl, more, fetcher, seen);
       }).catch(function () { btn.disabled = false; btn.textContent = "Cargar más"; });
     });
   }
@@ -1679,10 +1683,12 @@
     var a = scope.querySelector("#storyAdd"); if (a) a.addEventListener("click", renderStoryCreate);
     scope.querySelectorAll(".story-item[data-si]").forEach(function (it) { it.addEventListener("click", function () { openStories(groups, parseInt(it.getAttribute("data-si"), 10)); }); });
   }
+  var storyTimer = null;
+  function teardownStories() { if (storyTimer) { clearTimeout(storyTimer); storyTimer = null; } var sv = document.getElementById("storyViewer"); if (sv) sv.remove(); }
   function openStories(groups, idx) {
     var gi = idx, si = 0, timer = null;
     var ov = el('<div class="story-viewer" id="storyViewer"></div>'); document.body.appendChild(ov);
-    var close = function () { if (timer) clearTimeout(timer); ov.remove(); };
+    var close = function () { if (timer) clearTimeout(timer); storyTimer = null; ov.remove(); };
     function render() {
       var g = groups[gi]; if (!g) { close(); return; }
       var st = g.stories || [];
@@ -1713,7 +1719,7 @@
       });
       Cloud.viewStory(s.id).catch(function () {});
       if (timer) clearTimeout(timer);
-      if (m.kind !== "video") timer = setTimeout(function () { si++; render(); }, 5000);
+      if (m.kind !== "video") { timer = setTimeout(function () { si++; render(); }, 5000); storyTimer = timer; }
     }
     render();
   }
@@ -1801,7 +1807,7 @@
         if (!rows.length) {
           bodyEl.innerHTML = bar + '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Llena tu feed</h3><p>Sigue a magos para ver aquí sus publicaciones.</p></div><div class="sec-label">Sugerencias para seguir</div><div id="sugg">' + skelRows(4) + "</div>";
           bindStories(bodyEl, stories);
-          Cloud.suggestMagicians().then(function (mg) { var s = document.getElementById("sugg"); s.innerHTML = mg.length ? '<div class="mago-list">' + mg.map(magicianRow).join("") + "</div>" : '<p class="hint">Aún no hay más magos. ¡Invita a otros!</p>'; bindMagicianRows(s); }).catch(function () {});
+          Cloud.suggestMagicians().then(function (mg) { var s = document.getElementById("sugg"); if (!s) return; s.innerHTML = mg.length ? '<div class="mago-list">' + mg.map(magicianRow).join("") + "</div>" : '<p class="hint">Aún no hay más magos. ¡Invita a otros!</p>'; bindMagicianRows(s); }).catch(function () {});
           return;
         }
         bodyEl.innerHTML = bar + '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
@@ -1816,6 +1822,10 @@
   // de los magos: grabados en el momento o subidos. Contenido independiente
   // de las publicaciones, con su propia tabla en la nube.
   var clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false, viewed: {} };
+  function teardownClips() {
+    if (clipsState && clipsState.io) { try { clipsState.io.disconnect(); } catch (e) {} clipsState.io = null; }
+    var v = document.querySelector(".clips .clip video"); if (v) { try { v.pause(); } catch (e) {} }
+  }
   function clipHtml(p, i) {
     var effect = p.effect ? '<span class="cm-effect">' + icon("wand", "i-sm") + esc(p.effect) + "</span>" : "";
     return '<section class="clip" data-clip="' + esc(p.id) + '" data-idx="' + i + '">' +
@@ -1852,6 +1862,7 @@
     v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.preload = "auto";
     var prog = node.querySelector(".clip-prog i");
     v.addEventListener("timeupdate", function () { if (prog && v.duration) prog.style.width = (100 * v.currentTime / v.duration) + "%"; });
+    v.addEventListener("error", function () { var pl = node.querySelector(".clip-video"); if (pl && !pl.querySelector(".clip-noplay")) pl.insertAdjacentHTML("beforeend", '<div class="clip-noplay">' + icon("play") + "<span>Este vídeo no se puede reproducir en tu dispositivo</span></div>"); });
     vd.appendChild(v);
     var play = v.play(); if (play && play.catch) play.catch(function () {});
     if (!clipsState.viewed[p.id]) { clipsState.viewed[p.id] = 1; Cloud.bumpClipView(p.id); }
@@ -1886,7 +1897,7 @@
       var sp = likeB.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0;
       likeB.classList.toggle("on"); likeB.innerHTML = icon(on ? "heart" : "heartfill") + "<span>" + (on ? Math.max(0, n - 1) : n + 1) + "</span>";
       if (!on) burstHearts(likeB);
-      (on ? Cloud.unlikeClip(id) : Cloud.likeClip(id)).catch(function () {});
+      (on ? Cloud.unlikeClip(id) : Cloud.likeClip(id)).catch(function () { likeB.classList.toggle("on", on); likeB.innerHTML = icon(on ? "heartfill" : "heart") + "<span>" + n + "</span>"; toast("No se pudo, inténtalo de nuevo"); });
     });
     var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); openClipComments(cmtB.getAttribute("data-cmt"), cmtB.querySelector(".cc-count")); });
     var shB = node.querySelector("[data-share]"); if (shB) shB.addEventListener("click", function (e) { e.stopPropagation(); shareClip(shB.getAttribute("data-share")); });
@@ -1913,7 +1924,7 @@
     else toast(url);
   }
   function openClipComments(id, countEl) {
-    var ov = el('<div class="modal-ov sheet clip-cmts"><div class="cc-box"><div class="cc-h">Comentarios</div><div class="cc-list" id="ccList"><div class="splash" style="padding:24px 0"><div class="spin"></div></div></div><div class="cc-add"><input id="ccIn" placeholder="Añade un comentario…"><button class="btn small" id="ccSend">' + icon("send", "i-sm") + "</button></div></div></div>");
+    var ov = el('<div class="modal-ov sheet clip-cmts"><div class="cc-box"><div class="cc-h">Comentarios</div><div class="cc-list" id="ccList">' + skelRows(4) + '</div><div class="cc-add"><input id="ccIn" placeholder="Añade un comentario…"><button class="btn small" id="ccSend">' + icon("send", "i-sm") + "</button></div></div></div>");
     document.body.appendChild(ov);
     ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
     var load = function () {
@@ -2113,7 +2124,7 @@
   }
   function bindMagicianRows(scope) {
     scope.querySelectorAll(".mago-row[data-mago]").forEach(function (r) { r.addEventListener("click", function (e) { if (e.target.closest("[data-follow]")) return; location.hash = "#/mago/" + r.getAttribute("data-mago"); }); });
-    scope.querySelectorAll("[data-follow]").forEach(function (b) { b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-follow"); var on = b.textContent === "Siguiendo"; b.textContent = on ? "Seguir" : "Siguiendo"; b.classList.toggle("ghost", !on); (on ? Cloud.unfollow(id) : Cloud.follow(id)).catch(function () {}); }); });
+    scope.querySelectorAll("[data-follow]").forEach(function (b) { b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-follow"); var on = b.textContent === "Siguiendo"; b.textContent = on ? "Seguir" : "Siguiendo"; b.classList.toggle("ghost", !on); (on ? Cloud.unfollow(id) : Cloud.follow(id)).catch(function () { b.textContent = on ? "Siguiendo" : "Seguir"; b.classList.toggle("ghost", on); toast("No se pudo, inténtalo de nuevo"); }); }); });
   }
   var discoverSpec = null;
   function renderDiscover() {
@@ -2121,11 +2132,11 @@
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Descubrir magos</h1></div>' +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="dscQ" placeholder="Buscar por nombre o @usuario…"></div>' +
       '<div class="chips" id="dscSpec"><div class="chip ' + (!discoverSpec ? "active" : "") + '" data-s="">Todas</div>' + SPECIALTIES.map(function (s) { return '<div class="chip ' + (discoverSpec === s ? "active" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</div>"; }).join("") + "</div>" +
-      '<div id="dscBody"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div></div>';
+      '<div id="dscBody">' + skelRows(6) + '</div></div>';
     var bodyEl = document.getElementById("dscBody"), q = document.getElementById("dscQ");
     var run = function () {
       var query = (q.value || "").trim();
-      bodyEl.innerHTML = '<div class="splash" style="padding:24px 0"><div class="spin"></div></div>';
+      bodyEl.innerHTML = skelRows(6);
       var p = (query || discoverSpec) ? Cloud.searchMagicians(query, discoverSpec) : Cloud.suggestMagicians();
       p.then(function (rows) {
         if (!rows.length) { bodyEl.innerHTML = '<p class="hint" style="padding:20px 0">Sin resultados.</p>'; return; }
@@ -2139,7 +2150,7 @@
   }
   function renderReto() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Reto</h1></div><div id="rtBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Reto</h1></div><div id="rtBody">' + skelFeed(2) + '</div></div>';
     Cloud.getActiveChallenge().then(function (chal) {
       var b = document.getElementById("rtBody");
       if (!chal) { b.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("flame") + "</div><h3>Sin reto activo</h3><p>Vuelve pronto, habrá uno nuevo.</p></div>"; return; }
@@ -2153,7 +2164,7 @@
   }
   function renderLeaderboard() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Top magos</h1></div><div id="lbBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Top magos</h1></div><div id="lbBody">' + skelRows(6) + '</div></div>';
     Cloud.getLeaderboard().then(function (rows) {
       var b = document.getElementById("lbBody");
       b.innerHTML = rows.length ? '<p class="subtitle">Ranking de la semana por actividad e interacción.</p><div class="lb-list">' + rows.map(function (m, i) {
@@ -2167,7 +2178,7 @@
   }
   function renderTagFeed(tag) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>#' + esc(tag) + '</h1></div><div id="tBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>#' + esc(tag) + '</h1></div><div id="tBody">' + skelFeed(2) + '</div></div>';
     Cloud.getFeed(null, "discover", tag).then(function (rows) {
       var b = document.getElementById("tBody");
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("search") + "</div><p>Nada con #" + esc(tag) + " todavía.</p></div>";
@@ -2177,7 +2188,7 @@
   }
   function renderMagicianList(uid, which) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>' + (which === "followers" ? "Seguidores" : "Siguiendo") + '</h1></div><div id="mlBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>' + (which === "followers" ? "Seguidores" : "Siguiendo") + '</h1></div><div id="mlBody">' + skelRows(8) + '</div></div>';
     Cloud.getFollowList(uid, which).then(function (rows) {
       var b = document.getElementById("mlBody");
       b.innerHTML = rows.length ? '<div class="mago-list">' + rows.map(magicianRow).join("") + "</div>" : '<p class="hint" style="padding:24px 2px">' + (which === "followers" ? "Nadie todavía." : "No sigue a nadie todavía.") + "</p>";
@@ -2255,7 +2266,7 @@
   var composeTrick = null, composeChallenge = null;
   function renderCompose() {
     clearTabbar(); composeTrick = null;
-    var chal = composeChallenge;
+    var chal = composeChallenge; composeChallenge = null;
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Nueva publicación</h1></div>' +
       (chal ? '<div class="chal-chip">' + icon("flame", "i-sm") + " Participando en: <b>" + esc(chal.title) + "</b></div>" : "") +
       '<div class="field"><textarea id="cpBody" rows="4" placeholder="Comparte una idea, un logro, una pregunta… usa #hashtags y @menciones">' + (chal && chal.hashtag ? "#" + esc(chal.hashtag) + " " : "") + "</textarea></div>" +
@@ -2373,7 +2384,7 @@
       appendMore(b, b.querySelector(".feed"), posts, function (before) { return Cloud.getFeed(uid, "discover", null, null, before); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
-      if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });
+      if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () { p.is_following = on; fb.textContent = on ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", on); toast("No se pudo, inténtalo de nuevo"); }); });
       var eb = document.getElementById("prEdit"); if (eb) eb.addEventListener("click", function () { onb.step = 1; onb.handle = p.handle || ""; onb.name = p.name || ""; onb.spec = (p.specialty || []).slice(); onb.city = p.city || ""; onb.social = socialEnabled; renderEditProfile(); });
       var sv = document.getElementById("prSaved"); if (sv) sv.addEventListener("click", function () { location.hash = "#/guardados"; });
       var pm = document.getElementById("prMsg"); if (pm) pm.addEventListener("click", function () { pm.disabled = true; Cloud.openConversation(uid).then(function (cid) { location.hash = "#/chat/" + cid; }).catch(function () { pm.disabled = false; toast("No se pudo abrir el chat"); }); });
@@ -2439,7 +2450,7 @@
         (l.owned && l.seller !== (myProfile && myProfile.user_id) ? '<div class="sec-label">Tu valoración</div><div class="rate-box" id="rateBox">' + starsHtml(0, "pick") + '<textarea id="revBody" rows="2" placeholder="¿Qué te ha parecido? (opcional)"></textarea><button class="btn small" id="revSend">Enviar valoración</button></div>' : "") +
         '<div class="sec-label">Reseñas</div>' + (reviews.length ? '<div class="reviews">' + reviews.map(function (r) { return '<div class="rev">' + avatarHtml(Cloud.publicUrl(r.avatar), r.name || r.handle, "sm") + '<div><div class="c-who">' + esc(r.name || r.handle || "Mago") + " " + starsHtml(r.rating) + "</div>" + (r.body ? '<div class="c-b">' + esc(r.body) + "</div>" : "") + "</div></div>"; }).join("") + "</div>" : '<p class="hint">Aún no hay reseñas.</p>');
       var sel = b.querySelector(".li-seller[data-mago]"); if (sel) sel.addEventListener("click", function () { location.hash = "#/mago/" + l.seller; });
-      var wb = document.getElementById("liWish"); if (wb) wb.addEventListener("click", function () { var on = wb.classList.contains("on"); wb.classList.toggle("on"); wb.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unwish(id) : Cloud.wish(id)).then(function () { toast(on ? "Quitado de deseos" : "Añadido a deseos"); }).catch(function () {}); });
+      var wb = document.getElementById("liWish"); if (wb) wb.addEventListener("click", function () { var on = wb.classList.contains("on"); wb.classList.toggle("on"); wb.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unwish(id) : Cloud.wish(id)).then(function () { toast(on ? "Quitado de deseos" : "Añadido a deseos"); }).catch(function () { wb.classList.toggle("on", on); wb.innerHTML = icon(on ? "bookmarkfill" : "bookmark"); toast("No se pudo, inténtalo de nuevo"); }); });
       var op = document.getElementById("liOpen"); if (op) op.addEventListener("click", function () { location.hash = "#/"; });
       var buy = document.getElementById("liBuy"); if (buy) buy.addEventListener("click", function () { toast("Pago con tarjeta muy pronto (Stripe)"); });
       var fr = document.getElementById("liFree"); if (fr) fr.addEventListener("click", function () {
@@ -2465,7 +2476,7 @@
   function renderSellForm(editId) {
     clearTabbar(); sellTrick = null; sellCover = null;
     if (editId) {
-      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado/' + esc(editId) + '\'">' + icon("back") + '</button><h1>Editar truco</h1></div><div id="slLoad"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado/' + esc(editId) + '\'">' + icon("back") + '</button><h1>Editar truco</h1></div><div id="slLoad">' + skelDetail() + '</div></div>';
       Promise.all([Cloud.getListing(editId), Cloud.getListingContent(editId).catch(function () { return null; })]).then(function (res) {
         var l = res[0], content = res[1];
         if (!l || l.seller !== (myProfile && myProfile.user_id)) { view.innerHTML = '<div class="screen"><div class="empty" style="padding:40px"><p>No disponible.</p></div></div>'; return; }
@@ -2576,12 +2587,20 @@
     if (loaded.type) markArmed();
   }
   function markArmed() { var o = document.getElementById("orb"); if (o) o.classList.add("armed"); var p = document.getElementById("prompt"); if (p) p.textContent = "La conexión está lista. Coloca tu dedo y concéntrate."; }
+  var lectorSwipe = null, lectorIv = null;
   function armSwipeToLoad() {
+    if (lectorSwipe) { document.removeEventListener("touchstart", lectorSwipe.ts); document.removeEventListener("touchend", lectorSwipe.te); document.removeEventListener("mousedown", lectorSwipe.ts); document.removeEventListener("mouseup", lectorSwipe.te); }
     var startY = null, top = false;
     function ts(e) { var y = e.touches ? e.touches[0].clientY : e.clientY; top = y < 60; startY = y; }
-    function te(e) { if (!top || startY == null) return; var y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY; if (y - startY > 55) openQS(); startY = null; top = false; }
+    function te(e) { if ((location.hash || "") !== "#/lector") return; if (!top || startY == null) return; var y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY; if (y - startY > 55) openQS(); startY = null; top = false; }
+    lectorSwipe = { ts: ts, te: te };
     document.addEventListener("touchstart", ts, { passive: true }); document.addEventListener("touchend", te);
     document.addEventListener("mousedown", ts); document.addEventListener("mouseup", te);
+  }
+  function teardownLector() {
+    if (lectorSwipe) { document.removeEventListener("touchstart", lectorSwipe.ts); document.removeEventListener("touchend", lectorSwipe.te); document.removeEventListener("mousedown", lectorSwipe.ts); document.removeEventListener("mouseup", lectorSwipe.te); lectorSwipe = null; }
+    if (lectorIv) { clearInterval(lectorIv); lectorIv = null; }
+    var q = document.getElementById("qs"); if (q) q.remove();
   }
   function buildQuickSet() {
     var old = document.getElementById("qs"); if (old) old.remove();
@@ -2590,7 +2609,7 @@
       var btns = VALUES.map(function (v) { return '<button class="cellbtn ' + (red ? "red" : "") + '" data-suit="' + s.sym + '" data-val="' + v + '">' + v + "</button>"; }).join("");
       return '<div class="suitrow"><div class="slabel"' + (red ? ' style="color:var(--danger)"' : "") + ">" + s.sym + '</div><div class="suits">' + btns + "</div></div>";
     }).join("");
-    var qs = el('<div class="qs" id="qs"><h4>· carga secreta · desliza arriba para cerrar ·</h4>' + rows +
+    var qs = el('<div class="qs" id="qs"><div class="sec-label">Carga secreta · desliza arriba para cerrar</div>' + rows +
       '<div class="txtwrap"><input id="qsText" type="text" placeholder="…o escribe una palabra / número" autocomplete="off" autocapitalize="off" autocorrect="off"></div>' +
       '<div class="loaded" id="qsLoaded"></div>' +
       '<div class="qsrow"><button class="btn ghost" id="qsClear">Vaciar</button><button class="btn" id="qsUse">Usar palabra</button></div></div>');
@@ -2629,10 +2648,12 @@
       '<div class="prompt">Leyendo tu mente…</div><div class="progress"><i id="bar"></i></div><div class="scanstatus" id="st"></div></div></div>';
     var bar = document.getElementById("bar"), st = document.getElementById("st");
     var msgs = ["Sincronizando pulso…", "Detectando la imagen mental…", "Enfocando el símbolo…", "Revelando…"], p = 0;
-    var iv = setInterval(function () {
-      p += 3 + rnd(4); if (p > 100) p = 100; bar.style.width = p + "%";
-      st.textContent = msgs[Math.min(msgs.length - 1, Math.floor(p / 26))];
-      if (p >= 100) { clearInterval(iv); setTimeout(function () { showResult(result); }, 300); }
+    if (lectorIv) clearInterval(lectorIv);
+    lectorIv = setInterval(function () {
+      if ((location.hash || "") !== "#/lector") { clearInterval(lectorIv); lectorIv = null; return; }
+      p += 3 + rnd(4); if (p > 100) p = 100; if (bar) bar.style.width = p + "%";
+      if (st) st.textContent = msgs[Math.min(msgs.length - 1, Math.floor(p / 26))];
+      if (p >= 100) { clearInterval(lectorIv); lectorIv = null; setTimeout(function () { if ((location.hash || "") === "#/lector") showResult(result); }, 300); }
     }, 120);
   }
   function showResult(result) {
@@ -2737,7 +2758,7 @@
     document.getElementById("importBtn").addEventListener("click", function () { document.getElementById("importFile").click(); });
     document.getElementById("importFile").addEventListener("change", importData);
     document.getElementById("wipeBtn").addEventListener("click", function () {
-      if (confirm("¿Seguro? Se borrarán TODOS tus trucos de este dispositivo.")) { state = { version: 1, tricks: [], categories: DEFAULT_CATS.slice() }; save(); toast("Biblioteca borrada"); location.hash = "#/"; }
+      if (confirm("¿Seguro? Se borrarán TODOS tus trucos de este dispositivo.")) { state = { version: 1, tricks: [], categories: DEFAULT_CATS.slice(), routines: [], gigs: [] }; save(); toast("Biblioteca borrada"); location.hash = "#/"; }
     });
   }
   function exportData() {
@@ -2753,7 +2774,7 @@
       try {
         var data = JSON.parse(r.result);
         if (!data || !Array.isArray(data.tricks)) throw 0;
-        state = { version: 1, tricks: data.tricks, categories: (data.categories && data.categories.length) ? data.categories : DEFAULT_CATS.slice() };
+        state = { version: 1, tricks: data.tricks, categories: (data.categories && data.categories.length) ? data.categories : DEFAULT_CATS.slice(), routines: Array.isArray(data.routines) ? data.routines : [], gigs: Array.isArray(data.gigs) ? data.gigs : [] };
         save(); toast("Biblioteca importada"); location.hash = "#/";
       } catch (err) { toast("Archivo no válido"); }
     };
@@ -3051,11 +3072,16 @@
   /* ------------------------------ router ------------------------------ */
   function route() {
     try {
+      var h0 = location.hash || "";
       var qs = document.getElementById("qs");
-      if (qs && location.hash !== "#/lector") qs.classList.remove("open");
+      if (qs && h0 !== "#/lector") qs.classList.remove("open");
+      // Limpieza al salir de pantallas con estado vivo (fugas de listeners/observers/vídeo)
+      if (h0.indexOf("#/lector") !== 0) teardownLector();
+      if (h0 !== "#/clips" && h0.indexOf("#/clips/") !== 0) teardownClips();
+      teardownStories();
       // Enlace compartido: contenido público de solo lectura; salta candado y login
-      if ((location.hash || "").indexOf("#/s/") === 0) return renderShared((location.hash || "").slice(4));
-      if (chatCh && (location.hash || "").indexOf("#/chat/") !== 0) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
+      if (h0.indexOf("#/s/") === 0) return renderShared(h0.slice(4));
+      if (chatCh && h0.indexOf("#/chat/") !== 0) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
       // Bloqueo con PIN: protege todo hasta desbloquear
       if (hasPin() && !unlocked) return renderLock();
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
@@ -3099,12 +3125,12 @@
       if (h.indexOf("#/clips/") === 0) return socialEnabled ? renderClips(h.slice(8)) : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
       if (h.indexOf("#/vender/") === 0) return socialEnabled ? renderSellForm(h.slice(9)) : renderLibrary();
-      if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));
-      if (h.indexOf("#/seguidores/") === 0) return renderMagicianList(h.slice(13), "followers");
-      if (h.indexOf("#/seguidos/") === 0) return renderMagicianList(h.slice(11), "following");
-      if (h.indexOf("#/post/") === 0) return renderPostDetail(h.slice(7));
-      if (h.indexOf("#/mago/") === 0) return renderProfile(h.slice(7));
-      if (h.indexOf("#/mercado/") === 0) return renderListing(h.slice(10));
+      if (h.indexOf("#/tag/") === 0) return socialEnabled ? renderTagFeed(decodeURIComponent(h.slice(6))) : renderLibrary();
+      if (h.indexOf("#/seguidores/") === 0) return socialEnabled ? renderMagicianList(h.slice(13), "followers") : renderLibrary();
+      if (h.indexOf("#/seguidos/") === 0) return socialEnabled ? renderMagicianList(h.slice(11), "following") : renderLibrary();
+      if (h.indexOf("#/post/") === 0) return socialEnabled ? renderPostDetail(h.slice(7)) : renderLibrary();
+      if (h.indexOf("#/mago/") === 0) return socialEnabled ? renderProfile(h.slice(7)) : renderLibrary();
+      if (h.indexOf("#/mercado/") === 0) return socialEnabled ? renderListing(h.slice(10)) : renderLibrary();
       if (h === "#/incluidos") return renderIncluded();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
@@ -3143,6 +3169,26 @@
   }
 
   applyTheme();
+  // Accesibilidad: asocia labels con sus campos, pone nombre accesible a los
+  // inputs por su placeholder y título a los iframes. Se ejecuta sobre cada
+  // render (incluido el contenido cargado de forma asíncrona).
+  var a11yN = 0;
+  function a11yPass() {
+    try {
+      document.querySelectorAll(".field > label:not([for]) + input, .field > label:not([for]) + textarea, .field > label:not([for]) + select").forEach(function (c) {
+        var l = c.previousElementSibling; if (!l || l.tagName !== "LABEL") return;
+        if (!c.id) c.id = "f_a11y_" + (++a11yN);
+        l.setAttribute("for", c.id);
+      });
+      document.querySelectorAll("input[placeholder]:not([aria-label]):not([id^=f_a11y]), textarea[placeholder]:not([aria-label])").forEach(function (c) {
+        if (!c.labels || !c.labels.length) c.setAttribute("aria-label", c.getAttribute("placeholder"));
+      });
+      document.querySelectorAll("iframe:not([title])").forEach(function (f) { f.setAttribute("title", "Vídeo"); });
+    } catch (e) {}
+  }
+  var a11yScheduled = false;
+  function scheduleA11y() { if (a11yScheduled) return; a11yScheduled = true; setTimeout(function () { a11yScheduled = false; a11yPass(); }, 60); }
+  try { new MutationObserver(scheduleA11y).observe(view, { childList: true, subtree: true }); } catch (e) {}
   window.addEventListener("hashchange", route);
   // Ponerse al día al volver a la app o recuperar conexión (por si el realtime
   // perdió algún cambio mientras estaba en segundo plano).

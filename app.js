@@ -335,28 +335,38 @@
     });
   }
 
-  // Captura un fotograma del vídeo (archivo local) como miniatura JPEG.
-  function makePoster(file) {
+  // Captura un fotograma de un <video> ya listo, como miniatura JPEG.
+  function capturePoster(v) {
     return new Promise(function (resolve) {
-      try {
-        var url = URL.createObjectURL(file);
-        var v = document.createElement("video");
-        v.muted = true; v.playsInline = true; v.preload = "metadata"; v.src = url;
-        var done = false;
-        var finish = function (out) { if (done) return; done = true; clearTimeout(to); try { URL.revokeObjectURL(url); } catch (e) {} resolve(out || null); };
-        var to = setTimeout(function () { finish(null); }, 9000);
-        v.addEventListener("loadeddata", function () { try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) { finish(null); } });
-        v.addEventListener("seeked", function () {
-          try {
-            var W = 640, ratio = (v.videoWidth && v.videoHeight) ? v.videoHeight / v.videoWidth : 0.5625;
-            var c = document.createElement("canvas"); c.width = W; c.height = Math.round(W * ratio);
-            c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-            c.toBlob(function (blob) { finish(blob ? new File([blob], "poster.jpg", { type: "image/jpeg" }) : null); }, "image/jpeg", 0.82);
-          } catch (e) { finish(null); }
-        });
-        v.addEventListener("error", function () { finish(null); });
-      } catch (e) { resolve(null); }
+      var done = false, soft = null;
+      var hard = setTimeout(function () { if (!done) { done = true; resolve(null); } }, 10000);
+      function grab() {
+        if (done) return; done = true; clearTimeout(hard); if (soft) clearTimeout(soft);
+        try {
+          var W = 640, ratio = (v.videoWidth && v.videoHeight) ? v.videoHeight / v.videoWidth : 0.5625;
+          var c = document.createElement("canvas"); c.width = W; c.height = Math.round(W * ratio);
+          c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob(function (blob) { resolve(blob ? new File([blob], "poster.jpg", { type: "image/jpeg" }) : null); }, "image/jpeg", 0.82);
+        } catch (e) { resolve(null); }
+      }
+      v.addEventListener("seeked", grab, { once: true });
+      v.addEventListener("loadeddata", function () {
+        try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) {}
+        soft = setTimeout(grab, 1400); // si no llega 'seeked', captura el fotograma actual
+      }, { once: true });
+      v.addEventListener("error", function () { if (!done) { done = true; clearTimeout(hard); resolve(null); } });
     });
+  }
+  // Miniatura a partir de un archivo local (al subir el vídeo).
+  function makePoster(file) {
+    var url; try { url = URL.createObjectURL(file); } catch (e) { return Promise.resolve(null); }
+    var v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "metadata"; v.src = url;
+    return capturePoster(v).then(function (out) { try { URL.revokeObjectURL(url); } catch (e) {} return out; });
+  }
+  // Miniatura a partir de una URL firmada (relleno de vídeos ya subidos).
+  function posterFromUrl(url) {
+    var v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "metadata"; v.crossOrigin = "anonymous"; v.src = url;
+    return capturePoster(v);
   }
 
   /* ------------------------------ navegación -------------------------- */
@@ -447,6 +457,7 @@
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
     bindCards();
+    backfillPosters();
   }
   function refreshCards() {
     // re-render solo tarjetas al escribir (mantiene foco en el buscador)
@@ -483,6 +494,47 @@
     view.querySelectorAll(".cthumb[data-thumb]").forEach(function (sp) {
       var path = sp.getAttribute("data-thumb"); if (!path) return;
       Cloud.signedUrl(path, "photos").then(function (url) { if (url) { sp.style.backgroundImage = "url(" + url + ")"; sp.classList.add("loaded"); } });
+    });
+  }
+  // Genera pósters que faltan para vídeos propios ya subidos (trucos creados
+  // antes de esta mejora, o vídeos añadidos sin miniatura). Se ejecuta en
+  // segundo plano, en serie, y actualiza cada tarjeta al terminar.
+  var posterTried = {}, backfilling = false;
+  function backfillPosters() {
+    if (backfilling || !cloudReady() || !logged() || !Cloud.signedUrl) return;
+    var queue = state.tricks.filter(function (t) {
+      if (posterTried[t.id]) return false;
+      var th = trickThumb(t); if (!th || th.kind !== "videoicon") return false; // solo si la tarjeta muestra el marcador
+      return (t.media || []).some(function (m) { return m.provider === "upload" && m.path && !m.poster; });
+    });
+    if (!queue.length) return;
+    backfilling = true;
+    var next = function () {
+      var t = queue.shift();
+      if (!t) { backfilling = false; return; }
+      posterTried[t.id] = true;
+      var item = (t.media || []).filter(function (m) { return m.provider === "upload" && m.path && !m.poster; })[0];
+      if (!item) { next(); return; }
+      Cloud.signedUrl(item.path, "videos").then(function (url) {
+        if (!url) { next(); return; }
+        return posterFromUrl(url).then(function (file) {
+          if (!file) { next(); return; }
+          return Cloud.uploadPhoto(file).then(function (res) {
+            item.poster = res.path; t.updatedAt = Date.now(); save(); syncTrick(t);
+            updateCardThumb(t); next();
+          });
+        });
+      }).catch(function () { next(); });
+    };
+    next();
+  }
+  function updateCardThumb(t) {
+    var thumb = view.querySelector('.card[data-id="' + t.id + '"] .thumb'); if (!thumb) return;
+    var item = (t.media || []).filter(function (m) { return m.poster; })[0]; if (!item) return;
+    Cloud.signedUrl(item.poster, "photos").then(function (url) {
+      if (!url) return;
+      var fav = t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "";
+      thumb.innerHTML = '<span class="cthumb loaded" style="background-image:url(' + url + ')"></span><span class="play">' + icon("play", "i-sm") + "</span>" + fav;
     });
   }
   // Decide la miniatura del truco: foto → póster de vídeo → carátula de embed →

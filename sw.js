@@ -1,7 +1,7 @@
 /* Service worker de The Magic App.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v21";
+var CACHE = "magic-v22";
 var ASSETS = [
   "./",
   "./index.html",

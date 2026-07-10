@@ -381,16 +381,18 @@
       upBtn.addEventListener("click", function () { fileInp.click(); });
       fileInp.addEventListener("change", function () {
         var file = fileInp.files[0]; if (!file) return;
-        if (file.size > 200 * 1024 * 1024) { toast("Vídeo demasiado grande (máx 200 MB)"); return; }
-        upBtn.disabled = true; upBtn.textContent = "Subiendo…";
+        if (file.size > 5 * 1024 * 1024 * 1024) { toast("Vídeo demasiado grande (máx 5 GB)"); return; }
+        upBtn.disabled = true; upBtn.textContent = "Subiendo… 0%";
         var item = { provider: "upload", path: null, title: file.name, thumb: null, uploading: true };
         draftMedia.push(item); paintDraftMedia();
-        Cloud.uploadVideo(file).then(function (res) {
-          item.path = res.path; item.uploading = false; upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio";
+        var resetBtn = function () { upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio"; };
+        Cloud.uploadVideo(file, function (pct) { upBtn.textContent = "Subiendo… " + pct + "%"; }).then(function (res) {
+          item.path = res.path; item.uploading = false; resetBtn();
           paintDraftMedia(); toast("Vídeo subido");
-        }).catch(function () {
+        }).catch(function (err) {
           draftMedia = draftMedia.filter(function (m) { return m !== item; });
-          upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio"; paintDraftMedia(); toast("No se pudo subir");
+          resetBtn(); paintDraftMedia();
+          toast((err && /413|exceed|size/i.test(err.message || "")) ? "Vídeo demasiado grande para el límite actual" : "No se pudo subir");
         });
       });
     }

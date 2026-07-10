@@ -50,13 +50,41 @@ window.Cloud = (function () {
   }
 
   /* ------------------------------ vídeos ---------------------------- */
-  function uploadVideo(file) {
-    return currentUser().then(function (u) {
-      if (!u) throw new Error("sin sesión");
-      var ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "");
-      var path = u.id + "/" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "" + Math.random()) + "." + ext;
-      return sb.storage.from("videos").upload(path, file, { contentType: file.type || undefined, upsert: false })
-        .then(function (r) { if (r.error) throw r.error; return { path: path }; });
+  function uid() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + "" + Math.floor(Math.random() * 1e9); }
+
+  // Subida reanudable (TUS) por trozos de 6 MB, con progreso. Aguanta vídeos
+  // largos y se reanuda si se corta la conexión.
+  function uploadVideo(file, onProgress) {
+    return Promise.all([currentUser(), sb.auth.getSession()]).then(function (res) {
+      var u = res[0], sess = res[1] && res[1].data && res[1].data.session;
+      if (!u || !sess) throw new Error("sin sesión");
+      var ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "mp4";
+      var objectName = u.id + "/" + uid() + "." + ext;
+
+      // Si no está la librería TUS o el archivo es pequeño, subida simple
+      if (!window.tus || file.size < 6 * 1024 * 1024) {
+        return sb.storage.from("videos").upload(objectName, file, { contentType: file.type || undefined, upsert: true })
+          .then(function (r) { if (r.error) throw r.error; if (onProgress) onProgress(100); return { path: objectName }; });
+      }
+
+      return new Promise(function (resolve, reject) {
+        var upload = new window.tus.Upload(file, {
+          endpoint: URL + "/storage/v1/upload/resumable",
+          retryDelays: [0, 3000, 5000, 10000, 20000, 30000],
+          headers: { authorization: "Bearer " + sess.access_token, apikey: KEY, "x-upsert": "true" },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          metadata: { bucketName: "videos", objectName: objectName, contentType: file.type || "video/mp4", cacheControl: "3600" },
+          chunkSize: 6 * 1024 * 1024,
+          onError: function (err) { reject(err); },
+          onProgress: function (sent, total) { if (onProgress && total) onProgress(Math.round((sent / total) * 100)); },
+          onSuccess: function () { resolve({ path: objectName }); }
+        });
+        upload.findPreviousUploads().then(function (prev) {
+          if (prev && prev.length) upload.resumeFromPreviousUpload(prev[0]);
+          upload.start();
+        }).catch(function () { upload.start(); });
+      });
     });
   }
   function signedUrl(path) {

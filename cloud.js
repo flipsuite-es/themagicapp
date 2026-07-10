@@ -125,6 +125,26 @@ window.Cloud = (function () {
     });
   }
   function removeVideo(path) { return sb.storage.from("videos").remove([path]).catch(function () {}); }
+
+  /* --------------------------- compartir ---------------------------- */
+  // Crea un enlace público de solo lectura. Devuelve el token (id).
+  function createShare(kind, title, payload) {
+    return currentUser().then(function (u) {
+      if (!u) throw new Error("sin sesión");
+      return sb.from("shares").insert({ owner: u.id, kind: kind, title: title, payload: payload }).select("id").single()
+        .then(function (r) { if (r.error) throw r.error; return r.data.id; });
+    });
+  }
+  // Lee un enlace por su token (accesible sin sesión gracias a la función RPC).
+  function getShare(id) {
+    return sb.rpc("get_share", { share_id: id })
+      .then(function (r) { if (r.error) throw r.error; return r.data || null; });
+  }
+  // Firma un vídeo propio con caducidad larga (para incrustarlo en un enlace).
+  function signedUrlLong(path, bucket, seconds) {
+    return sb.storage.from(bucket || "videos").createSignedUrl(path, seconds || 2592000)
+      .then(function (r) { return (r.data && r.data.signedUrl) || null; }).catch(function () { return null; });
+  }
   // Extracción de contenido didáctico desde una URL (Edge Function)
   function extract(url) {
     return sb.functions.invoke("extract", { body: { url: url } })
@@ -137,6 +157,7 @@ window.Cloud = (function () {
     listTricks: listTricks, upsertTrick: upsertTrick, deleteTrick: deleteTrick,
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
     listGigs: listGigs, upsertGig: upsertGig, deleteGig: deleteGig,
-    uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, removeVideo: removeVideo, extract: extract
+    uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
+    createShare: createShare, getShare: getShare
   };
 })();

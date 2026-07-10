@@ -55,7 +55,9 @@
     calendar: '<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/>',
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
-    chart: '<path d="M4 4v16h16"/><path d="M8 16v-4M13 16v-7M18 16v-3"/>'
+    chart: '<path d="M4 4v16h16"/><path d="M8 16v-4M13 16v-7M18 16v-3"/>',
+    share: '<circle cx="6.5" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.7 10.9l6.1-3.5M8.7 13.1l6.1 3.5"/>',
+    copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -394,6 +396,7 @@
       Object.keys(STATUS).map(function (k) { return '<button data-st="' + k + '" class="' + (t.status === k ? "on" : "") + '">' + STATUS[k] + "</button>"; }).join("") +
       "</div>" +
       '<button class="btn ghost" id="editBtn2">Editar truco</button>' +
+      (logged() ? '<button class="btn ghost" id="shareBtn">' + icon("share", "i-sm") + " Compartir por enlace</button>" : "") +
       '<button class="btn danger" id="delBtn">Eliminar</button>';
 
     view.innerHTML =
@@ -416,6 +419,7 @@
     document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); });
     document.getElementById("editBtn").addEventListener("click", function () { location.hash = "#/editar/" + id; });
     document.getElementById("editBtn2").addEventListener("click", function () { location.hash = "#/editar/" + id; });
+    var shBtn = document.getElementById("shareBtn"); if (shBtn) shBtn.addEventListener("click", function () { shareTrick(t, shBtn); });
     view.querySelectorAll("#statusSeg button").forEach(function (b) {
       b.addEventListener("click", function () { t.status = b.getAttribute("data-st"); t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); toast("Estado actualizado"); });
     });
@@ -714,11 +718,13 @@
         : '<div class="sec-label">Orden del set</div><div class="ritems">' + items + "</div>") +
       '<button class="btn ghost" id="rAdd">Añadir truco</button>' +
       (empty ? "" : '<button class="btn" id="rPerform">' + icon("play", "i-sm") + " Actuar</button>") +
+      (logged() && !empty ? '<button class="btn ghost" id="rShare">' + icon("share", "i-sm") + " Compartir por enlace</button>" : "") +
       '<button class="btn danger" id="rDel">Eliminar rutina</button></div>';
 
     document.getElementById("rEdit").addEventListener("click", function () { location.hash = "#/rutina-edit/" + id; });
     document.getElementById("rAdd").addEventListener("click", function () { location.hash = "#/rutina-add/" + id; });
     var perf = document.getElementById("rPerform"); if (perf) perf.addEventListener("click", function () { location.hash = "#/actuar/" + id; });
+    var rsh = document.getElementById("rShare"); if (rsh) rsh.addEventListener("click", function () { shareRoutine(r, rsh); });
     document.getElementById("rDel").addEventListener("click", function () {
       if (confirm("¿Eliminar la rutina “" + r.name + "”? (los trucos NO se borran)")) {
         var wr = r.remote; state.routines = state.routines.filter(function (x) { return x.id !== id; }); save(); syncDeleteRoutine(id, wr); toast("Rutina eliminada"); location.hash = "#/rutinas";
@@ -940,6 +946,135 @@
       tile(gigs.length, "bolos") + tile(gigsYear.length, "este año") +
       tile(Math.round(money(gigs)) + " €", "ingresos") + tile(Math.round(money(gigsYear)) + " €", "este año") +
       "</div></div>";
+  }
+
+  /* ============================ COMPARTIR ============================ */
+  // Construye una foto fija (snapshot) del truco lista para un enlace público.
+  function mediaForShare(m) {
+    var base = { title: m.title || "", provider: m.provider, chapters: m.chapters || [], transcript: m.transcript || "" };
+    if (m.embed) { base.embed = m.embed; if (m.url) base.url = m.url; return Promise.resolve(base); }
+    if (m.provider === "upload" && m.path && cloudReady()) {
+      return Cloud.signedUrlLong(m.path, "videos").then(function (u) { if (u) base.shareUrl = u; return base; });
+    }
+    if (m.url) base.url = m.url;
+    return Promise.resolve(base);
+  }
+  function photosForShare(photos) {
+    return Promise.all((photos || []).map(function (p) {
+      if (!p.path || !cloudReady()) return Promise.resolve(null);
+      return Cloud.signedUrlLong(p.path, "photos").then(function (u) { return u ? { shareUrl: u } : null; });
+    })).then(function (arr) { return arr.filter(Boolean); });
+  }
+  function buildTrickPayload(t) {
+    return Promise.all([Promise.all((t.media || []).map(mediaForShare)), photosForShare(t.photos)]).then(function (res) {
+      return { title: t.title, category: t.category || "", difficulty: t.difficulty || "", meta: t.meta || {}, notes: t.notes || "", tags: t.tags || [], media: res[0], photos: res[1] };
+    });
+  }
+  function shareTrick(t, btn) {
+    if (!cloudReady()) { toast("Inicia sesión para compartir"); return; }
+    if (!confirm("Se creará un enlace público. Cualquiera con el enlace podrá ver este truco (notas y vídeos incluidos), sin necesidad de cuenta. ¿Continuar?")) return;
+    btnBusy(btn, true);
+    buildTrickPayload(t).then(function (payload) { return Cloud.createShare("trick", t.title, payload); })
+      .then(function (token) { finishShare(token, btn); })
+      .catch(function () { btnBusy(btn, false); toast("No se pudo crear el enlace"); });
+  }
+  function shareRoutine(r, btn) {
+    if (!cloudReady()) { toast("Inicia sesión para compartir"); return; }
+    if (!confirm("Se creará un enlace público con el orden del set y sus trucos (notas y vídeos incluidos), sin necesidad de cuenta. ¿Continuar?")) return;
+    btnBusy(btn, true);
+    var tricks = (r.trickIds || []).map(getTrick).filter(Boolean);
+    Promise.all(tricks.map(buildTrickPayload))
+      .then(function (items) { return Cloud.createShare("routine", r.name, { name: r.name, notes: r.notes || "", tricks: items }); })
+      .then(function (token) { finishShare(token, btn); })
+      .catch(function () { btnBusy(btn, false); toast("No se pudo crear el enlace"); });
+  }
+  function btnBusy(btn, on) { if (!btn) return; if (on) { btn._t = btn.innerHTML; btn.disabled = true; btn.textContent = "Creando enlace…"; } else { btn.disabled = false; if (btn._t) btn.innerHTML = btn._t; } }
+  function shareUrlFor(token) { return location.origin + location.pathname + "#/s/" + token; }
+  function copyText(text) {
+    try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () { return false; }); } catch (e) {}
+    return Promise.resolve(false);
+  }
+  function finishShare(token, btn) {
+    btnBusy(btn, false);
+    var url = shareUrlFor(token);
+    copyText(url).then(function (ok) { if (ok) toast("Enlace copiado"); renderShareDialog(url); });
+  }
+  function renderShareDialog(url) {
+    var ov = el('<div class="modal-ov"><div class="modal">' +
+      '<h3>Enlace para compartir</h3>' +
+      '<p class="hint">Cualquiera con este enlace puede verlo, sin necesidad de cuenta. No lo compartas si contiene métodos que quieras mantener en secreto.</p>' +
+      '<div class="linkbox"><input readonly id="shLink" value="' + esc(url) + '"></div>' +
+      '<div class="modal-act"><button class="btn" id="shCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
+      (navigator.share ? '<button class="btn ghost" id="shNative">' + icon("share", "i-sm") + " Compartir…</button>" : "") +
+      '<button class="btn ghost" id="shClose">Cerrar</button></div>' +
+      "</div></div>");
+    document.body.appendChild(ov);
+    var close = function () { ov.remove(); };
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    document.getElementById("shClose").addEventListener("click", close);
+    var inp = document.getElementById("shLink");
+    document.getElementById("shCopy").addEventListener("click", function () { try { inp.select(); } catch (e) {} copyText(url).then(function (ok) { toast(ok ? "Copiado" : "Selecciónalo y copia"); }); });
+    var nat = document.getElementById("shNative"); if (nat) nat.addEventListener("click", function () { navigator.share({ title: "The Magic App", url: url }).catch(function () {}); });
+    setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 30);
+  }
+
+  /* ------------------- vista pública (solo lectura) ----------------- */
+  function sharedMedia(media) {
+    return (media || []).map(function (m) {
+      var player;
+      if (m.embed) player = '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+      else if (m.shareUrl) player = '<div class="player"><video controls playsinline preload="metadata" src="' + esc(m.shareUrl) + '" style="position:absolute;inset:0;width:100%;height:100%"></video></div>';
+      else if (m.url) player = '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">' + icon("link") + '</span><span class="n">' + esc(m.title || m.url) + "</span></a>";
+      else return "";
+      var extras = "";
+      if (m.chapters && m.chapters.length) extras += '<div class="chapters">' + m.chapters.map(function (c) { return '<div class="chap"><span class="tm">' + esc(c.time) + "</span><span>" + esc(c.title) + "</span></div>"; }).join("") + "</div>";
+      if (m.transcript) extras += '<details class="transcript"><summary>Transcripción</summary><div class="tr">' + esc(m.transcript) + "</div></details>";
+      return player + extras;
+    }).join("");
+  }
+  function sharedSpecs(meta) {
+    var rows = META_ORDER.filter(function (k) { return meta && meta[k]; }).map(function (k) { return '<div class="specrow"><span class="k">' + META_LABELS[k] + '</span><span class="v">' + esc(meta[k]) + "</span></div>"; }).join("");
+    return rows ? '<div class="sec-label">Ficha</div><div class="specs">' + rows + "</div>" : "";
+  }
+  function sharedPhotos(photos) {
+    var got = (photos || []).filter(function (p) { return p.shareUrl; });
+    return got.length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + got.map(function (p) { return '<div class="photocell view"><span class="ph-img" style="background-image:url(' + esc(p.shareUrl) + ')"></span></div>'; }).join("") + "</div>" : "";
+  }
+  function sharedNotesTags(p) {
+    return (p.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(p.notes) + "</div>" : "") +
+      ((p.tags && p.tags.length) ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + p.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "");
+  }
+  function sharedHeader(title) { return '<div class="shared-badge">' + icon("share", "i-sm") + " Compartido contigo</div><h1 class=\"title\">" + esc(title) + "</h1>"; }
+  function sharedFooter() { return '<div class="shared-cta"><p>Crea y organiza tu propia biblioteca con <b>The Magic App</b>.</p><button class="btn" onclick="location.hash=\'#/\';location.reload()">Abrir la app</button></div>'; }
+  function sharedError(msg) { return '<div class="screen shared"><div class="empty" style="padding:64px 14px"><div class="big">' + icon("share") + "</div><p>" + esc(msg) + '</p><button class="btn" style="margin-top:18px" onclick="location.hash=\'#/\';location.reload()">Abrir The Magic App</button></div></div>'; }
+  function renderSharedTrick(s) {
+    var p = s.payload || {}; var media = sharedMedia(p.media);
+    view.innerHTML = '<div class="screen detail shared">' + sharedHeader(p.title || s.title || "Truco") +
+      '<div class="detail-badges">' + (p.difficulty ? '<span class="pill df">' + (DIFF[p.difficulty] || "") + "</span>" : "") + (p.category ? '<span class="tagchip">' + esc(p.category) + "</span>" : "") + "</div>" +
+      '<div class="detail-grid"><div class="dcol">' + (media ? '<div class="sec-label">Vídeos</div>' + media : "") + sharedPhotos(p.photos) + "</div>" +
+      '<div class="dcol">' + sharedSpecs(p.meta) + sharedNotesTags(p) + "</div></div>" + sharedFooter() + "</div>";
+  }
+  function renderSharedRoutine(s) {
+    var p = s.payload || {};
+    var tricks = (p.tricks || []).map(function (tp, i) {
+      var media = sharedMedia(tp.media);
+      var body = '<div class="detail-badges">' + (tp.difficulty ? '<span class="pill df">' + (DIFF[tp.difficulty] || "") + "</span>" : "") + (tp.category ? '<span class="tagchip">' + esc(tp.category) + "</span>" : "") + "</div>" +
+        (media ? '<div class="sec-label">Vídeos</div>' + media : "") + sharedPhotos(tp.photos) + sharedSpecs(tp.meta) + sharedNotesTags(tp);
+      return '<div class="shared-trick"><div class="st-num">' + (i + 1) + '</div><div class="st-body"><h2 class="title" style="font-size:22px;margin:0 0 6px">' + esc(tp.title || "Truco") + "</h2>" + body + "</div></div>";
+    }).join("");
+    view.innerHTML = '<div class="screen shared">' + sharedHeader(p.name || s.title || "Rutina") +
+      (p.notes ? '<div class="notes" style="margin-bottom:12px">' + esc(p.notes) + "</div>" : "") +
+      '<div class="sec-label">Orden del set</div>' + (tricks || '<p class="hint">Sin trucos.</p>') + sharedFooter() + "</div>";
+  }
+  function renderShared(token) {
+    clearTabbar(); var f = document.getElementById("fabEl"); if (f) f.remove();
+    view.innerHTML = '<div class="screen shared"><div class="splash" style="padding:72px 0"><div class="spin"></div></div></div>';
+    if (!token) { view.innerHTML = sharedError("Enlace no válido."); return; }
+    if (!cloudReady()) { view.innerHTML = sharedError("Este enlace necesita conexión a internet."); return; }
+    Cloud.getShare(token).then(function (s) {
+      if (!s) { view.innerHTML = sharedError("Este enlace no existe o ha sido eliminado."); return; }
+      if (s.kind === "routine") renderSharedRoutine(s); else renderSharedTrick(s);
+    }).catch(function () { view.innerHTML = sharedError("No se pudo cargar el enlace."); });
   }
 
   /* ========================= TRUCOS INCLUIDOS ======================== */
@@ -1385,6 +1520,8 @@
     try {
       var qs = document.getElementById("qs");
       if (qs && location.hash !== "#/lector") qs.classList.remove("open");
+      // Enlace compartido: contenido público de solo lectura; salta candado y login
+      if ((location.hash || "").indexOf("#/s/") === 0) return renderShared((location.hash || "").slice(4));
       // Bloqueo con PIN: protege todo hasta desbloquear
       if (hasPin() && !unlocked) return renderLock();
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión

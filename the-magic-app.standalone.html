@@ -1154,6 +1154,89 @@ a { color: var(--brand); text-underline-offset: 3px; }
 .cam-dot { position: absolute; top: 50%; left: 50%; width: 62px; height: 62px; border-radius: 50%; background: #fff; transform: translate(-50%,-50%); transition: all .22s cubic-bezier(.2,.8,.3,1.2); }
 .cam-screen.recording .cam-dot { width: 30px; height: 30px; border-radius: 9px; background: var(--danger); }
 
+/* ==========================================================================
+   DIRECCIÓN DE ARTE v4 — reconstrucción estética definitiva. Materiales con
+   luz, tipografía editorial, oro como acento noble y motivos de la marca.
+   ========================================================================== */
+:root { --edge: rgba(255,255,255,.62); }
+:root[data-theme="dark"] { --edge: rgba(255,255,255,.05); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --edge: rgba(255,255,255,.05); } }
+
+/* Tipografía más rotunda y editorial */
+h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
+.appbar .wm, .pagetitle { letter-spacing: -0.035em; }
+.pagehead h1 { font-size: 23px; letter-spacing: -0.03em; }
+.empty h3 { font-size: 22px; letter-spacing: -0.02em; }
+.subtitle { font-size: 15px; }
+
+/* Numerales: serif donde lucen, tabulares donde cuentan */
+.price { font-family: var(--display); font-weight: 600; }
+.price, .price.big, .streak, .stat .num, .p-stats b, .count, .perform .ptop { font-variant-numeric: tabular-nums; }
+
+/* Bisel de luz superior en todas las superficies (materialidad) */
+.card, .postcard, .panel, .setrow, .rrow, .listcard, .stat, .toggle-row, .shareitem,
+.inv-row, .conv, .notif, .pracrow, .vidrow, .recap, .specs, .notes, .gate-card, .modal, .clc-opt, .hoursel {
+  box-shadow: inset 0 1px 0 var(--edge), var(--shadow);
+}
+
+/* Etiquetas de sección con rombo dorado (motivo de baraja) */
+.sec-label:not(.sec-row) { gap: 9px; }
+.sec-label:not(.sec-row)::before { content: "\25C6"; color: var(--brand); font-size: 7px; line-height: 1; letter-spacing: 0; }
+
+/* Tarjetas: radio noble y miniaturas con matiz cálido */
+.card, .listcard { border-radius: 20px; }
+.card .thumb, .listcard .lc-cover, .card .thumb .cthumb { background-image: linear-gradient(150deg, var(--surface-2), var(--surface-3) 68%, color-mix(in srgb, var(--brand) 9%, var(--surface-3))); }
+
+/* Botón de latón: luz interior + sombra cálida afinada */
+.btn { box-shadow: inset 0 1px 0 rgba(255,255,255,.30), var(--shadow-brand); }
+.btn:active { box-shadow: inset 0 1px 0 rgba(255,255,255,.18), var(--shadow); }
+
+/* Barra superior con filete inferior tenue (estructura) */
+@media (max-width: 999px) { .appbar { border-bottom: 1px solid var(--line-2); padding-bottom: 13px; } }
+
+/* Barra inferior: pestaña activa como cápsula dorada rellena */
+@media (max-width: 999px) {
+  .tabbar a { padding: 7px 2px; }
+  .tabbar a.on { color: var(--on-brand); }
+  .tabbar a.on::before { inset: 0; border-radius: 16px; background: var(--grad-brand); opacity: 1; box-shadow: var(--shadow-brand); }
+  .tabbar a.on .i { filter: none; }
+}
+
+/* Puerta: halo dorado tras el emblema y tipografía mayor */
+.gate-hero { position: relative; }
+.gate-hero > * { position: relative; z-index: 1; }
+.gate-hero::before { content: ""; position: absolute; left: 50%; top: 4px; width: 230px; height: 230px; transform: translateX(-50%); background: radial-gradient(circle, color-mix(in srgb, var(--brand) 18%, transparent), transparent 66%); pointer-events: none; z-index: 0; }
+.gate-hero h1 { font-size: 36px; }
+.gate-hero .tagline { font-size: 16px; }
+.gate-card { border-radius: 24px; }
+
+/* Onboarding: mismo halo cálido */
+.onb-hero { position: relative; }
+.onb-hero > * { position: relative; z-index: 1; }
+.onb-hero::before { content: ""; position: absolute; left: 50%; top: 10px; width: 210px; height: 210px; transform: translateX(-50%); background: radial-gradient(circle, color-mix(in srgb, var(--brand) 16%, transparent), transparent 66%); pointer-events: none; }
+.onb-hero .wm { font-size: 36px; }
+
+/* Perfil: portada con degradado de fundido y avatar con doble anillo */
+.p-cover { position: relative; }
+.p-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 42%, color-mix(in srgb, var(--bg) 82%, transparent)); }
+.profile-head { position: relative; margin-top: -40px; }
+.profile-head .avatar { box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px var(--hair), var(--shadow-lg); }
+
+/* Detalle: notas con más presencia editorial */
+.notes { font-size: 15.5px; line-height: 1.7; padding: 18px 18px 18px 20px; }
+.detail-badges { margin-bottom: 20px; }
+
+/* Feed: aire y jerarquía */
+.postcard { padding: 16px 16px 14px; }
+.pc-body { font-size: 15.5px; line-height: 1.55; }
+.comments .cmt { padding: 2px 0; }
+
+/* Chips de estado y etiquetas: latón sutil al activarse */
+.chip.active { background: var(--ink); color: var(--bg); box-shadow: var(--shadow); }
+
+/* Modales/hojas: cristal más profundo */
+.modal-ov { background: color-mix(in srgb, #000 56%, transparent); backdrop-filter: blur(6px); }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>

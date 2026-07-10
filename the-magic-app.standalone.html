@@ -456,6 +456,13 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 /* Indicador de sincronización */
 .iconbtn.spinning .i { animation: spin .9s linear infinite; }
 
+/* Fotos paso a paso */
+.photogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 8px; }
+.photocell { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.photocell .ph-img { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.photocell .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.mini-spin { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--brand); animation: spin .8s linear infinite; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -552,7 +559,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   function searchText(t) {
     var parts = [t.title, t.notes || "", t.category || "", (t.tags || []).join(" ")];
     var m = t.meta || {};
-    for (var k in m) { if (m[k]) parts.push(m[k]); }
+    for (var k in m) { if (m[k] && typeof m[k] === "string") parts.push(m[k]); }
     (t.media || []).forEach(function (md) {
       if (md.title) parts.push(md.title);
       if (md.description) parts.push(md.description);
@@ -568,10 +575,10 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   function cloudReady() { return window.Cloud && Cloud.available(); }
 
   function toRow(t) {
-    return { id: t.id, title: t.title, category: t.category, difficulty: t.difficulty, status: t.status, notes: t.notes || "", tags: t.tags || [], media: t.media || [], favorite: !!t.favorite, meta: t.meta || {} };
+    return { id: t.id, title: t.title, category: t.category, difficulty: t.difficulty, status: t.status, notes: t.notes || "", tags: t.tags || [], media: t.media || [], photos: t.photos || [], favorite: !!t.favorite, meta: t.meta || {} };
   }
   function rowToLocal(r) {
-    return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], favorite: !!r.favorite, meta: r.meta || {}, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
+    return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], photos: r.photos || [], favorite: !!r.favorite, meta: r.meta || {}, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
   }
   function toRoutineRow(r) { return { id: r.id, name: r.name, notes: r.notes || "", trick_ids: r.trickIds || [] }; }
   function routineRowToLocal(r) { return { id: r.id, name: r.name, notes: r.notes || "", trickIds: r.trick_ids || [], createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true }; }
@@ -800,6 +807,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       return '<div class="specrow"><span class="k">' + META_LABELS[k] + '</span><span class="v">' + esc(meta[k]) + "</span></div>";
     }).join("");
     var specs = specRows ? '<div class="sec-label">Ficha</div><div class="specs">' + specRows + "</div>" : "";
+    var photosHtml = (t.photos || []).length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + t.photos.map(function (p) { return '<div class="photocell view"><span class="ph-img" data-load="' + esc(p.path) + '"></span></div>'; }).join("") + "</div>" : "";
 
     view.innerHTML =
       '<div class="screen">' +
@@ -813,6 +821,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span>" +
       '<span class="tagchip">' + esc(t.category || "Sin categoría") + "</span></div>" +
       (media ? '<div class="sec-label">Vídeos</div>' + media : "") +
+      photosHtml +
       specs +
       (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
       tags +
@@ -851,16 +860,22 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
         box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff">Inicia sesión para ver este vídeo</div>';
       }
     });
+    // Cargar fotos con URL firmada (bucket photos)
+    view.querySelectorAll(".ph-img[data-load]").forEach(function (sp) {
+      var path = sp.getAttribute("data-load"); if (!path || !cloudReady()) return;
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + url + ")"; });
+    });
   }
 
   /* ========================= CREAR / EDITAR ========================== */
-  var draftMedia = [];
+  var draftMedia = [], draftPhotos = [];
   function renderForm(id) {
     clearTabbar();
     var editing = !!id;
     var t = editing ? getTrick(id) : null;
     if (editing && !t) { location.hash = "#/"; return; }
     draftMedia = t ? (t.media || []).slice() : [];
+    draftPhotos = t ? (t.photos || []).slice() : [];
     var m = (t && t.meta) ? t.meta : {};
     var mv = function (k) { return esc(m[k] || ""); };
 
@@ -885,6 +900,10 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
         '<div class="hint" style="margin-top:8px">Inicia sesión (Ajustes → Cuenta) para <b>subir tus propios vídeos</b>.</div>') +
       '<div class="vidlist" id="vidList"></div>' +
       '<div class="hint">Se incrusta el reproductor y se intenta sacar la miniatura y el título automáticamente.</div></div>' +
+      '<div class="field"><label>Fotos paso a paso</label>' +
+      (logged() ? '<button class="btn ghost" id="addPhoto" type="button">' + icon("plus", "i-sm") + ' Añadir fotos</button><input type="file" id="fPhoto" accept="image/*" multiple style="display:none">' :
+        '<div class="hint">Inicia sesión para añadir fotos a tus trucos.</div>') +
+      '<div class="photogrid" id="photoList"></div></div>' +
       '<div class="field"><label>Notas / explicación</label><textarea id="fNotes" placeholder="El secreto, el manejo, la charla, tus recordatorios…">' + esc(t ? t.notes : "") + "</textarea></div>" +
       '<div class="field"><label>Etiquetas (separadas por comas)</label><input id="fTags" placeholder="control, empalme, doble volteo" value="' + esc(t && t.tags ? t.tags.join(", ") : "") + '"></div>' +
       '<div class="sec-label">Detalles profesionales</div>' +
@@ -902,6 +921,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       "</div>";
 
     paintDraftMedia();
+    paintDraftPhotos();
 
     view.querySelectorAll("#fDiff button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fDiff", b); }); });
     view.querySelectorAll("#fStatus button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fStatus", b); }); });
@@ -934,6 +954,23 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
           draftMedia = draftMedia.filter(function (m) { return m !== item; });
           resetBtn(); paintDraftMedia();
           toast((err && /413|exceed|size/i.test(err.message || "")) ? "Vídeo demasiado grande para el límite actual" : "No se pudo subir");
+        });
+      });
+    }
+
+    var addPhoto = document.getElementById("addPhoto");
+    if (addPhoto) {
+      var photoInp = document.getElementById("fPhoto");
+      addPhoto.addEventListener("click", function () { photoInp.click(); });
+      photoInp.addEventListener("change", function () {
+        var files = Array.prototype.slice.call(photoInp.files || []);
+        photoInp.value = "";
+        files.forEach(function (file) {
+          if (file.size > 25 * 1024 * 1024) { toast("Imagen muy grande (máx 25 MB)"); return; }
+          var ph = { path: null, uploading: true };
+          draftPhotos.push(ph); paintDraftPhotos();
+          Cloud.uploadPhoto(file).then(function (res) { ph.path = res.path; ph.uploading = false; paintDraftPhotos(); })
+            .catch(function () { draftPhotos = draftPhotos.filter(function (x) { return x !== ph; }); paintDraftPhotos(); toast("No se pudo subir la foto"); });
         });
       });
     }
@@ -990,6 +1027,21 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       b.addEventListener("click", function () { draftMedia.splice(parseInt(b.getAttribute("data-i"), 10), 1); paintDraftMedia(); });
     });
   }
+  function paintDraftPhotos() {
+    var list = document.getElementById("photoList");
+    if (!list) return;
+    list.innerHTML = draftPhotos.map(function (ph, i) {
+      var inner = ph.uploading ? '<span class="mini-spin"></span>' : '<span class="ph-img" data-load="' + esc(ph.path || "") + '"></span>';
+      return '<div class="photocell">' + inner + '<button class="x" data-i="' + i + '" type="button">×</button></div>';
+    }).join("");
+    list.querySelectorAll(".x").forEach(function (b) {
+      b.addEventListener("click", function () { draftPhotos.splice(parseInt(b.getAttribute("data-i"), 10), 1); paintDraftPhotos(); });
+    });
+    list.querySelectorAll(".ph-img[data-load]").forEach(function (sp) {
+      var path = sp.getAttribute("data-load"); if (!path || !cloudReady()) return;
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + url + ")"; });
+    });
+  }
   function saveForm(id) {
     var title = document.getElementById("fTitle").value.trim();
     if (!title) { toast("Ponle un título"); return; }
@@ -1005,7 +1057,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       difficulty: segValue("#fDiff") || "medio",
       status: segValue("#fStatus") || "poraprender",
       notes: document.getElementById("fNotes").value.trim(),
-      tags: tags, media: draftMedia.slice(), meta: meta, updatedAt: Date.now()
+      tags: tags, media: draftMedia.slice(), photos: draftPhotos.filter(function (p) { return p.path; }).map(function (p) { return { path: p.path }; }), meta: meta, updatedAt: Date.now()
     };
     if (id) {
       var t = getTrick(id); if (!t) { location.hash = "#/"; return; }

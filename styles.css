@@ -450,3 +450,10 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 
 /* Indicador de sincronización */
 .iconbtn.spinning .i { animation: spin .9s linear infinite; }
+
+/* Fotos paso a paso */
+.photogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 8px; }
+.photocell { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.photocell .ph-img { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.photocell .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.mini-spin { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--brand); animation: spin .8s linear infinite; }

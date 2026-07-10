@@ -99,9 +99,18 @@ window.Cloud = (function () {
       });
     });
   }
-  function signedUrl(path) {
-    return sb.storage.from("videos").createSignedUrl(path, 3600)
+  function signedUrl(path, bucket) {
+    return sb.storage.from(bucket || "videos").createSignedUrl(path, 3600)
       .then(function (r) { return (r.data && r.data.signedUrl) || null; }).catch(function () { return null; });
+  }
+  function uploadPhoto(file) {
+    return currentUser().then(function (u) {
+      if (!u) throw new Error("sin sesión");
+      var ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+      var path = u.id + "/" + uid() + "." + ext;
+      return sb.storage.from("photos").upload(path, file, { contentType: file.type || undefined, upsert: true })
+        .then(function (r) { if (r.error) throw r.error; return { path: path }; });
+    });
   }
   function removeVideo(path) { return sb.storage.from("videos").remove([path]).catch(function () {}); }
   // Extracción de contenido didáctico desde una URL (Edge Function)
@@ -115,6 +124,6 @@ window.Cloud = (function () {
     signUp: signUp, verifySignup: verifySignup, resend: resend, signIn: signIn, signOut: signOut,
     listTricks: listTricks, upsertTrick: upsertTrick, deleteTrick: deleteTrick,
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
-    uploadVideo: uploadVideo, signedUrl: signedUrl, removeVideo: removeVideo, extract: extract
+    uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, removeVideo: removeVideo, extract: extract
   };
 })();

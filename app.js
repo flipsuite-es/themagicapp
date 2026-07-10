@@ -54,7 +54,8 @@
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/>',
     calendar: '<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/>',
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/>',
-    check: '<path d="M5 12.5l4.5 4.5L19 7"/>'
+    check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    chart: '<path d="M4 4v16h16"/><path d="M8 16v-4M13 16v-7M18 16v-3"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -383,8 +384,20 @@
     var specs = specRows ? '<div class="sec-label">Ficha</div><div class="specs">' + specRows + "</div>" : "";
     var photosHtml = (t.photos || []).length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + t.photos.map(function (p) { return '<div class="photocell view"><span class="ph-img" data-load="' + esc(p.path) + '"></span></div>'; }).join("") + "</div>" : "";
 
+    var colMedia = (media ? '<div class="sec-label">Vídeos</div>' + media : "") + photosHtml;
+    var colInfo =
+      specs +
+      (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
+      tags +
+      '<div class="sec-label">Estado de aprendizaje</div>' +
+      '<div class="seg" id="statusSeg">' +
+      Object.keys(STATUS).map(function (k) { return '<button data-st="' + k + '" class="' + (t.status === k ? "on" : "") + '">' + STATUS[k] + "</button>"; }).join("") +
+      "</div>" +
+      '<button class="btn ghost" id="editBtn2">Editar truco</button>' +
+      '<button class="btn danger" id="delBtn">Eliminar</button>';
+
     view.innerHTML =
-      '<div class="screen">' +
+      '<div class="screen detail">' +
       '<div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
       '<span style="flex:1"></span>' +
       '<button class="iconbtn ' + (t.favorite ? "on" : "") + '" id="favBtn">' + icon(t.favorite ? "starfill" : "star") + "</button>" +
@@ -394,17 +407,10 @@
       '<span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
       '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span>" +
       '<span class="tagchip">' + esc(t.category || "Sin categoría") + "</span></div>" +
-      (media ? '<div class="sec-label">Vídeos</div>' + media : "") +
-      photosHtml +
-      specs +
-      (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
-      tags +
-      '<div class="sec-label">Estado de aprendizaje</div>' +
-      '<div class="seg" id="statusSeg">' +
-      Object.keys(STATUS).map(function (k) { return '<button data-st="' + k + '" class="' + (t.status === k ? "on" : "") + '">' + STATUS[k] + "</button>"; }).join("") +
+      '<div class="detail-grid">' +
+      '<div class="dcol">' + colMedia + "</div>" +
+      '<div class="dcol">' + colInfo + "</div>" +
       "</div>" +
-      '<button class="btn ghost" id="editBtn2">Editar truco</button>' +
-      '<button class="btn danger" id="delBtn">Eliminar</button>' +
       "</div>";
 
     document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); });
@@ -900,6 +906,42 @@
     view.querySelectorAll("[data-snooze]").forEach(function (b) { b.addEventListener("click", function () { var t = getTrick(b.getAttribute("data-snooze")); if (t) { postponePractice(t); renderPractice(); } }); });
   }
 
+  /* =========================== ESTADÍSTICAS ========================== */
+  function renderStats() {
+    clearTabbar();
+    var T = state.tricks, year = String(new Date().getFullYear());
+    var st = { poraprender: 0, aprendiendo: 0, dominado: 0 };
+    T.forEach(function (t) { if (st[t.status] != null) st[t.status]++; });
+    var tot = T.length || 1;
+    var cats = {};
+    T.forEach(function (t) { var c = t.category || "Otros"; cats[c] = (cats[c] || 0) + 1; });
+    var topCats = Object.keys(cats).map(function (k) { return { k: k, n: cats[k] }; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 6);
+    var gigs = state.gigs;
+    var gigsYear = gigs.filter(function (g) { return (g.date || "").indexOf(year) === 0; });
+    var money = function (arr) { return arr.reduce(function (s, g) { return s + (parseFloat(g.fee) || 0); }, 0); };
+    var vids = T.reduce(function (s, t) { return s + (t.media || []).length; }, 0);
+
+    function tile(n, l) { return '<div class="stat"><div class="num">' + n + '</div><div class="lbl">' + l + "</div></div>"; }
+    function bar(label, val, max, cls) { var pct = max ? Math.round(val / max * 100) : 0; return '<div class="statbar"><div class="bl"><span>' + label + "</span><span>" + val + '</span></div><div class="track"><i class="' + (cls || "") + '" style="width:' + pct + '%"></i></div></div>'; }
+
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Estadísticas</h1></div>' +
+      '<div class="sec-label">Repertorio</div>' +
+      '<div class="stats-grid">' +
+      tile(T.length, "trucos") + tile(st.dominado, "dominados") + tile(Math.round(st.dominado / tot * 100) + "%", "de dominio") +
+      tile(state.routines.length, state.routines.length === 1 ? "rutina" : "rutinas") + tile(vids, "vídeos") + tile(dueTricks().length, "a practicar hoy") +
+      "</div>" +
+      '<div class="sec-label">Aprendizaje</div><div class="panel">' +
+      bar("Por aprender", st.poraprender, T.length, "b-slate") +
+      bar("Aprendiendo", st.aprendiendo, T.length, "b-warn") +
+      bar("Dominado", st.dominado, T.length, "b-ok") + "</div>" +
+      (topCats.length ? '<div class="sec-label">Por categoría</div><div class="panel">' + topCats.map(function (c) { return bar(c.k, c.n, T.length); }).join("") + "</div>" : "") +
+      '<div class="sec-label">Bolos</div><div class="stats-grid">' +
+      tile(gigs.length, "bolos") + tile(gigsYear.length, "este año") +
+      tile(Math.round(money(gigs)) + " €", "ingresos") + tile(Math.round(money(gigsYear)) + " €", "este año") +
+      "</div></div>";
+  }
+
   /* ========================= TRUCOS INCLUIDOS ======================== */
   function renderIncluded() {
     mountTabbar("inc"); var f = document.getElementById("fabEl"); if (f) f.remove();
@@ -1033,6 +1075,8 @@
       '<div class="setrow" id="acctRow"><span class="si">' + icon(logged() ? "user" : "cloud") + '</span><div class="st"><div class="t">' +
       (logged() ? esc(session.email) : "Iniciar sesión / crear cuenta") + '</div><div class="d">' +
       (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go">' + icon("chev") + "</span></div>" +
+      '<div class="sec-label">Progreso</div>' +
+      '<div class="setrow" id="statsRow"><span class="si">' + icon("chart") + '</span><div class="st"><div class="t">Estadísticas</div><div class="d">Tu repertorio, aprendizaje y bolos en números</div></div><span class="go">' + icon("chev") + "</span></div>" +
       '<div class="sec-label">Apariencia</div>' +
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
@@ -1055,6 +1099,7 @@
 
     var acct = document.getElementById("acctRow");
     if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
+    var sr = document.getElementById("statsRow"); if (sr) sr.addEventListener("click", function () { location.hash = "#/stats"; });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
     });
@@ -1362,6 +1407,7 @@
       if (h.indexOf("#/editar/") === 0) return renderForm(h.slice(9));
       if (h.indexOf("#/truco/") === 0) return renderDetail(h.slice(8));
       if (h === "#/practica") return renderPractice();
+      if (h === "#/stats") return renderStats();
       if (h === "#/incluidos") return renderIncluded();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();

@@ -60,8 +60,9 @@
   function syncTrick(t) { if (logged() && cloudReady()) Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {}); }
   function syncDelete(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteTrick(id).catch(function () {}); }
 
-  function syncOnLogin() {
+  function syncOnLogin(silent) {
     if (!logged() || !cloudReady()) return Promise.resolve();
+    if (navigator.onLine === false) return Promise.resolve(); // offline: usa caché local
     // 1) subir los locales que aún no están en la nube
     var locals = state.tricks.filter(function (t) { return !t.remote; });
     var chain = Promise.resolve();
@@ -79,8 +80,8 @@
       state.tricks = Object.keys(byId).map(function (k) { return byId[k]; });
       save();
       if (isMain()) route();
-      toast("Biblioteca sincronizada");
-    }).catch(function () { toast("No se pudo sincronizar"); });
+      if (!silent) toast("Biblioteca sincronizada");
+    }).catch(function () { if (!silent) toast("No se pudo sincronizar"); });
   }
   function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/ajustes" || h === "#/cuenta"; }
 
@@ -173,7 +174,8 @@
       '<div class="screen">' +
       '<div class="appbar"><span class="logo">🎩</span><span class="wm">The Magic <span>App</span></span>' +
       '<span class="spacer"></span>' +
-      '<button class="iconbtn" id="favToggle" title="Favoritos">' + (filter.fav ? "★" : "☆") + "</button></div>" +
+      '<button class="iconbtn" id="favToggle" title="Favoritos">' + (filter.fav ? "★" : "☆") + "</button>" +
+      '<button class="iconbtn" id="acctBtn" title="Cuenta">👤</button></div>' +
       '<div class="search"><span class="mag">🔍</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
       '<div class="chips">' + catChips + "</div>" +
       '<div class="chips">' + statusChips + "</div>" +
@@ -183,6 +185,7 @@
     var q = document.getElementById("q");
     q.addEventListener("input", function () { filter.q = q.value; refreshCards(); });
     document.getElementById("favToggle").addEventListener("click", function () { filter.fav = !filter.fav; renderLibrary(); });
+    document.getElementById("acctBtn").addEventListener("click", function () { location.hash = "#/cuenta"; });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
     bindCards();
@@ -688,6 +691,75 @@
     return "No se pudo completar";
   }
 
+  /* ===================== PUERTA DE ENTRADA (login) =================== */
+  function renderGate() {
+    clearTabbar();
+    if (pendingEmail) return gateConfirm();
+    var isSignup = authMode === "signup";
+    view.innerHTML =
+      '<div class="screen gate">' +
+      '<div class="gate-hero"><div class="logo">🎩</div>' +
+      '<h1 class="wm">The Magic <span>App</span></h1>' +
+      '<p>Tu biblioteca de magia, siempre contigo.</p></div>' +
+      '<div class="gate-card">' +
+      '<div class="gate-tabs"><button class="' + (!isSignup ? "on" : "") + '" id="tabLogin">Entrar</button>' +
+      '<button class="' + (isSignup ? "on" : "") + '" id="tabSignup">Crear cuenta</button></div>' +
+      '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
+      '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
+      '<button class="btn" id="aGo">' + (isSignup ? "Crear cuenta" : "Entrar") + "</button>" +
+      "</div>" +
+      '<p class="gate-foot">Necesitas una cuenta para guardar y sincronizar tus trucos.</p>' +
+      "</div>";
+    document.getElementById("tabLogin").addEventListener("click", function () { if (authMode !== "login") { authMode = "login"; renderGate(); } });
+    document.getElementById("tabSignup").addEventListener("click", function () { if (authMode !== "signup") { authMode = "signup"; renderGate(); } });
+    document.getElementById("aPass").addEventListener("keydown", function (e) { if (e.key === "Enter") gateSubmit(isSignup); });
+    document.getElementById("aGo").addEventListener("click", function () { gateSubmit(isSignup); });
+  }
+
+  function gateSubmit(isSignup) {
+    var email = document.getElementById("aEmail").value.trim();
+    var pass = document.getElementById("aPass").value;
+    if (!email || pass.length < 6) { toast("Email y contraseña (mín. 6)"); return; }
+    var btn = document.getElementById("aGo"); btn.disabled = true; btn.textContent = "Un momento…";
+    var done = function (label) { if (btn) { btn.disabled = false; btn.textContent = label; } };
+    if (isSignup) {
+      Cloud.signUp(email, pass).then(function (r) {
+        if (r.error) { toast(traduce(r.error.message)); return done("Crear cuenta"); }
+        if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); return syncOnLogin(true).then(function () { location.hash = "#/"; route(); }); }
+        pendingEmail = email; renderGate();
+      }).catch(function () { toast("Error de conexión"); done("Crear cuenta"); });
+    } else {
+      Cloud.signIn(email, pass).then(function (r) {
+        if (r.error) { toast(traduce(r.error.message)); return done("Entrar"); }
+        session = r.data.user; toast("¡Hola de nuevo!"); syncOnLogin(true).then(function () { location.hash = "#/"; route(); });
+      }).catch(function () { toast("Error de conexión"); done("Entrar"); });
+    }
+  }
+
+  function gateConfirm() {
+    view.innerHTML =
+      '<div class="screen gate">' +
+      '<div class="gate-hero"><div class="logo">✉️</div><h1 class="wm">Confirma tu email</h1>' +
+      '<p>Código enviado a <b>' + esc(pendingEmail) + "</b></p></div>" +
+      '<div class="gate-card">' +
+      '<div class="field"><label>Código de confirmación</label><input id="cCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos"></div>' +
+      '<button class="btn" id="cGo">Confirmar</button>' +
+      '<button class="btn ghost" id="cResend">Reenviar código</button>' +
+      '<button class="btn ghost" id="cCancel">Volver</button></div></div>';
+    document.getElementById("cGo").addEventListener("click", function () {
+      var code = document.getElementById("cCode").value.trim();
+      if (!code) { toast("Escribe el código"); return; }
+      var btn = document.getElementById("cGo"); btn.disabled = true; btn.textContent = "Comprobando…";
+      Cloud.verifySignup(pendingEmail, code).then(function (r) {
+        if (r.error) { toast(traduce(r.error.message)); btn.disabled = false; btn.textContent = "Confirmar"; return; }
+        session = (r.data && r.data.user) || null; pendingEmail = null;
+        toast("¡Cuenta activada!"); syncOnLogin(true).then(function () { location.hash = "#/"; route(); });
+      }).catch(function () { toast("Error de conexión"); btn.disabled = false; btn.textContent = "Confirmar"; });
+    });
+    document.getElementById("cResend").addEventListener("click", function () { Cloud.resend(pendingEmail).then(function () { toast("Código reenviado"); }).catch(function () { toast("No se pudo reenviar"); }); });
+    document.getElementById("cCancel").addEventListener("click", function () { pendingEmail = null; renderGate(); });
+  }
+
   /* ------------------------------ tema -------------------------------- */
   function setTheme(mode) {
     localStorage.setItem("magic_theme", mode);
@@ -705,6 +777,8 @@
     try {
       var qs = document.getElementById("qs");
       if (qs && location.hash !== "#/lector") qs.classList.remove("open");
+      // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
+      if (cloudReady() && !logged()) return renderGate();
       var h = location.hash || "#/";
       if (h === "#/" || h === "") return renderLibrary();
       if (h === "#/nuevo") return renderForm(null);
@@ -721,16 +795,22 @@
     }
   }
 
-  // Arranque: tema + primera pantalla (local, instantáneo) y luego sesión/sync
+  // Arranque
   applyTheme();
   window.addEventListener("hashchange", route);
-  route();
   if (cloudReady()) {
+    // Splash breve mientras resolvemos la sesión (evita parpadeo de la puerta)
+    view.innerHTML = '<div class="screen splash"><div class="logo">🎩</div><div class="wm">The Magic <span>App</span></div><div class="spin"></div></div>';
     Cloud.currentUser().then(function (u) {
       session = u || null;
-      if (session) syncOnLogin();
-      else if (isMain()) route();
-    });
-    Cloud.onChange(function (u) { session = u || null; if (isMain()) route(); });
+      route();
+      if (session) syncOnLogin(true);
+      Cloud.onChange(function (u2) {
+        var was = logged(); session = u2 || null;
+        if (was !== logged()) route(); // solo re-renderiza al entrar/salir de sesión
+      });
+    }).catch(function () { session = null; route(); });
+  } else {
+    route(); // sin nube (modo local/preview)
   }
 })();

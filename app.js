@@ -43,6 +43,7 @@
     pause: '<path d="M9 5v14M15 5v14"/>',
     sound: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 010 7M18.5 6a7 7 0 010 12"/>',
     mute: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    share: '<path d="M18 8a3 3 0 10-2.8-4M18 8a3 3 0 01-2.8-2M6 15a3 3 0 100-6 3 3 0 000 6zM18 22a3 3 0 100-6 3 3 0 000 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
     cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
     theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
     disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
@@ -1486,10 +1487,8 @@
   }
   function postInnerHtml(p) {
     var media = mediaHtml(p.media);
-    var hasVideo = ((p.media || []).filter(function (m) { return m.kind === "video" && m.embed; }).length > 0);
-    var clipChip = hasVideo ? '<button class="clip-open" data-clip="' + esc(p.id) + '">' + icon("play", "i-sm") + " Ver en Clips</button>" : "";
     var card = (p.listing_id && p.listing) ? listingInlineHtml(p.listing) : (p.trick_card ? trickCardHtml(p.trick_card) : "");
-    return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + clipChip + card;
+    return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + card;
   }
   function postCardHtml(p) {
     var isRepost = !!p.repost_of && p.orig;
@@ -1542,9 +1541,6 @@
     });
     s.querySelectorAll("[data-more]").forEach(function (b) {
       b.addEventListener("click", function (e) { e.stopPropagation(); postMenu(b.getAttribute("data-more"), b.getAttribute("data-author"), b.getAttribute("data-handle"), b.closest(".postcard")); });
-    });
-    s.querySelectorAll("[data-clip]").forEach(function (b) {
-      b.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/clips/" + b.getAttribute("data-clip"); });
     });
   }
   function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
@@ -1763,60 +1759,55 @@
   }
 
   /* ---------------------------- Clips ------------------------------- */
-  // Feed vertical a pantalla completa (estilo TikTok) de vídeos de la comunidad.
-  var clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
-  function clipVideoOf(p) { return ((p && p.media) || []).filter(function (m) { return m.kind === "video" && m.embed; })[0]; }
-  function clipEmbedSrc(m, muted) {
-    var e = m.embed || "", mu = muted ? 1 : 0;
-    var yt = e.match(/embed\/([\w-]{11})/);
-    if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1] + "?autoplay=1&loop=1&playlist=" + yt[1] + "&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1&mute=" + mu;
-    var vm = e.match(/video\/(\d+)/);
-    if (vm) return "https://player.vimeo.com/video/" + vm[1] + "?autoplay=1&loop=1&controls=0&title=0&byline=0&portrait=0&muted=" + mu;
-    return e + (e.indexOf("?") >= 0 ? "&" : "?") + "autoplay=1&mute=" + mu;
-  }
+  // Feed vertical a pantalla completa (estilo TikTok/Reels) de vídeos PROPIOS
+  // de los magos: grabados en el momento o subidos. Contenido independiente
+  // de las publicaciones, con su propia tabla en la nube.
+  var clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false, viewed: {} };
   function clipHtml(p, i) {
-    var m = clipVideoOf(p);
-    return '<section class="clip" data-post="' + esc(p.id) + '" data-idx="' + i + '">' +
-      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(m.thumb || "") + ')"></div></div>' +
+    var effect = p.effect ? '<span class="cm-effect">' + icon("wand", "i-sm") + esc(p.effect) + "</span>" : "";
+    return '<section class="clip" data-clip="' + esc(p.id) + '" data-idx="' + i + '">' +
+      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p.poster) || "") + ')"></div></div>' +
+      '<div class="clip-prog"><i></i></div>' +
       '<div class="clip-tap" data-tap></div>' +
       '<div class="clip-rail">' +
         '<div class="clip-avw"><button class="clip-av" data-mago="' + esc(p.author) + '" aria-label="Ver perfil">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "") + "</button>" +
         (!p.is_me && !p.following ? '<button class="clip-follow" data-cfollow="' + esc(p.author) + '" aria-label="Seguir">+</button>' : "") + "</div>" +
         '<button class="clip-act clip-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '" aria-label="Me gusta">' + icon(p.liked ? "heartfill" : "heart") + "<span>" + (p.likes || 0) + "</span></button>" +
-        '<button class="clip-act" data-cmt="' + esc(p.id) + '" aria-label="Comentarios">' + icon("chat") + "<span>" + (p.comments || 0) + "</span></button>" +
-        '<button class="clip-act" data-rep="' + esc(p.id) + '" aria-label="Repostear">' + icon("repost") + "</button>" +
-        '<button class="clip-act clip-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '" aria-label="Guardar">' + icon(p.saved ? "bookmarkfill" : "bookmark") + "</button>" +
+        '<button class="clip-act" data-cmt="' + esc(p.id) + '" aria-label="Comentarios">' + icon("chat") + '<span class="cc-count">' + (p.comments || 0) + "</span></button>" +
+        '<button class="clip-act" data-share="' + esc(p.id) + '" aria-label="Compartir">' + icon("share") + "</button>" +
+        (p.is_me ? '<button class="clip-act" data-cmore="' + esc(p.id) + '" aria-label="Más">' + icon("dots") + "</button>" : "") +
         '<button class="clip-act clip-mute" data-mute aria-label="Sonido">' + icon("mute") + "</button></div>" +
       '<div class="clip-meta"><div class="cm-user" data-mago="' + esc(p.author) + '"><b>' + esc(p.name || p.handle || "Mago") + "</b>" + (p.handle ? ' <span>@' + esc(p.handle) + "</span>" : "") + "</div>" +
-        (p.body ? '<div class="cm-body">' + linkify(p.body) + "</div>" : "") + "</div></section>";
+        (p.caption ? '<div class="cm-body">' + linkify(p.caption) + "</div>" : "") + effect + "</div></section>";
   }
   function clipDeactivate(list, idx) {
     var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
-    var m = clipVideoOf(clipsState.rows[idx]);
-    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>';
+    var p = clipsState.rows[idx];
+    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p && p.poster) || "") + ')"></div>';
+    var pr = node.querySelector(".clip-prog i"); if (pr) pr.style.width = "0%";
   }
   function clipActivate(list, idx) {
     if (clipsState.active === idx) return;
     if (clipsState.active >= 0) clipDeactivate(list, clipsState.active);
     clipsState.active = idx;
     var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
-    var m = clipVideoOf(clipsState.rows[idx]);
+    var p = clipsState.rows[idx]; if (!p) return;
     var vd = node.querySelector(".clip-video");
-    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + esc((m && m.thumb) || "") + ')"></div>' +
-      '<iframe src="' + esc(clipEmbedSrc(m, clipsState.muted)) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p.poster) || "") + ')"></div>';
+    var v = document.createElement("video");
+    v.src = Cloud.publicUrl(p.video) || ""; v.loop = true; v.muted = clipsState.muted; v.playsInline = true;
+    v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.preload = "auto";
+    var prog = node.querySelector(".clip-prog i");
+    v.addEventListener("timeupdate", function () { if (prog && v.duration) prog.style.width = (100 * v.currentTime / v.duration) + "%"; });
+    vd.appendChild(v);
+    var play = v.play(); if (play && play.catch) play.catch(function () {});
+    if (!clipsState.viewed[p.id]) { clipsState.viewed[p.id] = 1; Cloud.bumpClipView(p.id); }
     if (idx >= clipsState.rows.length - 2) clipsLoadMore(list);
   }
   function clipSetSound(list, muted) {
     clipsState.muted = muted;
     var node = list.querySelector('.clip[data-idx="' + clipsState.active + '"]');
-    var ifr = node && node.querySelector("iframe");
-    if (ifr && ifr.contentWindow) {
-      try {
-        var m = clipVideoOf(clipsState.rows[clipsState.active]);
-        if (m && /youtube/.test(m.embed)) ifr.contentWindow.postMessage(JSON.stringify({ event: "command", func: muted ? "mute" : "unMute", args: [] }), "*");
-        else { ifr.contentWindow.postMessage(JSON.stringify({ method: "setMuted", value: muted }), "*"); ifr.contentWindow.postMessage(JSON.stringify({ method: "setVolume", value: muted ? 0 : 1 }), "*"); }
-      } catch (e) {}
-    }
+    var v = node && node.querySelector("video"); if (v) { v.muted = muted; if (!muted) { var pp = v.play(); if (pp && pp.catch) pp.catch(function () {}); } }
     list.querySelectorAll(".clip-mute").forEach(function (b) { b.innerHTML = icon(muted ? "mute" : "sound"); });
   }
   function clipsLoadMore(list) {
@@ -1825,7 +1816,7 @@
     clipsState.loading = true;
     Cloud.getClips(rows[rows.length - 1].created_at).then(function (more) {
       clipsState.loading = false;
-      more = (more || []).filter(clipVideoOf);
+      more = more || [];
       if (!more.length) { clipsState.done = true; return; }
       var base = rows.length; clipsState.rows = rows.concat(more);
       var frag = document.createElement("div"); frag.innerHTML = more.map(function (p, k) { return clipHtml(p, base + k); }).join("");
@@ -1842,12 +1833,11 @@
       var sp = likeB.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0;
       likeB.classList.toggle("on"); likeB.innerHTML = icon(on ? "heart" : "heartfill") + "<span>" + (on ? Math.max(0, n - 1) : n + 1) + "</span>";
       if (!on) burstHearts(likeB);
-      (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
+      (on ? Cloud.unlikeClip(id) : Cloud.likeClip(id)).catch(function () {});
     });
-    var saveB = node.querySelector("[data-save]");
-    if (saveB) saveB.addEventListener("click", function (e) { e.stopPropagation(); var id = saveB.getAttribute("data-save"); var on = saveB.classList.contains("on"); saveB.classList.toggle("on"); saveB.innerHTML = icon(on ? "bookmark" : "bookmarkfill"); (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () {}); });
-    var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/post/" + cmtB.getAttribute("data-cmt"); });
-    var repB = node.querySelector("[data-rep]"); if (repB) repB.addEventListener("click", function (e) { e.stopPropagation(); var id = repB.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
+    var cmtB = node.querySelector("[data-cmt]"); if (cmtB) cmtB.addEventListener("click", function (e) { e.stopPropagation(); openClipComments(cmtB.getAttribute("data-cmt"), cmtB.querySelector(".cc-count")); });
+    var shB = node.querySelector("[data-share]"); if (shB) shB.addEventListener("click", function (e) { e.stopPropagation(); shareClip(shB.getAttribute("data-share")); });
+    var moreB = node.querySelector("[data-cmore]"); if (moreB) moreB.addEventListener("click", function (e) { e.stopPropagation(); var id = moreB.getAttribute("data-cmore"); actionSheet([{ label: "Eliminar clip", danger: true, fn: function () { if (!confirm("¿Eliminar este clip?")) return; Cloud.deleteClip(id).then(function () { toast("Clip eliminado"); renderClips(); }).catch(function () { toast("No se pudo"); }); } }]); });
     var muteB = node.querySelector("[data-mute]"); if (muteB) muteB.addEventListener("click", function (e) { e.stopPropagation(); clipSetSound(list, !clipsState.muted); });
     var followB = node.querySelector("[data-cfollow]");
     if (followB) followB.addEventListener("click", function (e) { e.stopPropagation(); var id = followB.getAttribute("data-cfollow"); followB.remove(); toast("Siguiendo"); Cloud.follow(id).catch(function () {}); });
@@ -1863,20 +1853,50 @@
       }
     });
   }
+  function shareClip(id) {
+    var url = location.origin + location.pathname + "#/clips/" + id;
+    if (navigator.share) { navigator.share({ title: "Clip en App del Mago", url: url }).catch(function () {}); return; }
+    if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast("Enlace copiado"); }).catch(function () { toast(url); }); }
+    else toast(url);
+  }
+  function openClipComments(id, countEl) {
+    var ov = el('<div class="modal-ov sheet clip-cmts"><div class="cc-box"><div class="cc-h">Comentarios</div><div class="cc-list" id="ccList"><div class="splash" style="padding:24px 0"><div class="spin"></div></div></div><div class="cc-add"><input id="ccIn" placeholder="Añade un comentario…"><button class="btn small" id="ccSend">' + icon("send", "i-sm") + "</button></div></div></div>");
+    document.body.appendChild(ov);
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    var load = function () {
+      Cloud.getClipComments(id).then(function (rows) {
+        var l = document.getElementById("ccList"); if (!l) return;
+        l.innerHTML = rows.length ? rows.map(function (c) {
+          return '<div class="cc-row"><span class="cc-a" data-mago="' + esc(c.author) + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + "</span>" +
+            '<div class="cc-bb"><div class="cc-who" data-mago="' + esc(c.author) + '">' + esc(c.name || c.handle || "Mago") + " <span>" + timeAgo(c.created_at) + "</span></div><div class=\"cc-b\">" + linkify(c.body) + "</div></div>" +
+            (c.mine ? '<button class="cc-del" data-delc="' + esc(c.id) + '" aria-label="Eliminar">' + icon("x", "i-sm") + "</button>" : "") + "</div>";
+        }).join("") : '<p class="hint" style="text-align:center;padding:18px">Sé el primero en comentar.</p>';
+        l.querySelectorAll("[data-mago]").forEach(function (a) { a.addEventListener("click", function () { ov.remove(); location.hash = "#/mago/" + a.getAttribute("data-mago"); }); });
+        l.querySelectorAll("[data-delc]").forEach(function (x) { x.addEventListener("click", function () { Cloud.deleteClipComment(x.getAttribute("data-delc")).then(function () { load(); if (countEl) countEl.textContent = Math.max(0, (parseInt(countEl.textContent, 10) || 1) - 1); }).catch(function () {}); }); });
+      }).catch(function () {});
+    };
+    load();
+    var inp = document.getElementById("ccIn");
+    var send = function () { var t = (inp.value || "").trim(); if (!t) return; inp.value = ""; Cloud.addClipComment(id, t).then(function () { load(); if (countEl) countEl.textContent = (parseInt(countEl.textContent, 10) || 0) + 1; }).catch(function () { toast("No se pudo comentar"); }); };
+    document.getElementById("ccSend").addEventListener("click", send);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+    attachAutocomplete(inp);
+  }
   function renderClips(startId) {
     clearTabbar(); var fab = document.getElementById("fabEl"); if (fab) fab.remove();
     if (clipsState.io) { clipsState.io.disconnect(); clipsState.io = null; }
-    clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false };
-    view.innerHTML = '<div class="clips-screen"><button class="clips-x" id="clipsX" aria-label="Cerrar">' + icon("x") + '</button><div class="clips-title">Clips</div><div class="clips" id="clipsList"><div class="clips-load"><div class="spin"></div></div></div></div>';
+    clipsState = { rows: [], muted: true, active: -1, io: null, loading: false, done: false, viewed: {} };
+    view.innerHTML = '<div class="clips-screen"><button class="clips-x" id="clipsX" aria-label="Cerrar">' + icon("x") + '</button><div class="clips-title">Clips</div>' +
+      '<button class="clips-create" id="clipsNew" aria-label="Crear clip">' + icon("plus") + "</button>" +
+      '<div class="clips" id="clipsList"><div class="clips-load"><div class="spin"></div></div></div></div>';
     document.getElementById("clipsX").addEventListener("click", function () { location.hash = "#/comunidad"; });
-    // Si se abre en un vídeo concreto, lo traemos aparte para garantizar que
-    // se reproduce primero (aunque no esté en la primera página del feed).
-    var pinned = startId ? Cloud.getPost(startId).then(function (pp) { return (pp && clipVideoOf(pp)) ? pp : null; }).catch(function () { return null; }) : Promise.resolve(null);
+    document.getElementById("clipsNew").addEventListener("click", function () { location.hash = "#/clip-nuevo"; });
+    var pinned = startId ? Cloud.getClip(startId).catch(function () { return null; }) : Promise.resolve(null);
     Promise.all([pinned, Cloud.getClips()]).then(function (res) {
-      var first = res[0], rest = (res[1] || []).filter(clipVideoOf);
+      var first = res[0], rest = res[1] || [];
       var rows = first ? [first].concat(rest.filter(function (r) { return r.id !== first.id; })) : rest;
       var list = document.getElementById("clipsList"); if (!list) return;
-      if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Comparte un vídeo de YouTube o Vimeo en la comunidad y aparecerá aquí.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Publicar un vídeo</button></div>'; return; }
+      if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Graba o sube tu primer clip de magia y empieza a inspirar a la comunidad.</p><button class="btn" onclick="location.hash=\'#/clip-nuevo\'">' + icon("plus", "i-sm") + " Crear un clip</button></div>"; return; }
       clipsState.rows = rows;
       list.innerHTML = rows.map(clipHtml).join("");
       var io = new IntersectionObserver(function (entries) {
@@ -1886,6 +1906,51 @@
       list.querySelectorAll(".clip").forEach(function (c) { bindClip(list, c); io.observe(c); });
       clipActivate(list, 0);
     }).catch(function () { var list = document.getElementById("clipsList"); if (list) list.innerHTML = '<div class="clips-empty"><p>No se pudieron cargar los clips.</p></div>'; });
+  }
+  // Crear un clip: grabar en el momento (cámara del móvil) o subir un vídeo.
+  var clipDraft = null;
+  function renderClipCreate() {
+    clearTabbar(); var fab = document.getElementById("fabEl"); if (fab) fab.remove();
+    clipDraft = null;
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/clips\'">' + icon("back") + '</button><h1>Nuevo clip</h1></div><div id="clcBody"></div></div>';
+    clipCreateChooser();
+  }
+  function clipCreateChooser() {
+    var b = document.getElementById("clcBody"); if (!b) return;
+    b.innerHTML = '<p class="subtitle">Comparte un efecto, una rutina o un tras cámara. Vertical y breve funciona mejor.</p>' +
+      '<div class="clc-choose">' +
+        '<button class="clc-opt" id="clcRec">' + icon("play") + "<b>Grabar ahora</b><span>Usa la cámara</span></button>" +
+        '<button class="clc-opt" id="clcUp">' + icon("upload") + "<b>Subir vídeo</b><span>Desde tu galería</span></button>" +
+      "</div>" +
+      '<input type="file" id="clcRecFile" accept="video/*" capture="environment" style="display:none">' +
+      '<input type="file" id="clcUpFile" accept="video/*" style="display:none">';
+    document.getElementById("clcRec").addEventListener("click", function () { document.getElementById("clcRecFile").click(); });
+    document.getElementById("clcUp").addEventListener("click", function () { document.getElementById("clcUpFile").click(); });
+    var onPick = function () { var fl = this.files && this.files[0]; if (!fl) return; if (!/^video\//.test(fl.type || "") && !/\.(mp4|mov|webm|m4v|3gp)$/i.test(fl.name || "")) { toast("Elige un archivo de vídeo"); return; } clipDraft = { file: fl }; clipCreateReview(); };
+    document.getElementById("clcRecFile").addEventListener("change", onPick);
+    document.getElementById("clcUpFile").addEventListener("change", onPick);
+  }
+  function clipCreateReview() {
+    var b = document.getElementById("clcBody"); if (!b || !clipDraft) return;
+    var url; try { url = URL.createObjectURL(clipDraft.file); } catch (e) { toast("No se pudo abrir el vídeo"); clipCreateChooser(); return; }
+    clipDraft.effect = null;
+    b.innerHTML = '<div class="clc-prev"><video src="' + esc(url) + '" controls playsinline muted loop></video></div>' +
+      '<div class="field"><label>Descripción</label><textarea id="clcCap" rows="2" placeholder="Cuenta algo… usa #hashtags y @menciones"></textarea></div>' +
+      '<div class="field"><label>¿De qué es tu clip?</label><div class="tchips" id="clcEff">' + SPECIALTIES.map(function (s) { return '<button type="button" class="tchip" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div></div>" +
+      '<div class="clc-acts"><button class="btn" id="clcPub">Publicar clip</button><button class="btn ghost" id="clcBack">Elegir otro vídeo</button></div>';
+    attachAutocomplete(document.getElementById("clcCap"));
+    b.querySelectorAll("#clcEff .tchip").forEach(function (t) { t.addEventListener("click", function () { var on = t.classList.contains("on"); b.querySelectorAll("#clcEff .tchip").forEach(function (x) { x.classList.remove("on"); }); if (!on) { t.classList.add("on"); clipDraft.effect = t.getAttribute("data-s"); } else clipDraft.effect = null; }); });
+    document.getElementById("clcBack").addEventListener("click", function () { try { URL.revokeObjectURL(url); } catch (e) {} clipCreateChooser(); });
+    document.getElementById("clcPub").addEventListener("click", function () {
+      var btn = document.getElementById("clcPub"); btn.disabled = true; btn.textContent = "Publicando…";
+      var cap = (document.getElementById("clcCap").value || "").trim();
+      makePoster(clipDraft.file).then(function (poster) {
+        return Promise.all([Cloud.uploadClipVideo(clipDraft.file), poster ? Cloud.uploadClipVideo(poster) : Promise.resolve(null)]);
+      }).then(function (res) {
+        return Cloud.createClip({ video_path: res[0].path, poster_path: res[1] ? res[1].path : null, caption: cap || null, effect: clipDraft.effect || null });
+      }).then(function () { try { URL.revokeObjectURL(url); } catch (e) {} toast("¡Clip publicado!"); location.hash = "#/clips"; })
+        .catch(function () { btn.disabled = false; btn.textContent = "Publicar clip"; toast("No se pudo publicar el clip"); });
+    });
   }
 
   /* ------------------- Avisos / Descubrir / Tag --------------------- */
@@ -2853,6 +2918,7 @@
       if (h.indexOf("#/chat/") === 0) return socialEnabled ? renderChat(h.slice(7)) : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
       if (h === "#/clips") return socialEnabled ? renderClips() : renderLibrary();
+      if (h === "#/clip-nuevo") return socialEnabled ? renderClipCreate() : renderLibrary();
       if (h.indexOf("#/clips/") === 0) return socialEnabled ? renderClips(h.slice(8)) : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
       if (h.indexOf("#/vender/") === 0) return socialEnabled ? renderSellForm(h.slice(9)) : renderLibrary();

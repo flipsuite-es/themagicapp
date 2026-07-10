@@ -284,6 +284,17 @@ window.Cloud = (function () {
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket(seller) { return sb.rpc("get_market", { lim: 40, seller_id: seller || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getClips(before) { return sb.rpc("get_clips", { lim: 20, before: before || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getClip(id) { return sb.rpc("get_clip", { cid: id }).then(function (r) { if (r.error) throw r.error; return r.data || null; }); }
+  function createClip(row) { return sb.from("clips").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function deleteClip(id) { return sb.from("clips").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function likeClip(id) { return sb.from("clip_likes").insert({ clip_id: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unlikeClip(id) { return currentUser().then(function (u) { return sb.from("clip_likes").delete().eq("clip_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function getClipComments(id) { return sb.rpc("get_clip_comments", { cid: id }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function addClipComment(id, body) { return sb.from("clip_comments").insert({ clip_id: id, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function deleteClipComment(id) { return sb.from("clip_comments").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function bumpClipView(id) { return sb.rpc("bump_clip_view", { cid: id }).catch(function () {}); }
+  // Sube un vídeo (grabado o de galería) al bucket público y devuelve {path,url}.
+  function uploadClipVideo(file) { return uploadSocial(file); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
@@ -346,7 +357,9 @@ window.Cloud = (function () {
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
     subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
     publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
-    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getClips: getClips, getProfileInfo: getProfileInfo,
+    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
+    getClips: getClips, getClip: getClip, createClip: createClip, deleteClip: deleteClip, likeClip: likeClip, unlikeClip: unlikeClip,
+    getClipComments: getClipComments, addClipComment: addClipComment, deleteClipComment: deleteClipComment, bumpClipView: bumpClipView, uploadClipVideo: uploadClipVideo,
     createPost: createPost, deletePost: deletePost, updatePost: updatePost, updateComment: updateComment, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     updateListing: updateListing, updateListingContent: updateListingContent, deleteListing: deleteListing,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,

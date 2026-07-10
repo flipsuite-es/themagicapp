@@ -1,377 +1,547 @@
 /* ==========================================================================
-   The Magic App — Lector Mental
-   Un único efecto, cuidado al máximo: el motor de revelación universal.
-   El mago sabe en secreto la carta/palabra (forzaje, peek, papelito…), la
-   carga con un gesto invisible, y la app "lee la mente" del espectador en
-   SU teléfono. Sin dependencias, offline, todo en el cliente.
+   The Magic App — herramienta de gestión para magos
+   - Biblioteca personal: crea, organiza y guarda tus trucos (categorías,
+     dificultad, estado, etiquetas, notas, vídeos por URL, favoritos).
+   - Trucos incluidos: efectos listos para actuar (Lector Mental).
+   - Todo se guarda en el dispositivo (localStorage). Exporta/importa copia.
+   Sin dependencias. Funciona offline.
    ========================================================================== */
 (function () {
   "use strict";
 
   var view = document.getElementById("view");
+  var STORE_KEY = "magic_lib_v1";
 
-  /* ---------------------------------------------------------------------
-     Utilidades
-     --------------------------------------------------------------------- */
-  function el(html) {
-    var t = document.createElement("template");
-    t.innerHTML = html.trim();
-    return t.content.firstChild;
-  }
+  /* ---------------------------- utilidades ---------------------------- */
+  function el(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }
   var toastTimer = null;
   function toast(msg) {
     var t = document.getElementById("toast");
     if (!t) { t = el('<div class="toast" id="toast"></div>'); document.body.appendChild(t); }
-    t.textContent = msg;
-    t.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1800);
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1900);
   }
-  function topbar(title, backHash) {
-    return (
-      '<div class="topbar">' +
-      '<button class="back" onclick="location.hash=\'' + (backHash || "#/") + '\'">‹</button>' +
-      '<div class="title">' + title + "</div></div>"
-    );
+
+  var DIFF = { facil: "Fácil", medio: "Medio", dificil: "Difícil" };
+  var STATUS = { poraprender: "Por aprender", aprendiendo: "Aprendiendo", dominado: "Dominado" };
+  var DEFAULT_CATS = ["Cartomagia", "Mentalismo", "Monedas", "Close-up", "Escenario", "Otros"];
+
+  /* ------------------------------ estado ------------------------------ */
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { version: 1, tricks: [], categories: DEFAULT_CATS.slice() };
   }
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast("No se pudo guardar"); } }
+  var state = load();
+  function getTrick(id) { return state.tricks.filter(function (t) { return t.id === id; })[0]; }
+
+  /* --------------------------- parseo de vídeo ------------------------ */
+  function parseVideo(url) {
+    var u = (url || "").trim();
+    var yt = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    if (yt) return { provider: "youtube", id: yt[1], embed: "https://www.youtube-nocookie.com/embed/" + yt[1], thumb: "https://i.ytimg.com/vi/" + yt[1] + "/hqdefault.jpg", url: u };
+    var vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vm) return { provider: "vimeo", id: vm[1], embed: "https://player.vimeo.com/video/" + vm[1], thumb: null, url: u };
+    return { provider: "link", id: null, embed: null, thumb: null, url: u };
+  }
+  // Best-effort: intenta título/miniatura vía noembed (soporta CORS). Silencioso si falla.
+  function fetchMeta(url) {
+    return new Promise(function (resolve) {
+      try {
+        var ctrl = new AbortController();
+        var to = setTimeout(function () { ctrl.abort(); }, 4500);
+        fetch("https://noembed.com/embed?url=" + encodeURIComponent(url), { signal: ctrl.signal })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { clearTimeout(to); resolve(j && !j.error ? { title: j.title || null, thumb: j.thumbnail_url || null } : null); })
+          .catch(function () { resolve(null); });
+      } catch (e) { resolve(null); }
     });
   }
 
-  var VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-  var SUITS = [
-    { sym: "♠", name: "Picas", red: false },
-    { sym: "♥", name: "Corazones", red: true },
-    { sym: "♦", name: "Diamantes", red: true },
-    { sym: "♣", name: "Tréboles", red: false }
-  ];
-  function suitName(sym) {
-    var m = { "♠": "Picas", "♥": "Corazones", "♦": "Diamantes", "♣": "Tréboles" };
-    return m[sym] || sym;
+  /* ------------------------------ navegación -------------------------- */
+  function tabbar(active) {
+    var tabs = [
+      { h: "#/", ic: "📚", t: "Biblioteca", k: "lib" },
+      { h: "#/incluidos", ic: "✨", t: "Incluidos", k: "inc" },
+      { h: "#/ajustes", ic: "⚙️", t: "Ajustes", k: "set" }
+    ];
+    return '<nav class="tabbar">' + tabs.map(function (x) {
+      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '"><span class="ti">' + x.ic + "</span>" + x.t + "</a>";
+    }).join("") + "</nav>";
+  }
+  function mountTabbar(active) {
+    var old = document.getElementById("tabbarEl"); if (old) old.remove();
+    var n = el(tabbar(active)); n.id = "tabbarEl"; document.body.appendChild(n);
+  }
+  function clearTabbar() { var old = document.getElementById("tabbarEl"); if (old) old.remove(); var f = document.getElementById("fabEl"); if (f) f.remove(); }
+  function mountFab() {
+    var old = document.getElementById("fabEl"); if (old) old.remove();
+    var f = el('<button class="fab" id="fabEl" title="Nuevo truco">+</button>');
+    f.addEventListener("click", function () { location.hash = "#/nuevo"; });
+    document.body.appendChild(f);
   }
 
-  // Estado de carga secreta (efímero, no persiste entre recargas)
-  var loaded = { type: null, card: null, text: null };
+  /* ============================ BIBLIOTECA ============================= */
+  var filter = { q: "", cat: "all", status: "all", fav: false };
 
-  /* =====================================================================
-     HOME
-     ===================================================================== */
-  function renderHome() {
+  function renderLibrary() {
+    mountTabbar("lib"); mountFab();
+    var tricks = state.tricks.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+
+    var catChips = ['<div class="chip ' + (filter.cat === "all" ? "active" : "") + '" data-cat="all">Todas</div>']
+      .concat(state.categories.map(function (c) {
+        return '<div class="chip ' + (filter.cat === c ? "active" : "") + '" data-cat="' + esc(c) + '">' + esc(c) + "</div>";
+      })).join("");
+
+    var statusChips = [["all", "Estado"], ["poraprender", STATUS.poraprender], ["aprendiendo", STATUS.aprendiendo], ["dominado", STATUS.dominado]]
+      .map(function (s) { return '<div class="chip ' + (filter.status === s[0] ? "active" : "") + '" data-st="' + s[0] + '">' + s[1] + "</div>"; }).join("");
+
+    var filtered = tricks.filter(function (t) {
+      if (filter.cat !== "all" && t.category !== filter.cat) return false;
+      if (filter.status !== "all" && t.status !== filter.status) return false;
+      if (filter.fav && !t.favorite) return false;
+      if (filter.q) {
+        var q = filter.q.toLowerCase();
+        var hay = (t.title + " " + (t.notes || "") + " " + (t.tags || []).join(" ") + " " + (t.category || "")).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+
+    var body;
+    if (state.tricks.length === 0) {
+      body = '<div class="empty"><div class="big">🎩</div><h3>Tu biblioteca está vacía</h3>' +
+        "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
+        '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
+    } else if (filtered.length === 0) {
+      body = '<div class="empty"><div class="big">🔍</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+    } else {
+      body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
+        '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
+    }
+
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="brand">' +
-      '<div class="mark">🔮</div>' +
-      '<h1 id="brandTitle">The Magic App</h1>' +
-      '<p>Lectura de mente — en su propio teléfono</p>' +
-      "</div>" +
-      '<div id="installSlot"></div>' +
-      '<div class="grid">' +
-      '<div class="trick" onclick="location.hash=\'#/lector\'">' +
-      '<div class="ico">🧠</div>' +
-      '<div class="meta"><h3>Lector Mental</h3>' +
-      "<p>Su carta o palabra aparece en su pantalla como por arte de magia.</p>" +
-      '<span class="tag">Empezar</span></div>' +
-      '<div class="chev">›</div>' +
-      "</div>" +
-      "</div>" +
-      '<div class="foot"><span id="secretDoor">✦ Concentra tu energía ✦</span></div>' +
+      '<div class="appbar"><span class="logo">🎩</span><span class="wm">The Magic <span>App</span></span>' +
+      '<span class="spacer"></span>' +
+      '<button class="iconbtn" id="favToggle" title="Favoritos">' + (filter.fav ? "★" : "☆") + "</button></div>" +
+      '<div class="search"><span class="mag">🔍</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
+      '<div class="chips">' + catChips + "</div>" +
+      '<div class="chips">' + statusChips + "</div>" +
+      body +
       "</div>";
-    armSecretDoor();
-    maybeShowInstall();
-  }
 
-  /* ---------------------------------------------------------------------
-     Aviso "instalar como app" (solo si aún no está instalada como PWA)
-     --------------------------------------------------------------------- */
-  var deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-  });
-  function isStandalone() {
+    var q = document.getElementById("q");
+    q.addEventListener("input", function () { filter.q = q.value; refreshCards(); });
+    document.getElementById("favToggle").addEventListener("click", function () { filter.fav = !filter.fav; renderLibrary(); });
+    view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
+    view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
+    bindCards();
+  }
+  function refreshCards() {
+    // re-render solo tarjetas al escribir (mantiene foco en el buscador)
+    var q = filter.q.toLowerCase();
+    var filtered = state.tricks.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); }).filter(function (t) {
+      if (filter.cat !== "all" && t.category !== filter.cat) return false;
+      if (filter.status !== "all" && t.status !== filter.status) return false;
+      if (filter.fav && !t.favorite) return false;
+      if (q) { var hay = (t.title + " " + (t.notes || "") + " " + (t.tags || []).join(" ")).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+      return true;
+    });
+    var holder = view.querySelector(".cards"); var countEl = view.querySelector(".count");
+    if (!holder) { renderLibrary(); return; }
+    if (filtered.length === 0) {
+      holder.className = "";
+      holder.innerHTML = '<div class="empty"><div class="big">🔍</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+      if (countEl) countEl.textContent = "";
+      return;
+    }
+    holder.className = "cards";
+    holder.innerHTML = filtered.map(trickCard).join("");
+    if (countEl) countEl.textContent = filtered.length + (filtered.length === 1 ? " truco" : " trucos");
+    bindCards();
+  }
+  function bindCards() {
+    view.querySelectorAll(".card[data-id]").forEach(function (c) {
+      c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-id"); });
+    });
+  }
+  function trickCard(t) {
+    var vid = (t.media || []).filter(function (m) { return m.provider !== "link"; })[0] || (t.media || [])[0];
+    var thumb = vid && vid.thumb;
+    var thumbHtml = thumb
+      ? '<img src="' + esc(thumb) + '" loading="lazy" alt="">' + '<span class="play">▶</span>'
+      : '<span class="ph">' + (vid ? "▶" : "🃏") + "</span>";
     return (
-      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-      window.navigator.standalone === true
+      '<div class="card" data-id="' + t.id + '">' +
+      '<div class="thumb">' + thumbHtml + (t.favorite ? '<span class="fav">★</span>' : "") + "</div>" +
+      '<div class="body"><h3>' + esc(t.title) + "</h3>" +
+      '<div class="meta">' + esc(t.category || "Sin categoría") + "</div>" +
+      '<div class="foot"><span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
+      '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span></div>" +
+      "</div></div>"
     );
   }
-  function isIOS() { return /iphone|ipad|ipod/i.test(window.navigator.userAgent); }
-  function maybeShowInstall() {
-    var slot = document.getElementById("installSlot");
-    if (!slot || isStandalone()) return;
-    try { if (localStorage.getItem("magic_install_hidden") === "1") return; } catch (e) {}
-    var banner = el('<div class="install"></div>');
-    if (deferredPrompt) {
-      banner.innerHTML =
-        '<div class="ic">📲</div>' +
-        '<div class="tx"><b>Instálala como app</b><br>Icono en tu inicio, pantalla completa y sin conexión.</div>' +
-        '<button id="instGo">Instalar</button><button class="close" id="instX">×</button>';
-      banner.querySelector("#instGo").addEventListener("click", function () {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(function () { deferredPrompt = null; banner.remove(); });
-      });
-    } else if (isIOS()) {
-      banner.innerHTML =
-        '<div class="ic">📲</div>' +
-        '<div class="tx"><b>Tenla como app en tu iPhone</b><br>Pulsa <b>Compartir</b> ' +
-        '<span style="font-size:15px">⬆︎</span> y luego <b>“Añadir a pantalla de inicio”</b>.</div>' +
-        '<button class="close" id="instX">×</button>';
-    } else { return; }
-    banner.querySelector("#instX").addEventListener("click", function () {
-      try { localStorage.setItem("magic_install_hidden", "1"); } catch (e) {}
-      banner.remove();
-    });
-    slot.appendChild(banner);
-  }
 
-  // Puerta secreta al Modo Mago: mantener pulsado el título 1.2s
-  function armSecretDoor() {
-    ["brandTitle", "secretDoor"].forEach(function (id) {
-      var node = document.getElementById(id);
-      if (!node) return;
-      var timer = null;
-      var start = function () { timer = setTimeout(function () { location.hash = "#/mago"; }, 1200); };
-      var cancel = function () { clearTimeout(timer); };
-      node.addEventListener("touchstart", start, { passive: true });
-      node.addEventListener("touchend", cancel);
-      node.addEventListener("touchmove", cancel);
-      node.addEventListener("mousedown", start);
-      node.addEventListener("mouseup", cancel);
-      node.addEventListener("mouseleave", cancel);
-    });
-  }
+  /* ============================ DETALLE ============================== */
+  function renderDetail(id) {
+    var t = getTrick(id);
+    if (!t) { location.hash = "#/"; return; }
+    clearTabbar();
 
-  /* =====================================================================
-     LECTOR MENTAL — motor de revelación universal
-       GESTO SECRETO: desliza hacia abajo desde el borde superior para abrir
-       el panel de carga. Toca la carta o escribe la palabra. Se cierra solo
-       y el orbe se vuelve dorado = cargado. Entrega el móvil; el espectador
-       pulsa el orbe. Si no cargas nada, hace una lectura al azar (emergencia).
-     ===================================================================== */
-  function renderLector() {
+    var media = (t.media || []).map(function (m) {
+      if (m.embed) return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+      return '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">🔗</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">↗</span></a>';
+    }).join("");
+
+    var tags = (t.tags || []).length ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + t.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "";
+
     view.innerHTML =
-      '<div class="screen">' + topbar("Lector Mental") +
-      '<div class="panel">' +
-      '<div class="scanwrap" id="scan">' +
-      '<div class="orb" id="orb"></div>' +
+      '<div class="screen">' +
+      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">‹</button><h1>Truco</h1>' +
+      '<span style="flex:1"></span>' +
+      '<button class="iconbtn" id="favBtn">' + (t.favorite ? "★" : "☆") + "</button>" +
+      '<button class="iconbtn" id="editBtn">✎</button></div>' +
+      '<h1 class="title">' + esc(t.title) + "</h1>" +
+      '<div class="detail-badges">' +
+      '<span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
+      '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span>" +
+      '<span class="tagchip">' + esc(t.category || "Sin categoría") + "</span></div>" +
+      (media ? '<div class="sec-label">Vídeos</div>' + media : "") +
+      (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
+      tags +
+      '<div class="sec-label">Estado de aprendizaje</div>' +
+      '<div class="seg" id="statusSeg">' +
+      Object.keys(STATUS).map(function (k) { return '<button data-st="' + k + '" class="' + (t.status === k ? "on" : "") + '">' + STATUS[k] + "</button>"; }).join("") +
+      "</div>" +
+      '<button class="btn ghost" id="editBtn2">Editar truco</button>' +
+      '<button class="btn danger" id="delBtn">Eliminar</button>' +
+      "</div>";
+
+    document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); renderDetail(id); });
+    document.getElementById("editBtn").addEventListener("click", function () { location.hash = "#/editar/" + id; });
+    document.getElementById("editBtn2").addEventListener("click", function () { location.hash = "#/editar/" + id; });
+    view.querySelectorAll("#statusSeg button").forEach(function (b) {
+      b.addEventListener("click", function () { t.status = b.getAttribute("data-st"); t.updatedAt = Date.now(); save(); renderDetail(id); toast("Estado actualizado"); });
+    });
+    document.getElementById("delBtn").addEventListener("click", function () {
+      if (confirm("¿Eliminar “" + t.title + "”? No se puede deshacer.")) {
+        state.tricks = state.tricks.filter(function (x) { return x.id !== id; }); save();
+        toast("Truco eliminado"); location.hash = "#/";
+      }
+    });
+  }
+
+  /* ========================= CREAR / EDITAR ========================== */
+  var draftMedia = [];
+  function renderForm(id) {
+    clearTabbar();
+    var editing = !!id;
+    var t = editing ? getTrick(id) : null;
+    if (editing && !t) { location.hash = "#/"; return; }
+    draftMedia = t ? (t.media || []).slice() : [];
+
+    var catOptions = state.categories.map(function (c) { return '<option value="' + esc(c) + '">'; }).join("");
+
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="pagehead"><button class="back" onclick="history.back()">‹</button><h1>' + (editing ? "Editar truco" : "Nuevo truco") + "</h1></div>" +
+      '<div class="field"><label>Título</label><input id="fTitle" placeholder="Ej. Carta ambiciosa" value="' + esc(t ? t.title : "") + '"></div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Categoría</label><input id="fCat" list="cats" placeholder="Elige o crea…" value="' + esc(t ? t.category : "") + '"><datalist id="cats">' + catOptions + "</datalist></div>" +
+      "</div>" +
+      '<div class="field"><label>Dificultad</label><div class="seg" id="fDiff">' +
+      Object.keys(DIFF).map(function (k) { return '<button type="button" data-v="' + k + '" class="' + ((t ? t.difficulty : "medio") === k ? "on" : "") + '">' + DIFF[k] + "</button>"; }).join("") +
+      "</div></div>" +
+      '<div class="field"><label>Estado</label><div class="seg" id="fStatus">' +
+      Object.keys(STATUS).map(function (k) { return '<button type="button" data-v="' + k + '" class="' + ((t ? t.status : "poraprender") === k ? "on" : "") + '">' + STATUS[k] + "</button>"; }).join("") +
+      "</div></div>" +
+      '<div class="field"><label>Vídeos (pega una URL de YouTube, Vimeo…)</label>' +
+      '<div class="vidadd"><input id="fVid" placeholder="https://…" inputmode="url"><button class="btn small" id="addVid" type="button">Añadir</button></div>' +
+      '<div class="vidlist" id="vidList"></div>' +
+      '<div class="hint">Se incrusta el reproductor y se intenta sacar la miniatura y el título automáticamente.</div></div>' +
+      '<div class="field"><label>Notas / explicación</label><textarea id="fNotes" placeholder="El secreto, el manejo, la charla, tus recordatorios…">' + esc(t ? t.notes : "") + "</textarea></div>" +
+      '<div class="field"><label>Etiquetas (separadas por comas)</label><input id="fTags" placeholder="control, empalme, doble volteo" value="' + esc(t && t.tags ? t.tags.join(", ") : "") + '"></div>' +
+      '<button class="btn" id="saveBtn">' + (editing ? "Guardar cambios" : "Crear truco") + "</button>" +
+      '<button class="btn ghost" onclick="history.back()">Cancelar</button>' +
+      "</div>";
+
+    paintDraftMedia();
+
+    view.querySelectorAll("#fDiff button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fDiff", b); }); });
+    view.querySelectorAll("#fStatus button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#fStatus", b); }); });
+
+    document.getElementById("addVid").addEventListener("click", addVideoFromInput);
+    document.getElementById("fVid").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addVideoFromInput(); } });
+
+    document.getElementById("saveBtn").addEventListener("click", function () { saveForm(id); });
+  }
+  function setSeg(sel, btn) { view.querySelectorAll(sel + " button").forEach(function (x) { x.classList.remove("on"); }); btn.classList.add("on"); }
+  function segValue(sel) { var on = view.querySelector(sel + " button.on"); return on ? on.getAttribute("data-v") : null; }
+
+  function addVideoFromInput() {
+    var inp = document.getElementById("fVid");
+    var url = inp.value.trim();
+    if (!url) { toast("Pega una URL"); return; }
+    var v = parseVideo(url);
+    var item = { provider: v.provider, url: v.url, id: v.id, embed: v.embed, thumb: v.thumb, title: null };
+    draftMedia.push(item); inp.value = ""; paintDraftMedia();
+    // Enriquecer con metadatos (best-effort)
+    fetchMeta(url).then(function (meta) {
+      if (!meta) return;
+      if (meta.title) item.title = meta.title;
+      if (!item.thumb && meta.thumb) item.thumb = meta.thumb;
+      paintDraftMedia();
+    });
+  }
+  function paintDraftMedia() {
+    var list = document.getElementById("vidList");
+    if (!list) return;
+    list.innerHTML = draftMedia.map(function (m, i) {
+      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : (m.provider === "link" ? "🔗" : "▶");
+      return '<div class="vidrow"><div class="vt">' + thumb + "</div>" +
+        '<div class="vi"><div class="n">' + esc(m.title || m.url) + '</div><div class="p">' + esc(m.provider) + "</div></div>" +
+        '<button class="x" data-i="' + i + '" type="button">×</button></div>';
+    }).join("");
+    list.querySelectorAll(".x").forEach(function (b) {
+      b.addEventListener("click", function () { draftMedia.splice(parseInt(b.getAttribute("data-i"), 10), 1); paintDraftMedia(); });
+    });
+  }
+  function saveForm(id) {
+    var title = document.getElementById("fTitle").value.trim();
+    if (!title) { toast("Ponle un título"); return; }
+    var cat = document.getElementById("fCat").value.trim() || "Otros";
+    if (state.categories.indexOf(cat) < 0) state.categories.push(cat);
+    var tags = document.getElementById("fTags").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    var data = {
+      title: title, category: cat,
+      difficulty: segValue("#fDiff") || "medio",
+      status: segValue("#fStatus") || "poraprender",
+      notes: document.getElementById("fNotes").value.trim(),
+      tags: tags, media: draftMedia.slice(), updatedAt: Date.now()
+    };
+    if (id) {
+      var t = getTrick(id); if (!t) { location.hash = "#/"; return; }
+      Object.keys(data).forEach(function (k) { t[k] = data[k]; });
+      save(); toast("Cambios guardados"); location.hash = "#/truco/" + id;
+    } else {
+      data.id = uid(); data.createdAt = Date.now(); data.favorite = false;
+      state.tricks.push(data); save(); toast("Truco creado"); location.hash = "#/truco/" + data.id;
+    }
+  }
+
+  /* ========================= TRUCOS INCLUIDOS ======================== */
+  function renderIncluded() {
+    mountTabbar("inc"); var f = document.getElementById("fabEl"); if (f) f.remove();
+    view.innerHTML =
+      '<div class="screen">' +
+      '<h1 class="title">Trucos incluidos</h1>' +
+      '<p class="subtitle">Efectos listos para actuar, con su método explicado.</p>' +
+      '<div class="hero"><h2>🧠 Lector Mental</h2><p>La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.</p></div>' +
+      '<button class="btn" onclick="location.hash=\'#/lector\'">▶ Actuar</button>' +
+      '<button class="btn ghost" onclick="location.hash=\'#/lector-metodo\'">📖 Aprender el método</button>' +
+      "</div>";
+  }
+
+  /* ------------------------- LECTOR MENTAL --------------------------- */
+  var VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  var SUITS = [{ sym: "♠" }, { sym: "♥" }, { sym: "♦" }, { sym: "♣" }];
+  function suitName(s) { return ({ "♠": "Picas", "♥": "Corazones", "♦": "Diamantes", "♣": "Tréboles" })[s] || s; }
+  var loaded = { type: null, card: null, text: null };
+
+  function renderLector() {
+    clearTabbar();
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div>' +
+      '<div class="scanwrap" id="scan"><div class="orb" id="orb"></div>' +
       '<div class="prompt" id="prompt">Coloca tu dedo en la esfera y piensa con fuerza en tu carta.</div>' +
-      '<div class="sub">Cuando estés listo, pulsa la esfera.</div>' +
-      "</div></div></div>";
+      '<div class="sub">Cuando estés listo, pulsa la esfera.</div></div>' +
+      "</div>";
     buildQuickSet();
-    var orb = document.getElementById("orb");
-    if (orb) orb.addEventListener("click", function () { runLectorScan(); });
+    var orb = document.getElementById("orb"); if (orb) orb.addEventListener("click", runScan);
     armSwipeToLoad();
     if (loaded.type) markArmed();
   }
-
-  function markArmed() {
-    var orb = document.getElementById("orb");
-    if (orb) orb.classList.add("armed");
-    var pr = document.getElementById("prompt");
-    if (pr) pr.textContent = "La conexión está lista. Coloca tu dedo y concéntrate.";
-  }
-
-  // Gesto secreto: swipe hacia abajo desde el borde superior => abrir carga
+  function markArmed() { var o = document.getElementById("orb"); if (o) o.classList.add("armed"); var p = document.getElementById("prompt"); if (p) p.textContent = "La conexión está lista. Coloca tu dedo y concéntrate."; }
   function armSwipeToLoad() {
-    var startY = null, startedTop = false;
-    function ts(e) {
-      var y = (e.touches ? e.touches[0].clientY : e.clientY);
-      startedTop = y < 60; startY = y;
-    }
-    function te(e) {
-      if (!startedTop || startY == null) return;
-      var y = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
-      if (y - startY > 55) openQuickSet();
-      startY = null; startedTop = false;
-    }
-    document.addEventListener("touchstart", ts, { passive: true });
-    document.addEventListener("touchend", te);
-    document.addEventListener("mousedown", ts);
-    document.addEventListener("mouseup", te);
+    var startY = null, top = false;
+    function ts(e) { var y = e.touches ? e.touches[0].clientY : e.clientY; top = y < 60; startY = y; }
+    function te(e) { if (!top || startY == null) return; var y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY; if (y - startY > 55) openQS(); startY = null; top = false; }
+    document.addEventListener("touchstart", ts, { passive: true }); document.addEventListener("touchend", te);
+    document.addEventListener("mousedown", ts); document.addEventListener("mouseup", te);
   }
-
   function buildQuickSet() {
-    var old = document.getElementById("qs");
-    if (old) old.remove();
+    var old = document.getElementById("qs"); if (old) old.remove();
     var rows = SUITS.map(function (s) {
-      var btns = VALUES.map(function (v) {
-        var cls = s.red ? "cellbtn red" : "cellbtn";
-        return '<button class="' + cls + '" data-suit="' + s.sym + '" data-val="' + v + '">' + v + "</button>";
-      }).join("");
-      var slabelCls = s.red ? 'style="color:var(--red)"' : "";
-      return '<div class="suitrow"><div class="slabel" ' + slabelCls + ">" + s.sym +
-        '</div><div class="suits">' + btns + "</div></div>";
+      var red = s.sym === "♥" || s.sym === "♦";
+      var btns = VALUES.map(function (v) { return '<button class="cellbtn ' + (red ? "red" : "") + '" data-suit="' + s.sym + '" data-val="' + v + '">' + v + "</button>"; }).join("");
+      return '<div class="suitrow"><div class="slabel"' + (red ? ' style="color:var(--danger)"' : "") + ">" + s.sym + '</div><div class="suits">' + btns + "</div></div>";
     }).join("");
-    var qs = el(
-      '<div class="qs" id="qs">' +
-      '<h4>· carga secreta · desliza arriba para cerrar ·</h4>' + rows +
+    var qs = el('<div class="qs" id="qs"><h4>· carga secreta · desliza arriba para cerrar ·</h4>' + rows +
       '<div class="txtwrap"><input id="qsText" type="text" placeholder="…o escribe una palabra / número" autocomplete="off" autocapitalize="off" autocorrect="off"></div>' +
       '<div class="loaded" id="qsLoaded"></div>' +
-      '<div class="qsrow"><button class="btn ghost" id="qsClear">Vaciar</button>' +
-      '<button class="btn violet" id="qsUseText">Usar palabra</button></div>' +
-      "</div>"
-    );
+      '<div class="qsrow"><button class="btn ghost" id="qsClear">Vaciar</button><button class="btn" id="qsUse">Usar palabra</button></div></div>');
     document.body.appendChild(qs);
     qs.querySelectorAll(".cellbtn").forEach(function (b) {
       b.addEventListener("click", function () {
         loaded = { type: "card", card: { suit: b.getAttribute("data-suit"), val: b.getAttribute("data-val") }, text: null };
         document.getElementById("qsLoaded").textContent = "Cargado: " + loaded.card.val + loaded.card.suit;
-        setTimeout(closeQuickSet, 380);
+        setTimeout(closeQS, 380);
       });
     });
-    qs.querySelector("#qsUseText").addEventListener("click", function () {
-      var t = qs.querySelector("#qsText").value.trim();
-      if (!t) { toast("Escribe algo primero"); return; }
-      loaded = { type: "text", card: null, text: t };
-      document.getElementById("qsLoaded").textContent = "Cargado: " + t;
-      setTimeout(closeQuickSet, 250);
+    qs.querySelector("#qsUse").addEventListener("click", function () {
+      var t = qs.querySelector("#qsText").value.trim(); if (!t) { toast("Escribe algo primero"); return; }
+      loaded = { type: "text", card: null, text: t }; document.getElementById("qsLoaded").textContent = "Cargado: " + t; setTimeout(closeQS, 250);
     });
     qs.querySelector("#qsClear").addEventListener("click", function () {
-      loaded = { type: null, card: null, text: null };
-      qs.querySelector("#qsText").value = "";
+      loaded = { type: null, card: null, text: null }; qs.querySelector("#qsText").value = "";
       document.getElementById("qsLoaded").textContent = "(vacío — hará una lectura al azar)";
-      var orb = document.getElementById("orb");
-      if (orb) orb.classList.remove("armed");
+      var o = document.getElementById("orb"); if (o) o.classList.remove("armed");
     });
     var sY = null;
     qs.addEventListener("touchstart", function (e) { sY = e.touches[0].clientY; }, { passive: true });
-    qs.addEventListener("touchend", function (e) {
-      if (sY == null) return;
-      if (sY - e.changedTouches[0].clientY > 50) closeQuickSet();
-      sY = null;
-    });
+    qs.addEventListener("touchend", function (e) { if (sY == null) return; if (sY - e.changedTouches[0].clientY > 50) closeQS(); sY = null; });
   }
-  function openQuickSet() { var qs = document.getElementById("qs"); if (qs) qs.classList.add("open"); }
-  function closeQuickSet() {
-    var qs = document.getElementById("qs");
-    if (qs) qs.classList.remove("open");
-    if (loaded.type) markArmed();
-  }
+  function openQS() { var q = document.getElementById("qs"); if (q) q.classList.add("open"); }
+  function closeQS() { var q = document.getElementById("qs"); if (q) q.classList.remove("open"); if (loaded.type) markArmed(); }
 
-  function runLectorScan() {
+  function runScan() {
     var result;
     if (loaded.type === "card") result = { kind: "card", card: loaded.card };
     else if (loaded.type === "text") result = { kind: "text", text: loaded.text };
     else result = { kind: "card", card: { suit: SUITS[rnd(4)].sym, val: VALUES[rnd(13)] } };
-
     view.innerHTML =
-      '<div class="screen">' + topbar("Lector Mental") +
-      '<div class="panel"><div class="scanwrap" style="min-height:52vh">' +
-      '<div class="orb ' + (loaded.type ? "armed" : "") + '"></div>' +
-      '<div class="prompt">Leyendo tu mente…</div>' +
-      '<div class="progress"><i id="bar"></i></div>' +
-      '<div class="scanstatus" id="st"></div>' +
-      "</div></div></div>";
-
-    var bar = document.getElementById("bar");
-    var st = document.getElementById("st");
-    var msgs = ["Sincronizando pulso…", "Detectando la imagen mental…", "Enfocando el símbolo…", "Revelando…"];
-    var p = 0;
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div>' +
+      '<div class="scanwrap" style="min-height:52vh"><div class="orb ' + (loaded.type ? "armed" : "") + '"></div>' +
+      '<div class="prompt">Leyendo tu mente…</div><div class="progress"><i id="bar"></i></div><div class="scanstatus" id="st"></div></div></div>';
+    var bar = document.getElementById("bar"), st = document.getElementById("st");
+    var msgs = ["Sincronizando pulso…", "Detectando la imagen mental…", "Enfocando el símbolo…", "Revelando…"], p = 0;
     var iv = setInterval(function () {
-      p += 3 + rnd(4);
-      if (p > 100) p = 100;
-      bar.style.width = p + "%";
+      p += 3 + rnd(4); if (p > 100) p = 100; bar.style.width = p + "%";
       st.textContent = msgs[Math.min(msgs.length - 1, Math.floor(p / 26))];
-      if (p >= 100) { clearInterval(iv); setTimeout(function () { showLectorResult(result); }, 300); }
+      if (p >= 100) { clearInterval(iv); setTimeout(function () { showResult(result); }, 300); }
     }, 120);
   }
-
-  function showLectorResult(result) {
+  function showResult(result) {
     var body;
     if (result.kind === "card") {
-      var c = result.card, isRed = c.suit === "♥" || c.suit === "♦";
-      body =
-        '<div class="cardface ' + (isRed ? "red" : "") + '">' +
-        '<div class="corner tl">' + c.val + "<br>" + c.suit + "</div>" +
-        '<div class="center">' + c.suit + "</div>" +
-        '<div class="corner br">' + c.val + "<br>" + c.suit + "</div></div>" +
-        '<div class="lbl" style="text-align:center;margin-top:18px;color:var(--ink-soft)">Tu carta era el <b>' +
-        c.val + " de " + suitName(c.suit) + "</b>.</div>";
-    } else {
-      body = '<div class="textreveal">' + escapeHtml(result.text) + "</div>";
-    }
-    view.innerHTML =
-      '<div class="screen">' + topbar("Lector Mental") +
-      '<div class="panel">' + body +
-      '<button class="btn" onclick="location.hash=\'#/\'">Terminar</button>' +
-      "</div></div>";
+      var c = result.card, red = c.suit === "♥" || c.suit === "♦";
+      body = '<div class="cardface ' + (red ? "red" : "") + '"><div class="corner tl">' + c.val + "<br>" + c.suit + '</div><div class="center">' + c.suit + '</div><div class="corner br">' + c.val + "<br>" + c.suit + "</div></div>" +
+        '<div class="lbl" style="text-align:center;margin-top:18px;color:var(--ink-soft)">Tu carta era el <b>' + c.val + " de " + suitName(c.suit) + "</b>.</div>";
+    } else { body = '<div class="textreveal">' + esc(result.text) + "</div>"; }
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div><div class="panel">' + body +
+      '<button class="btn" onclick="location.hash=\'#/incluidos\'">Terminar</button></div></div>';
     loaded = { type: null, card: null, text: null };
   }
 
-  /* =====================================================================
-     MODO MAGO (oculto) — tutorial del Lector Mental
-     Se entra manteniendo pulsado el título en la portada.
-     ===================================================================== */
-  function section(title, eye, body) {
-    var badge = "";
-    if (eye === "pub") badge = '<span class="eye pub">Lo ve el público</span><br>';
-    if (eye === "sec") badge = '<span class="eye sec">Solo el mago</span><br>';
+  function sec(title, eye, body) {
+    var badge = eye === "pub" ? '<span class="eye pub">Lo ve el público</span><br>' : eye === "sec" ? '<span class="eye sec">Solo el mago</span><br>' : "";
     return "<section><h3>" + title + "</h3>" + badge + body + "</section>";
   }
-  function renderMago() {
+  function renderLectorMethod() {
+    clearTabbar();
     view.innerHTML =
-      '<div class="screen">' + topbar("Modo Mago") +
-      '<div class="backstage-bar"><span class="dot"></span> BACKSTAGE · solo para tus ojos — no lo enseñes al público</div>' +
-      '<div class="panel tut">' +
-      "<h2>🧠 Lector Mental</h2>" +
-      '<div class="diff">Dificultad: media · el truco más potente</div>' +
-      section("👁 Qué ve el público", "pub",
-        "<p>El espectador piensa una carta (o una palabra, un nombre, una fecha…). Pone el dedo en una esfera de energía de SU teléfono, la app \"lee su mente\" y revela en pantalla exactamente lo que pensaba.</p>") +
-      section("🔒 El secreto", "sec",
-        "<p>La app no adivina nada: <b>tú le dices en secreto qué debe revelar</b>. Es un motor de revelación. Lo potente es que funciona con CUALQUIER técnica que ya conozcas para saber la carta.</p>" +
-        "<p><b>Cómo cargar en secreto:</b> en la pantalla de la esfera, <b>desliza hacia abajo desde el borde superior</b>. Se abre un panel translúcido: toca la carta o escribe la palabra. Se cierra solo y la esfera se vuelve <b>dorada</b> (= cargada). Para cerrar a mano, desliza hacia arriba.</p>") +
-      section("🎓 Cómo saber la carta (elige tu método)", "sec",
-        "<ul>" +
-        "<li><b>Forzaje:</b> obliga (sin que lo note) a que elija la carta que tú quieres, con una baraja física.</li>" +
-        "<li><b>Peek:</b> vislumbra qué carta mira.</li>" +
-        "<li><b>Papelito:</b> que escriba algo; tú lo vislumbras y lo cargas en modo palabra.</li>" +
-        "<li><b>Equívoco:</b> técnicas de \"magician's choice\" para dirigir la elección.</li>" +
-        "</ul>") +
-      section("🎬 Paso a paso", "",
-        "<ol>" +
-        "<li>Averigua la carta/palabra con tu método.</li>" +
-        "<li>Con el móvil en tu mano, di que \"calibras el sensor\". En ese momento desliza desde arriba y carga la carta. Un segundo, sin apenas mirar.</li>" +
-        "<li>Comprueba de reojo que la esfera está dorada.</li>" +
-        "<li>Entrega el móvil. Que ponga el dedo en la esfera, se concentre y pulse.</li>" +
-        "<li>La app revela su carta exacta. Reacciona tú también con asombro.</li>" +
-        "</ol>") +
-      section("🗣 Guion sugerido", "",
-        '<div class="script">"Este aparato mide micro-señales de tu piel. Piensa con fuerza en tu carta y no la digas. Pon el dedo aquí… relájate… deja que la lea."</div>') +
-      section("⚠ Errores a evitar", "",
-        "<ul>" +
-        "<li>Ensaya el gesto de carga hasta hacerlo sin mirar: es el único momento delicado.</li>" +
-        "<li>No mires la pantalla mientras cargas; mira al espectador y habla.</li>" +
-        "<li>No entregues el móvil hasta ver la esfera dorada.</li>" +
-        "<li>Nunca repitas el mismo efecto para el mismo público ni reveles el método.</li>" +
-        "</ul>") +
-      '<button class="btn" onclick="location.hash=\'#/lector\'">▶ Practicar</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/\'">Salir del Modo Mago</button>' +
-      "</div></div>";
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Método</h1></div>' +
+      '<div class="backstage-bar"><span class="dot"></span> Solo para tus ojos — no lo enseñes al público</div>' +
+      '<div class="panel tut"><h2 style="font-family:var(--serif)">🧠 Lector Mental</h2>' +
+      sec("👁 Qué ve el público", "pub", "<p>El espectador piensa una carta (o una palabra, un nombre…). Pone el dedo en la esfera de SU teléfono, la app “lee su mente” y revela justo lo que pensaba.</p>") +
+      sec("🔒 El secreto", "sec", "<p>La app no adivina: <b>tú le dices en secreto qué revelar</b>. Funciona con cualquier forzaje o peek que conozcas.</p><p><b>Cargar:</b> en la pantalla de la esfera, <b>desliza hacia abajo desde el borde superior</b>. Toca la carta o escribe la palabra. La esfera se pone <b>dorada</b> = cargada. Desliza arriba para cerrar.</p>") +
+      sec("🎬 Paso a paso", "", "<ol><li>Averigua la carta con tu método.</li><li>Con el móvil en tu mano, di que “calibras el sensor” y carga a la vez, sin apenas mirar.</li><li>Comprueba que la esfera está dorada.</li><li>Entrega el móvil; que ponga el dedo y pulse.</li><li>Se revela su carta exacta.</li></ol>") +
+      sec("🗣 Guion", "", '<div class="script">"Este sensor mide micro-señales de tu piel. Piensa en tu carta, pon el dedo aquí… relájate…"</div>') +
+      sec("⚠ Evita", "", "<ul><li>Ensaya la carga hasta hacerla sin mirar.</li><li>No entregues el móvil hasta ver la esfera dorada.</li><li>No repitas el efecto para el mismo público.</li></ul>") +
+      '<button class="btn" onclick="location.hash=\'#/lector\'">▶ Practicar</button></div></div>';
   }
 
-  /* =====================================================================
-     ROUTER
-     ===================================================================== */
+  /* ============================= AJUSTES ============================= */
+  function renderSettings() {
+    mountTabbar("set"); var f = document.getElementById("fabEl"); if (f) f.remove();
+    var theme = localStorage.getItem("magic_theme") || "auto";
+    view.innerHTML =
+      '<div class="screen"><h1 class="title">Ajustes</h1><p class="subtitle">' + state.tricks.length + " trucos guardados · " + state.categories.length + " categorías</p>" +
+      '<div class="sec-label">Apariencia</div>' +
+      '<div class="setrow"><span class="si">🎨</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
+      '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
+      [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="sec-label">Tus datos</div>' +
+      '<div class="setrow"><span class="si">💾</span><div class="st"><div class="t">Copia de seguridad</div><div class="d">Exporta tu biblioteca a un archivo, o restáurala.</div></div></div>' +
+      '<button class="btn ghost" id="exportBtn">Exportar biblioteca</button>' +
+      '<button class="btn ghost" id="importBtn">Importar biblioteca</button>' +
+      '<input type="file" id="importFile" accept="application/json" style="display:none">' +
+      '<div class="sec-label" style="color:var(--danger)">Zona peligrosa</div>' +
+      '<button class="btn danger" id="wipeBtn">Borrar todos mis trucos</button>' +
+      '<p class="subtitle" style="text-align:center;margin-top:24px">The Magic App · tus datos se guardan solo en este dispositivo.</p>' +
+      "</div>";
+
+    view.querySelectorAll("#themeSeg button").forEach(function (b) {
+      b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
+    });
+    document.getElementById("exportBtn").addEventListener("click", exportData);
+    document.getElementById("importBtn").addEventListener("click", function () { document.getElementById("importFile").click(); });
+    document.getElementById("importFile").addEventListener("change", importData);
+    document.getElementById("wipeBtn").addEventListener("click", function () {
+      if (confirm("¿Seguro? Se borrarán TODOS tus trucos de este dispositivo.")) { state = { version: 1, tricks: [], categories: DEFAULT_CATS.slice() }; save(); toast("Biblioteca borrada"); location.hash = "#/"; }
+    });
+  }
+  function exportData() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "the-magic-app-biblioteca.json"; a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000); toast("Biblioteca exportada");
+  }
+  function importData(e) {
+    var file = e.target.files[0]; if (!file) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var data = JSON.parse(r.result);
+        if (!data || !Array.isArray(data.tricks)) throw 0;
+        state = { version: 1, tricks: data.tricks, categories: (data.categories && data.categories.length) ? data.categories : DEFAULT_CATS.slice() };
+        save(); toast("Biblioteca importada"); location.hash = "#/";
+      } catch (err) { toast("Archivo no válido"); }
+    };
+    r.readAsText(file);
+  }
+
+  /* ------------------------------ tema -------------------------------- */
+  function setTheme(mode) {
+    localStorage.setItem("magic_theme", mode);
+    applyTheme();
+  }
+  function applyTheme() {
+    var mode = localStorage.getItem("magic_theme") || "auto";
+    var root = document.documentElement;
+    if (mode === "auto") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+  }
+
+  /* ------------------------------ router ------------------------------ */
   function route() {
     try {
       var qs = document.getElementById("qs");
       if (qs && location.hash !== "#/lector") qs.classList.remove("open");
       var h = location.hash || "#/";
-      if (h === "#/" || h === "") return renderHome();
+      if (h === "#/" || h === "") return renderLibrary();
+      if (h === "#/nuevo") return renderForm(null);
+      if (h.indexOf("#/editar/") === 0) return renderForm(h.slice(9));
+      if (h.indexOf("#/truco/") === 0) return renderDetail(h.slice(8));
+      if (h === "#/incluidos") return renderIncluded();
       if (h === "#/lector") return renderLector();
-      if (h === "#/mago") return renderMago();
-      renderHome();
+      if (h === "#/lector-metodo") return renderLectorMethod();
+      if (h === "#/ajustes") return renderSettings();
+      renderLibrary();
     } catch (err) {
-      if (view) {
-        view.innerHTML =
-          '<div class="screen"><div class="panel"><h2>Vaya…</h2><p>Algo se atascó. Vuelve al inicio.</p>' +
-          '<button class="btn" onclick="location.hash=\'#/\';location.reload()">Reiniciar</button></div></div>';
-      }
+      if (view) view.innerHTML = '<div class="screen"><div class="panel"><h2>Vaya…</h2><p>Algo se atascó.</p><button class="btn" onclick="location.hash=\'#/\';location.reload()">Reiniciar</button></div></div>';
     }
   }
 
+  applyTheme();
   window.addEventListener("hashchange", route);
   route();
 })();

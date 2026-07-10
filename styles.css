@@ -1,5 +1,5 @@
 /* ==========================================================================
-   The Magic App — sistema visual "estudio profesional"
+   App del Mago — sistema visual "estudio profesional"
    Sobrio, editorial, premium. Inter (interfaz) + Fraunces (títulos).
    Claro y oscuro. Sin brillos ni esquinas de juguete.
    ========================================================================== */
@@ -93,6 +93,15 @@ input, textarea, select { user-select: text; -webkit-user-select: text; -webkit-
 /* Iconos SVG (línea) */
 .i { width: 22px; height: 22px; display: inline-block; vertical-align: middle; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 .i-sm { width: 18px; height: 18px; }
+
+/* Marca / emblema de relleno (pica + destello) */
+.mk { width: 22px; height: 22px; display: inline-block; vertical-align: middle; flex: 0 0 auto; color: var(--brand); }
+.appbar .brandmark .mk, .tbbrand .mk { width: 26px; height: 26px; color: var(--brand); }
+.splash .logo .mk { width: 76px; height: 76px; }
+.gate-hero .logo .mk { width: 78px; height: 78px; }
+.lock .lk .mk { width: 56px; height: 56px; }
+.empty .big .mk { width: 64px; height: 64px; color: var(--brand); }
+.gate-hero .tagline { font-family: var(--display); font-style: italic; font-weight: 500; color: var(--brand); font-size: 15.5px; margin: 4px 0 6px; letter-spacing: .01em; }
 
 /* ---------- App bar ---------- */
 .appbar { display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; min-height: 40px; }

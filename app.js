@@ -1,5 +1,5 @@
 /* ==========================================================================
-   The Magic App — herramienta de gestión para magos
+   App del Mago — herramienta de gestión para magos
    - Biblioteca personal: crea, organiza y guarda tus trucos (categorías,
      dificultad, estado, etiquetas, notas, vídeos por URL, favoritos).
    - Trucos incluidos: efectos listos para actuar (Lector Mental).
@@ -61,6 +61,16 @@
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
+  // Marca "App del Mago": emblema de sello con pica y destello. `seal` añade el
+  // anillo; sin él es el glifo suelto para acompañar al logotipo.
+  var SPADE = '<path d="M32 16 L18 40 L46 40 Z"/>' +
+    '<circle cx="25" cy="38" r="9"/><circle cx="39" cy="38" r="9"/>' +
+    '<path d="M32 40 C31.2 45 29 48 27 50.5 L37 50.5 C35 48 32.8 45 32 40 Z"/>' +
+    '<path d="M45.5 13 C46 17.4 46.6 18 51 18.6 C46.6 19.2 46 19.8 45.5 24.2 C45 19.8 44.4 19.2 40 18.6 C44.4 18 45 17.4 45.5 13 Z"/>';
+  function mark(cls, seal) {
+    var ring = seal ? '<circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="32" r="24.5" fill="none" stroke="currentColor" stroke-width="1" opacity="0.38"/>' : "";
+    return '<svg class="mk ' + (cls || "") + '" viewBox="0 0 64 64" aria-hidden="true" fill="currentColor">' + ring + SPADE + "</svg>";
+  }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }
   var toastTimer = null;
@@ -378,7 +388,7 @@
       { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
       { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
     ];
-    return '<nav class="tabbar"><div class="tbbrand">' + icon("hat") + "<span>The Magic App</span></div>" + tabs.map(function (x) {
+    return '<nav class="tabbar"><div class="tbbrand">' + mark() + "<span>App del Mago</span></div>" + tabs.map(function (x) {
       return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
@@ -423,7 +433,7 @@
 
     var body;
     if (state.tricks.length === 0) {
-      body = '<div class="empty"><div class="big">' + icon("hat") + '</div><h3>Tu biblioteca está vacía</h3>' +
+      body = '<div class="empty"><div class="big">' + mark("", true) + '</div><h3>Tu biblioteca está vacía</h3>' +
         "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
@@ -435,7 +445,7 @@
 
     view.innerHTML =
       '<div class="screen wide">' +
-      '<div class="appbar"><span class="brandmark">' + icon("hat") + '<span class="wm">The Magic App</span></span>' +
+      '<div class="appbar"><span class="brandmark">' + mark() + '<span class="wm">App del Mago</span></span>' +
       '<h1 class="pagetitle">Biblioteca</h1>' +
       '<span class="spacer"></span>' +
       (logged() && cloudReady() ? '<button class="iconbtn ' + (syncing ? "spinning" : "") + '" id="syncBtn" title="Sincronizar">' + icon("cloud") + "</button>" : "") +
@@ -1225,7 +1235,7 @@
     document.getElementById("shClose").addEventListener("click", close);
     var inp = document.getElementById("shLink");
     document.getElementById("shCopy").addEventListener("click", function () { try { inp.select(); } catch (e) {} copyText(url).then(function (ok) { toast(ok ? "Copiado" : "Selecciónalo y copia"); }); });
-    var nat = document.getElementById("shNative"); if (nat) nat.addEventListener("click", function () { navigator.share({ title: "The Magic App", url: url }).catch(function () {}); });
+    var nat = document.getElementById("shNative"); if (nat) nat.addEventListener("click", function () { navigator.share({ title: "App del Mago", url: url }).catch(function () {}); });
     setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 30);
   }
 
@@ -1256,8 +1266,8 @@
       ((p.tags && p.tags.length) ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + p.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "");
   }
   function sharedHeader(title) { return '<div class="shared-badge">' + icon("share", "i-sm") + " Compartido contigo</div><h1 class=\"title\">" + esc(title) + "</h1>"; }
-  function sharedFooter() { return '<div class="shared-cta"><p>Crea y organiza tu propia biblioteca con <b>The Magic App</b>.</p><button class="btn" onclick="location.hash=\'#/\';location.reload()">Abrir la app</button></div>'; }
-  function sharedError(msg) { return '<div class="screen shared"><div class="empty" style="padding:64px 14px"><div class="big">' + icon("share") + "</div><p>" + esc(msg) + '</p><button class="btn" style="margin-top:18px" onclick="location.hash=\'#/\';location.reload()">Abrir The Magic App</button></div></div>'; }
+  function sharedFooter() { return '<div class="shared-cta"><p>Crea y organiza tu propia biblioteca con <b>App del Mago</b>.</p><button class="btn" onclick="location.hash=\'#/\';location.reload()">Abrir la app</button></div>'; }
+  function sharedError(msg) { return '<div class="screen shared"><div class="empty" style="padding:64px 14px"><div class="big">' + icon("share") + "</div><p>" + esc(msg) + '</p><button class="btn" style="margin-top:18px" onclick="location.hash=\'#/\';location.reload()">Abrir App del Mago</button></div></div>'; }
   function renderSharedTrick(s) {
     var p = s.payload || {}; var media = sharedMedia(p.media);
     view.innerHTML = '<div class="screen detail shared">' + sharedHeader(p.title || s.title || "Truco") +
@@ -1485,7 +1495,7 @@
       '<input type="file" id="importFile" accept="application/json" style="display:none">' +
       '<div class="sec-label" style="color:var(--danger)">Zona peligrosa</div>' +
       '<button class="btn danger" id="wipeBtn">Borrar todos mis trucos</button>' +
-      '<p class="subtitle" style="text-align:center;margin-top:24px">The Magic App · tus datos se guardan solo en este dispositivo.</p>' +
+      '<p class="subtitle" style="text-align:center;margin-top:24px">App del Mago · tus datos se guardan solo en este dispositivo.</p>' +
       "</div>";
 
     var acct = document.getElementById("acctRow");
@@ -1642,7 +1652,7 @@
   }
   function lockScreen(title, sub) {
     var dots = "<i></i><i></i><i></i><i></i>";
-    return '<div class="screen lock" id="lockScreen"><div class="lk">' + icon("hat") + "</div>" +
+    return '<div class="screen lock" id="lockScreen"><div class="lk">' + mark("", true) + "</div>" +
       "<h1>" + title + '</h1><p id="lkMsg">' + (sub || "") + "</p>" +
       '<div class="pindots" id="pinDots">' + dots + "</div>" +
       '<div class="keypad">' + keypadHtml() + "</div></div>";
@@ -1699,8 +1709,9 @@
     var isSignup = authMode === "signup";
     view.innerHTML =
       '<div class="screen gate">' +
-      '<div class="gate-hero"><div class="logo">' + icon("hat") + "</div>" +
-      '<h1 class="wm">The Magic <span>App</span></h1>' +
+      '<div class="gate-hero"><div class="logo">' + mark("", true) + "</div>" +
+      '<h1 class="wm">App del <span>Mago</span></h1>' +
+      '<p class="tagline">El estudio del mago</p>' +
       '<p>Tu biblioteca de magia, siempre contigo.</p></div>' +
       '<div class="gate-card">' +
       '<div class="gate-tabs"><button class="' + (!isSignup ? "on" : "") + '" id="tabLogin">Entrar</button>' +
@@ -1820,7 +1831,7 @@
   function boot() {
     if (booted) return; booted = true;
     if (cloudReady()) {
-      view.innerHTML = '<div class="screen splash"><div class="logo">' + icon("hat") + '</div><div class="wm">The Magic App</div><div class="spin"></div></div>';
+      view.innerHTML = '<div class="screen splash"><div class="logo">' + mark("", true) + '</div><div class="wm">App del Mago</div><div class="spin"></div></div>';
       Cloud.currentUser().then(function (u) {
         session = u || null;
         route();

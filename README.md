@@ -1,4 +1,4 @@
-# 🔮 The Magic App
+# 🔮 App del Mago
 
 Una colección de trucos de **mentalismo y magia** pensados para hacerse **en el móvil del espectador**, delante de quien sea y donde sea. Es una web app sin instalación, **sin dependencias y que funciona sin conexión**: se abre en cualquier navegador de teléfono.
 
@@ -36,7 +36,7 @@ La app está pensada para actuar: hay que separar lo que ve el espectador de lo 
 - **Escenario (lo que ve el público):** la portada y las pantallas de actuación de cada truco. Puedes dejar el móvil en manos del espectador sin miedo.
 - **Modo Mago (oculto):** tutoriales para **aprender cada truco** (efecto, qué ve el público, el secreto, paso a paso, guion y errores a evitar). Cada sección está etiquetada como *"Lo ve el público"* o *"Solo el mago"*.
 
-Para entrar al **Modo Mago**: en la portada, **mantén pulsado el título "The Magic App"** ~1 segundo. En modo app instalada (PWA) no hay barra de direcciones, así que el público no puede colarse escribiendo una URL.
+Para entrar al **Modo Mago**: en la portada, **mantén pulsado el título "App del Mago"** ~1 segundo. En modo app instalada (PWA) no hay barra de direcciones, así que el público no puede colarse escribiendo una URL.
 
 ## Instalar como app (PWA)
 

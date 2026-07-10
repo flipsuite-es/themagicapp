@@ -1,7 +1,7 @@
-/* Service worker de The Magic App.
+/* Service worker de App del Mago.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v22";
+var CACHE = "magic-v23";
 var ASSETS = [
   "./",
   "./index.html",
@@ -39,7 +39,7 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("push", function (e) {
   var data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text ? e.data.text() : "" }; }
-  var title = data.title || "The Magic App";
+  var title = data.title || "App del Mago";
   var opts = {
     body: data.body || "Tienes trucos para repasar.",
     icon: "./icon-192.png",

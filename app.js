@@ -454,7 +454,7 @@
 
     var body;
     if (state.tricks.length === 0) {
-      body = '<div class="empty"><div class="big">' + mark("", true) + '</div><h3>Tu biblioteca está vacía</h3>' +
+      body = '<div class="empty">' + emptyArt() + '<h3>Tu biblioteca está vacía</h3>' +
         "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
@@ -1742,16 +1742,37 @@
     document.getElementById("scPost").addEventListener("click", function () { if (!media) { toast("Añade una foto o vídeo"); return; } var btn = document.getElementById("scPost"); btn.disabled = true; btn.textContent = "Publicando…"; Cloud.createStory(media, (document.getElementById("scCap").value || "").trim()).then(function () { toast("Historia publicada"); close(); var h = location.hash || ""; if (h === "#/comunidad" || h === "#/siguiendo") route(); }).catch(function () { btn.disabled = false; btn.textContent = "Publicar historia"; toast("No se pudo publicar"); }); });
   }
 
+  /* ---------- Estados de carga (esqueletos) y vacíos ilustrados ---------- */
+  function emptyArt() { return '<div class="empty-art"><span class="ea-glow"></span>' + mark("", true) + "</div>"; }
+  function skLine(w, h) { return '<div class="skeleton sk-line" style="width:' + w + (h ? ";height:" + h : "") + '"></div>'; }
+  function skelFeed(n) {
+    var one = '<div class="postcard skel-card"><div class="sk-head"><div class="skeleton sk-av"></div><div class="sk-hl">' + skLine("46%") + skLine("28%") + "</div></div>" + skLine("92%") + skLine("74%") + '<div class="skeleton sk-media"></div></div>';
+    var o = ""; for (var i = 0; i < (n || 3); i++) o += one; return '<div class="feed">' + o + "</div>";
+  }
+  function skelCards(n) {
+    var one = '<div class="skel-card grid"><div class="skeleton sk-thumb"></div><div class="sk-hl" style="padding:2px">' + skLine("80%") + skLine("45%") + "</div></div>";
+    var o = ""; for (var i = 0; i < (n || 6); i++) o += one; return '<div class="cards">' + o + "</div>";
+  }
+  function skelRows(n) {
+    var one = '<div class="skel-card row"><div class="skeleton sk-av"></div><div class="sk-hl" style="flex:1">' + skLine("38%") + skLine("62%") + "</div></div>";
+    var o = ""; for (var i = 0; i < (n || 5); i++) o += one; return '<div class="skel-rows">' + o + "</div>";
+  }
+  function skelProfile() {
+    return '<div class="skel-prof"><div class="skeleton sk-cover"></div><div class="skeleton sk-av big" style="margin:-46px auto 0"></div>' + skLine("46%", "22px") + skLine("30%") + '<div class="skeleton sk-line" style="width:70%;height:42px;margin:16px auto;border-radius:999px"></div></div>';
+  }
+  function skelDetail() {
+    return '<div class="skel-detail"><div class="skeleton sk-hero"></div>' + skLine("68%", "26px") + skLine("40%") + '<div class="skeleton sk-media"></div>' + skLine("92%") + skLine("86%") + skLine("58%") + "</div>";
+  }
   function renderCommunity(mode) {
     mountTabbar("com"); var f = document.getElementById("fabEl"); if (f) f.remove();
     composeChallenge = null;
     mountFab(mode === "market" ? "#/vender" : "#/publicar");
-    view.innerHTML = '<div class="screen wide">' + communityHeader(mode) + '<div id="comBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen wide">' + communityHeader(mode) + '<div id="comBody">' + (mode === "market" ? skelCards(6) : skelFeed(3)) + "</div></div>";
     bindCommunityHeader();
     var bodyEl = document.getElementById("comBody");
     if (mode === "market") {
       Cloud.getMarket().then(function (rows) {
-        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("bag") + '</div><h3>Mercado vacío</h3><p>Sé el primero en poner un truco a la venta.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender un truco</button></div>'; return; }
+        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px">' + emptyArt() + '<h3>Mercado vacío</h3><p>Sé el primero en poner un truco a la venta.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender un truco</button></div>'; return; }
         bodyEl.innerHTML = '<div class="market">' + rows.map(function (l) {
           return '<div class="listcard" data-l="' + esc(l.id) + '">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
             '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="by">' + esc(l.name || l.handle || "Mago") + '</div><div class="price">' + money(l.price, l.currency) + (l.owned ? ' <span class="owned">Tuyo</span>' : "") + "</div></div></div>";
@@ -1766,7 +1787,7 @@
         var banner = chal ? '<div class="chal-banner" id="chalBanner"><span class="cb-ic">' + icon("flame") + '</span><div class="cb-b"><div class="cb-t">' + esc(chal.title) + '</div><div class="cb-p">' + esc(chal.prompt || "") + '</div><div class="cb-m">' + chal.participants + " participando · toca para ver</div></div>" + icon("chev") + "</div>" : "";
         var top = lead.length ? '<div class="sec-label sec-row">Top magos de la semana <a class="seeall" id="seeTop">Ver ranking</a></div><div class="top-strip">' + lead.map(function (m) { return '<div class="top-m" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle, "big") + '<div class="tm-n">' + esc(m.name || m.handle || "Mago") + "</div></div>"; }).join("") + "</div>" : "";
         var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
-        bodyEl.innerHTML = bar + recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
+        bodyEl.innerHTML = bar + recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
         bindPostCards(bodyEl); bindStories(bodyEl, stories);
         var cbn = document.getElementById("chalBanner"); if (cbn) cbn.addEventListener("click", function () { location.hash = "#/reto"; });
         var st = document.getElementById("seeTop"); if (st) st.addEventListener("click", function () { location.hash = "#/top"; });
@@ -1778,7 +1799,7 @@
         var rows = res[0], stories = res[1] || [];
         var bar = storiesBarHtml(stories);
         if (!rows.length) {
-          bodyEl.innerHTML = bar + '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Llena tu feed</h3><p>Sigue a magos para ver aquí sus publicaciones.</p></div><div class="sec-label">Sugerencias para seguir</div><div id="sugg"><div class="splash" style="padding:20px 0"><div class="spin"></div></div></div>';
+          bodyEl.innerHTML = bar + '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Llena tu feed</h3><p>Sigue a magos para ver aquí sus publicaciones.</p></div><div class="sec-label">Sugerencias para seguir</div><div id="sugg">' + skelRows(4) + "</div>";
           bindStories(bodyEl, stories);
           Cloud.suggestMagicians().then(function (mg) { var s = document.getElementById("sugg"); s.innerHTML = mg.length ? '<div class="mago-list">' + mg.map(magicianRow).join("") + "</div>" : '<p class="hint">Aún no hay más magos. ¡Invita a otros!</p>'; bindMagicianRows(s); }).catch(function () {});
           return;
@@ -1928,7 +1949,7 @@
       var first = res[0], rest = res[1] || [];
       var rows = first ? [first].concat(rest.filter(function (r) { return r.id !== first.id; })) : rest;
       var list = document.getElementById("clipsList"); if (!list) return;
-      if (!rows.length) { list.innerHTML = '<div class="clips-empty"><div class="big">' + icon("play") + '</div><h3>Aún no hay clips</h3><p>Graba o sube tu primer clip de magia y empieza a inspirar a la comunidad.</p><button class="btn" onclick="location.hash=\'#/clip-nuevo\'">' + icon("plus", "i-sm") + " Crear un clip</button></div>"; return; }
+      if (!rows.length) { list.innerHTML = '<div class="clips-empty">' + emptyArt() + '<h3>Aún no hay clips</h3><p>Graba o sube tu primer clip de magia y empieza a inspirar a la comunidad.</p><button class="btn" onclick="location.hash=\'#/clip-nuevo\'">' + icon("plus", "i-sm") + " Crear un clip</button></div>"; return; }
       clipsState.rows = rows;
       list.innerHTML = rows.map(clipHtml).join("");
       var io = new IntersectionObserver(function (entries) {
@@ -1939,6 +1960,74 @@
       clipActivate(list, 0);
     }).catch(function () { var list = document.getElementById("clipsList"); if (list) list.innerHTML = '<div class="clips-empty"><p>No se pudieron cargar los clips.</p></div>'; });
   }
+  // Cámara propia embebida (estilo TikTok) para grabar clips en la app.
+  function clipCamSupported() {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && window.MediaRecorder.isTypeSupported);
+  }
+  function clipCamMime() {
+    var t = ["video/mp4;codecs=h264,aac", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    for (var i = 0; i < t.length; i++) { try { if (window.MediaRecorder.isTypeSupported(t[i])) return t[i]; } catch (e) {} }
+    return "";
+  }
+  function openClipCamera(onCapture, onFail) {
+    var MAX = 60, facing = "user", stream = null, rec = null, chunks = [], recording = false, startT = 0, rafId = 0;
+    var ov = el('<div class="cam-screen" id="camScreen">' +
+      '<video id="camPrev" autoplay playsinline muted></video>' +
+      '<div class="cam-top"><button class="cam-icon" id="camX" aria-label="Cerrar">' + icon("x") + '</button>' +
+      '<span class="cam-time" id="camTime">0:00</span>' +
+      '<button class="cam-icon" id="camFlip" aria-label="Girar cámara">' + icon("refresh") + "</button></div>" +
+      '<div class="cam-bottom"><div class="cam-hint" id="camHint">Toca para grabar · máx. 60s</div>' +
+      '<button class="cam-shutter" id="camShutter" aria-label="Grabar">' +
+      '<svg class="cam-ring" viewBox="0 0 76 76"><circle class="cam-track" cx="38" cy="38" r="34"/><circle class="cam-prog" cx="38" cy="38" r="34"/></svg>' +
+      '<span class="cam-dot"></span></button></div></div>');
+    document.body.appendChild(ov);
+    var prev = ov.querySelector("#camPrev");
+    var progEl = ov.querySelector(".cam-prog");
+    var C = 2 * Math.PI * 34; progEl.style.strokeDasharray = C; progEl.style.strokeDashoffset = C;
+    var timeEl = ov.querySelector("#camTime");
+    var cleanup = function () { if (rafId) cancelAnimationFrame(rafId); if (rec && recording) { try { rec.stop(); } catch (e) {} } if (stream) stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} }); };
+    var close = function () { cleanup(); ov.remove(); };
+    var fmt = function (s) { var m = Math.floor(s / 60), r = Math.floor(s % 60); return m + ":" + (r < 10 ? "0" : "") + r; };
+    function startStream() {
+      return navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true })
+        .then(function (s) { stream = s; prev.srcObject = s; prev.muted = true; var pp = prev.play(); if (pp && pp.catch) pp.catch(function () {}); });
+    }
+    function tick() {
+      var el0 = (Date.now() - startT) / 1000;
+      timeEl.textContent = fmt(el0);
+      progEl.style.strokeDashoffset = C * (1 - Math.min(1, el0 / MAX));
+      if (el0 >= MAX) { stopRec(); return; }
+      rafId = requestAnimationFrame(tick);
+    }
+    function startRec() {
+      if (!stream) return;
+      chunks = []; var mime = clipCamMime();
+      try { rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+      catch (e) { toast("No se pudo grabar en este dispositivo"); return; }
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = function () {
+        var type = (rec && rec.mimeType) || "video/webm";
+        var ext = /mp4/.test(type) ? "mp4" : "webm";
+        var blob = new Blob(chunks, { type: type });
+        var file = new File([blob], "clip." + ext, { type: type });
+        cleanup(); ov.remove(); onCapture(file);
+      };
+      rec.start(); recording = true; startT = Date.now();
+      ov.classList.add("recording"); ov.querySelector("#camHint").textContent = "Grabando… toca para parar";
+      tick();
+    }
+    function stopRec() { if (rec && recording) { recording = false; if (rafId) cancelAnimationFrame(rafId); try { rec.stop(); } catch (e) {} } }
+    ov.querySelector("#camShutter").addEventListener("click", function () { if (recording) stopRec(); else startRec(); });
+    ov.querySelector("#camX").addEventListener("click", close);
+    ov.querySelector("#camFlip").addEventListener("click", function () {
+      if (recording) return;
+      facing = facing === "user" ? "environment" : "user";
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+      startStream().catch(function () {});
+    });
+    startStream().catch(function () { ov.remove(); toast("No se pudo abrir la cámara"); if (onFail) onFail(); });
+  }
+
   // Crear un clip: grabar en el momento (cámara del móvil) o subir un vídeo.
   var clipDraft = null;
   function renderClipCreate() {
@@ -1956,7 +2045,10 @@
       "</div>" +
       '<input type="file" id="clcRecFile" accept="video/*" capture="environment" style="display:none">' +
       '<input type="file" id="clcUpFile" accept="video/*" style="display:none">';
-    document.getElementById("clcRec").addEventListener("click", function () { document.getElementById("clcRecFile").click(); });
+    document.getElementById("clcRec").addEventListener("click", function () {
+      if (clipCamSupported()) openClipCamera(function (file) { clipDraft = { file: file }; clipCreateReview(); }, function () { document.getElementById("clcRecFile").click(); });
+      else document.getElementById("clcRecFile").click();
+    });
     document.getElementById("clcUp").addEventListener("click", function () { document.getElementById("clcUpFile").click(); });
     var onPick = function () { var fl = this.files && this.files[0]; if (!fl) return; if (!/^video\//.test(fl.type || "") && !/\.(mp4|mov|webm|m4v|3gp)$/i.test(fl.name || "")) { toast("Elige un archivo de vídeo"); return; } clipDraft = { file: fl }; clipCreateReview(); };
     document.getElementById("clcRecFile").addEventListener("change", onPick);
@@ -1999,7 +2091,7 @@
   }
   function renderNotifications() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Avisos</h1></div><div id="nBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Avisos</h1></div><div id="nBody">' + skelRows(6) + '</div></div>';
     Cloud.getNotifications().then(function (d) {
       var items = d.items || [];
       var b = document.getElementById("nBody");
@@ -2009,7 +2101,7 @@
         return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + go + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
           '<div class="n-b"><div>' + notifText(n) + "</div>" + (n.snippet ? '<div class="n-s">' + esc(n.snippet) + "</div>" : "") + '<div class="n-t">' + timeAgo(n.created_at) + "</div></div>" +
           '<span class="n-ic">' + icon(ic, "i-sm") + "</span></div>";
-      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bell") + "</div><h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
+      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px">' + emptyArt() + "<h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
       b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.indexOf("list:") === 0) { if (g.slice(5)) location.hash = "#/mercado/" + g.slice(5); } else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
       Cloud.markNotificationsRead().then(function () { unreadNotif = 0; }).catch(function () {});
     }).catch(function () { document.getElementById("nBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudieron cargar los avisos.</p></div>'; });
@@ -2094,10 +2186,10 @@
   }
   function renderSaved() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Guardados</h1></div><div id="svBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Guardados</h1></div><div id="svBody">' + skelFeed(2) + '</div></div>';
     Cloud.getFeed(null, "saved").then(function (rows) {
       var b = document.getElementById("svBody");
-      b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bookmark") + "</div><h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
+      b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px">' + emptyArt() + "<h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
       bindPostCards(b);
       appendMore(b, b.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "saved", null, null, before); });
     }).catch(function () { document.getElementById("svBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
@@ -2110,14 +2202,14 @@
   }
   function renderMessages() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Mensajes</h1></div><div id="msBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Mensajes</h1></div><div id="msBody">' + skelRows(6) + '</div></div>';
     Cloud.getConversations().then(function (rows) {
       var b = document.getElementById("msBody");
       b.innerHTML = rows.length ? '<div class="conv-list">' + rows.map(function (c) {
         return '<div class="conv" data-cid="' + esc(c.id) + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle) +
           '<div class="cv-b"><div class="n">' + esc(c.name || c.handle || "Mago") + '</div><div class="d">' + esc(c.last || "") + "</div></div>" +
           (c.unread ? '<span class="cv-unread">' + c.unread + "</span>" : '<span class="cv-t">' + timeAgo(c.last_at) + "</span>") + "</div>";
-      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("chat") + "</div><h3>Sin mensajes</h3><p>Escribe a cualquier mago desde su perfil.</p></div>";
+      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px">' + emptyArt() + "<h3>Sin mensajes</h3><p>Escribe a cualquier mago desde su perfil.</p></div>";
       b.querySelectorAll(".conv[data-cid]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/chat/" + c.getAttribute("data-cid"); }); });
     }).catch(function () { document.getElementById("msBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
@@ -2217,7 +2309,7 @@
   /* ------------------------- Post detail ---------------------------- */
   function renderPostDetail(id) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody">' + skelDetail() + '</div></div>';
     Promise.all([Cloud.getPost(id), Cloud.getComments(id)]).then(function (res) {
       var p = res[0], comments = res[1] || [];
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
@@ -2254,7 +2346,7 @@
   /* ---------------------------- Perfil ------------------------------ */
   function renderProfile(uid) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody">' + skelProfile() + '</div></div>';
     Promise.all([Cloud.getProfileInfo(uid), Cloud.getFeed(uid), Cloud.getMarket(uid).catch(function () { return []; })]).then(function (res) {
       var p = res[0], posts = res[1] || [], listings = res[2] || [];
       var b = document.getElementById("prBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>Perfil no disponible.</p></div>'; return; }
@@ -2322,7 +2414,7 @@
   function starsHtml(n, cls) { var o = ""; for (var i = 1; i <= 5; i++) o += '<span class="star ' + (i <= Math.round(n) ? "on" : "") + '" ' + (cls ? 'data-r="' + i + '"' : "") + ">★</span>"; return '<span class="stars ' + (cls || "") + '">' + o + "</span>"; }
   function renderListing(id) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody">' + skelDetail() + '</div></div>';
     Promise.all([Cloud.getListing(id), Cloud.getReviews(id)]).then(function (res) {
       var l = res[0], reviews = res[1] || [];
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
@@ -2757,7 +2849,7 @@
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Invitaciones</h1></div>' +
       '<p class="subtitle">App del Mago es un círculo cerrado. Cada mago tiene un número limitado de invitaciones: elige bien a quién dejas entrar.</p>' +
       '<button class="btn" id="invNew">' + icon("plus", "i-sm") + ' Crear invitación</button>' +
-      '<div id="invBody"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div></div>';
+      '<div id="invBody">' + skelRows(3) + "</div></div>";
     var load = function () {
       Cloud.myInvites().then(function (rows) {
         var b = document.getElementById("invBody"); if (!b) return;

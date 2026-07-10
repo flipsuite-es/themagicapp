@@ -1096,3 +1096,52 @@ a { color: var(--brand); text-underline-offset: 3px; }
 /* Perfil: portada con degradado y vídeo/imagen con esquinas nobles */
 .p-cover { border-radius: 0 0 22px 22px; }
 .post-img { border-radius: 14px; }
+
+/* ============ Esqueletos de carga + vacíos ilustrados ============ */
+.skel-card { padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.feed .skel-card, .cards .skel-card.grid { margin: 0; }
+.skel-rows .skel-card.row { margin-bottom: 10px; }
+.skel-card.row { display: flex; align-items: center; gap: 12px; }
+.sk-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sk-hl { flex: 1; }
+.sk-line { height: 12px; border-radius: 7px; margin: 9px 0; }
+.sk-line:first-child { margin-top: 0; }
+.sk-line:last-child { margin-bottom: 0; }
+.sk-av { width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto; }
+.sk-av.big { width: 86px; height: 86px; }
+.sk-media { height: 190px; border-radius: 12px; margin-top: 12px; }
+.sk-thumb { aspect-ratio: 16/10; border-radius: 0; }
+.skel-card.grid { padding: 0; overflow: hidden; }
+.sk-cover { height: 120px; border-radius: 0; margin: -1px -1px 0; }
+.skel-prof { text-align: center; border: 0; box-shadow: none; padding: 0; background: none; }
+.skel-prof .sk-cover { border-radius: 0 0 22px 22px; }
+.skel-prof .sk-line { margin: 12px auto; }
+.sk-hero { aspect-ratio: 16/10; border-radius: 18px; margin-bottom: 16px; }
+.skel-detail { padding: 0; border: 0; box-shadow: none; background: none; }
+.skel-detail .sk-line { margin: 11px 0; }
+
+.empty-art { position: relative; width: 106px; height: 106px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--brand) 15%, var(--surface)), var(--surface)); border: 1px solid var(--hair); box-shadow: var(--shadow); }
+.empty-art .mk { width: 44px; height: 44px; color: var(--brand); position: relative; z-index: 1; filter: drop-shadow(0 5px 14px color-mix(in srgb, var(--brand) 38%, transparent)); }
+.empty-art .ea-glow { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent); }
+.empty-art::before, .empty-art::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid var(--hair); }
+.empty-art::before { inset: -11px; opacity: .5; }
+.empty-art::after { inset: -22px; opacity: .22; }
+.clips-empty .empty-art { background: radial-gradient(circle at 50% 38%, rgba(216,182,103,.18), rgba(255,255,255,.03)); }
+
+/* ============ Cámara embebida de Clips (estilo TikTok) ============ */
+.cam-screen { position: fixed; inset: 0; z-index: 70; background: #000; overflow: hidden; }
+.cam-screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.cam-top { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; }
+.cam-icon { width: 42px; height: 42px; border: 0; border-radius: 999px; background: rgba(0,0,0,.4); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cam-icon .i { width: 22px; height: 22px; }
+.cam-time { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; background: rgba(0,0,0,.4); padding: 5px 14px; border-radius: 999px; opacity: 0; transition: opacity .2s; }
+.cam-screen.recording .cam-time { opacity: 1; }
+.cam-screen.recording .cam-time { background: color-mix(in srgb, var(--danger) 80%, #000); }
+.cam-bottom { position: absolute; left: 0; right: 0; bottom: calc(30px + env(safe-area-inset-bottom)); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.cam-hint { color: #fff; font-size: 13.5px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.cam-shutter { position: relative; width: 84px; height: 84px; border: 0; background: none; cursor: pointer; padding: 0; }
+.cam-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.cam-ring .cam-track { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 4; }
+.cam-ring .cam-prog { fill: none; stroke: var(--danger); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset .1s linear; }
+.cam-dot { position: absolute; top: 50%; left: 50%; width: 62px; height: 62px; border-radius: 50%; background: #fff; transform: translate(-50%,-50%); transition: all .22s cubic-bezier(.2,.8,.3,1.2); }
+.cam-screen.recording .cam-dot { width: 30px; height: 30px; border-radius: 9px; background: var(--danger); }

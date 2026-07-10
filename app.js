@@ -40,6 +40,7 @@
     trash: '<path d="M5 7h14M10 7V5h4v2M6.5 7l1 12.5h9L17.5 7"/>',
     edit: '<path d="M14.5 5.5l4 4M4 20l1-4L16 4.5l3.5 3.5L8 19.5z"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    pause: '<path d="M9 5v14M15 5v14"/>',
     cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
     theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
     disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
@@ -636,7 +637,7 @@
 
     view.innerHTML =
       '<div class="screen detail">' +
-      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
       '<span style="flex:1"></span>' +
       '<button class="iconbtn ' + (t.favorite ? "on" : "") + '" id="favBtn">' + icon(t.favorite ? "starfill" : "star") + "</button>" +
       '<button class="iconbtn" id="editBtn">' + icon("edit") + "</button></div>" +
@@ -702,7 +703,7 @@
 
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>' + (editing ? "Editar truco" : "Nuevo truco") + "</h1></div>" +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>' + (editing ? "Editar truco" : "Nuevo truco") + "</h1></div>" +
       '<div class="field"><label>Título</label><input id="fTitle" placeholder="Ej. Carta ambiciosa" value="' + esc(t ? t.title : "") + '"></div>' +
       '<div class="row">' +
       '<div class="field"><label>Categoría</label><input id="fCat" list="cats" placeholder="Elige o crea…" value="' + esc(t ? t.category : "") + '"><datalist id="cats">' + catOptions + "</datalist></div>" +
@@ -917,7 +918,7 @@
     var r = id ? getRoutine(id) : null;
     if (id && !r) { location.hash = "#/rutinas"; return; }
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar rutina" : "Nueva rutina") + "</h1></div>" +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar rutina" : "Nueva rutina") + "</h1></div>" +
       '<div class="field"><label>Nombre</label><input id="rName" placeholder="Ej. Set de close-up (15 min)" value="' + esc(r ? r.name : "") + '"></div>' +
       '<div class="field"><label>Notas</label><textarea id="rNotes" placeholder="Notas del set, transiciones, orden…">' + esc(r ? r.notes : "") + "</textarea></div>" +
       '<button class="btn" id="rSave">' + (id ? "Guardar" : "Crear rutina") + "</button>" +
@@ -948,7 +949,7 @@
     var empty = !(r.trickIds || []).length;
 
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/rutinas\'">' + icon("back") + '</button><h1>Rutina</h1>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/rutinas\'">' + icon("back") + '</button><h1>Rutina</h1>' +
       '<span style="flex:1"></span><button class="iconbtn" id="rEdit">' + icon("edit") + "</button></div>" +
       '<h1 class="title">' + esc(r.name) + "</h1>" +
       (r.notes ? '<div class="notes" style="margin:6px 0 4px">' + esc(r.notes) + "</div>" : "") +
@@ -986,7 +987,7 @@
             '<div class="rt"><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div><span class=\"go\">" + icon("plus", "i-sm") + "</span></div>";
         }).join("") + "</div>"
       : '<div class="empty" style="padding:40px 10px"><p>Ya has añadido todos tus trucos, o tu biblioteca está vacía.</p></div>';
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/rutina/' + id + '\'">' + icon("back") + '</button><h1>Añadir a la rutina</h1></div>' + body + "</div>";
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/rutina/' + id + '\'">' + icon("back") + '</button><h1>Añadir a la rutina</h1></div>' + body + "</div>";
     view.querySelectorAll(".rrow[data-add]").forEach(function (row) {
       row.addEventListener("click", function () { r.trickIds.push(row.getAttribute("data-add")); r.updatedAt = Date.now(); save(); syncRoutine(r); toast("Añadido"); location.hash = "#/rutina/" + id; });
     });
@@ -1070,7 +1071,7 @@
       return '<button type="button" class="tchip ' + (sel.indexOf(t.id) >= 0 ? "on" : "") + '" data-id="' + t.id + '">' + esc(t.title) + "</button>";
     }).join("");
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar bolo" : "Nuevo bolo") + "</h1></div>" +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + "</button><h1>" + (id ? "Editar bolo" : "Nuevo bolo") + "</h1></div>" +
       '<div class="row"><div class="field"><label>Fecha</label><input id="gDate" type="date" value="' + esc(g ? g.date : "") + '"></div>' +
       '<div class="field"><label>Caché (€)</label><input id="gFee" type="number" inputmode="decimal" placeholder="0" value="' + esc(g && g.fee !== "" && g.fee != null ? g.fee : "") + '"></div></div>' +
       '<div class="field"><label>Cliente</label><input id="gClient" placeholder="Nombre / empresa" value="' + esc(g ? g.client : "") + '"></div>' +
@@ -1114,7 +1115,7 @@
       : '<div class="hint">No registraste qué actuaste.</div>';
 
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/bolos\'">' + icon("back") + '</button><h1>Bolo</h1>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/bolos\'">' + icon("back") + '</button><h1>Bolo</h1>' +
       '<span style="flex:1"></span><button class="iconbtn" id="gEdit">' + icon("edit") + "</button></div>" +
       '<h1 class="title">' + esc(g.client || "Bolo") + "</h1>" +
       '<div class="detail-badges"><span class="tagchip">' + fmtDate(g.date) + "</span>" +
@@ -1143,7 +1144,7 @@
             '<div class="pracact"><button class="btn small" data-done="' + t.id + '">' + icon("check", "i-sm") + ' Hecho</button><button class="btn small ghost" data-snooze="' + t.id + '">Posponer</button></div></div>';
         }).join("") + "</div>"
       : '<div class="empty"><div class="big">' + icon("target") + '</div><h3>¡Todo al día!</h3><p>No hay trucos para practicar hoy. Marca trucos como “Aprendiendo” para entrenarlos aquí con repetición espaciada.</p></div>';
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Práctica</h1></div>' +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Práctica</h1></div>' +
       '<p class="subtitle">' + (due.length ? due.length + " truco(s) para hoy" : "Repetición espaciada") + "</p>" + body + "</div>";
     view.querySelectorAll(".rc[data-open]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-open"); }); });
     view.querySelectorAll("[data-done]").forEach(function (b) { b.addEventListener("click", function () { var t = getTrick(b.getAttribute("data-done")); if (t) { markPracticed(t); toast("¡Bien! Próximo repaso programado"); renderPractice(); } }); });
@@ -1169,7 +1170,7 @@
     function bar(label, val, max, cls) { var pct = max ? Math.round(val / max * 100) : 0; return '<div class="statbar"><div class="bl"><span>' + label + "</span><span>" + val + '</span></div><div class="track"><i class="' + (cls || "") + '" style="width:' + pct + '%"></i></div></div>'; }
 
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Estadísticas</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Estadísticas</h1></div>' +
       '<div class="sec-label">Repertorio</div>' +
       '<div class="stats-grid">' +
       tile(T.length, "trucos") + tile(st.dominado, "dominados") + tile(Math.round(st.dominado / tot * 100) + "%", "de dominio") +
@@ -1308,7 +1309,7 @@
   function renderShares() {
     clearTabbar();
     if (!logged()) { location.hash = "#/ajustes"; return; }
-    var head = '<div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Enlaces compartidos</h1></div>';
+    var head = '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Enlaces compartidos</h1></div>';
     view.innerHTML = '<div class="screen">' + head + '<div class="splash" style="padding:52px 0"><div class="spin"></div></div></div>';
     Cloud.listShares().then(function (rows) {
       var body;
@@ -1353,7 +1354,7 @@
   }
 
   /* ===================== COMUNIDAD + MERCADO ======================== */
-  var myProfile = null, needsOnboarding = false, feedCh = null;
+  var myProfile = null, needsOnboarding = false, feedCh = null, notifCh = null;
   var socialEnabled = (function () { try { return localStorage.getItem("magic_social") !== "0"; } catch (e) { return true; } })();
   var SPECIALTIES = ["Cartomagia", "Mentalismo", "Close-up", "Escena", "Infantil", "Monedas", "Ilusionismo", "Comedia"];
 
@@ -1489,8 +1490,8 @@
   function postCardHtml(p) {
     var isRepost = !!p.repost_of && p.orig;
     var head = '<header class="pc-head" data-mago="' + esc(p.author) + '">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle) +
-      '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + "</div></div>" +
-      '<button class="pc-more" data-more="' + esc(p.id) + '" data-author="' + esc(p.author) + '" data-handle="' + esc(p.handle || "") + '">' + icon("dots", "i-sm") + "</button></header>";
+      '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + (p.edited_at ? " · editado" : "") + "</div></div>" +
+      '<button class="pc-more" data-more="' + esc(p.id) + '" data-author="' + esc(p.author) + '" data-handle="' + esc(p.handle || "") + '" aria-label="Más opciones">' + icon("dots", "i-sm") + "</button></header>";
     var inner;
     if (isRepost) {
       var o = p.orig;
@@ -1501,11 +1502,11 @@
       inner = postInnerHtml(p);
     }
     return '<article class="postcard" data-post="' + esc(p.id) + '">' + head + inner +
-      '<footer class="pc-acts"><button class="pc-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '">' + icon(p.liked ? "heartfill" : "heart", "i-sm") + '<span>' + (p.likes || 0) + "</span></button>" +
-      '<button class="pc-cmt" data-post="' + esc(p.id) + '">' + icon("chat", "i-sm") + "<span>" + (p.comments || 0) + "</span></button>" +
-      '<button class="pc-rep" data-rep="' + esc(p.id) + '">' + icon("repost", "i-sm") + "</button>" +
+      '<footer class="pc-acts"><button class="pc-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '" aria-label="Me gusta">' + icon(p.liked ? "heartfill" : "heart", "i-sm") + '<span>' + (p.likes || 0) + "</span></button>" +
+      '<button class="pc-cmt" data-post="' + esc(p.id) + '" aria-label="Comentar">' + icon("chat", "i-sm") + "<span>" + (p.comments || 0) + "</span></button>" +
+      '<button class="pc-rep" data-rep="' + esc(p.id) + '" aria-label="Repostear">' + icon("repost", "i-sm") + "</button>" +
       '<span style="flex:1"></span>' +
-      '<button class="pc-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '">' + icon(p.saved ? "bookmarkfill" : "bookmark", "i-sm") + "</button></footer></article>";
+      '<button class="pc-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '" aria-label="Guardar">' + icon(p.saved ? "bookmarkfill" : "bookmark", "i-sm") + "</button></footer></article>";
   }
   function bindPostCards(scope) {
     var s = scope || view;
@@ -1564,11 +1565,56 @@
     var cancel = el('<button class="sheet-btn cancel">Cancelar</button>'); cancel.addEventListener("click", function () { ov.remove(); }); box.appendChild(cancel);
     ov.appendChild(box); ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov);
   }
+  // Autocompletado de @menciones y #hashtags en cualquier campo de texto.
+  function attachAutocomplete(inp) {
+    if (!inp || !cloudReady()) return;
+    var panel = null, timer = null;
+    var close = function () { if (panel) { panel.remove(); panel = null; } };
+    var tokenAt = function () { var pos = inp.selectionStart; var upto = (inp.value || "").slice(0, pos); var m = upto.match(/(^|\s)([@#][\wáéíóúñ.]*)$/i); return m ? { trigger: m[2][0], q: m[2].slice(1), start: pos - (m[2].length), end: pos } : null; };
+    var pick = function (text) { var tk = tokenAt(); if (!tk) { close(); return; } var ins = tk.trigger + text + " "; var v = inp.value; inp.value = v.slice(0, tk.start) + ins + v.slice(tk.end); var np = tk.start + ins.length; inp.setSelectionRange(np, np); inp.focus(); close(); };
+    var show = function (items, render) {
+      close(); if (!items.length) return;
+      panel = el('<div class="ac-panel"></div>');
+      items.forEach(function (it) { var row = el('<button type="button" class="ac-row"></button>'); row.innerHTML = render(it); row.addEventListener("mousedown", function (e) { e.preventDefault(); pick(it.value); }); panel.appendChild(row); });
+      var r = inp.getBoundingClientRect();
+      panel.style.left = Math.round(r.left) + "px"; panel.style.top = Math.round(r.bottom + 4) + "px"; panel.style.width = Math.round(r.width) + "px";
+      document.body.appendChild(panel);
+    };
+    inp.addEventListener("input", function () {
+      var tk = tokenAt(); if (!tk || tk.q.length < 1) { close(); return; }
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (tk.trigger === "@") {
+          Cloud.searchMagicians(tk.q).then(function (list) { show((list || []).slice(0, 6).map(function (u) { return { value: u.handle, name: u.name, handle: u.handle, avatar: u.avatar }; }), function (it) { return avatarHtml(Cloud.publicUrl(it.avatar), it.name || it.handle, "sm") + '<span>@' + esc(it.handle || "") + "</span>"; }); }).catch(close);
+        } else {
+          Cloud.trendingTags().then(function (tags) { var q = tk.q.toLowerCase(); var f = (tags || []).filter(function (t) { return (t.tag || "").toLowerCase().indexOf(q) === 0; }); show((f.length ? f : tags || []).slice(0, 6).map(function (t) { return { value: t.tag }; }), function (it) { return '<span>#' + esc(it.value || "") + "</span>"; }); }).catch(close);
+        }
+      }, 180);
+    });
+    inp.addEventListener("blur", function () { setTimeout(close, 160); });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  }
+  function editTextModal(title, current, onSave) {
+    var ov = el('<div class="modal-ov"><div class="modal"><h3></h3><textarea id="etText" rows="4" class="sc-cap"></textarea><div class="modal-act"><button class="btn" id="etSave">Guardar</button><button class="btn ghost" id="etCancel">Cancelar</button></div></div></div>');
+    ov.querySelector("h3").textContent = title;
+    document.body.appendChild(ov);
+    var ta = ov.querySelector("#etText"); ta.value = current || ""; setTimeout(function () { ta.focus(); }, 30);
+    var close = function () { ov.remove(); };
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    ov.querySelector("#etCancel").addEventListener("click", close);
+    ov.querySelector("#etSave").addEventListener("click", function () { var v = (ta.value || "").trim(); if (!v) { toast("Escribe algo"); return; } var btn = ov.querySelector("#etSave"); btn.disabled = true; btn.textContent = "Guardando…"; onSave(v, close, btn); });
+  }
+  function reportReasons(type, id) {
+    actionSheet(["Spam", "Contenido inapropiado", "Copia o plagio", "Acoso", "Otro"].map(function (r) {
+      return { label: r, fn: function () { Cloud.report(type, id, r).then(function () { toast("Gracias, lo revisaremos"); }).catch(function () {}); } };
+    }));
+  }
   function postMenu(id, author, handle, cardEl) {
     var mine = author === (myProfile && myProfile.user_id);
     var opts = mine
-      ? [{ label: "Eliminar publicación", danger: true, fn: function () { if (!confirm("¿Eliminar esta publicación?")) return; Cloud.deletePost(id).then(function () { toast("Eliminada"); if (cardEl) cardEl.remove(); }).catch(function () { toast("No se pudo"); }); } }]
-      : [{ label: "Reportar publicación", fn: function () { Cloud.report("post", id, null).then(function () { toast("Gracias, lo revisaremos"); }).catch(function () {}); } },
+      ? [{ label: "Editar publicación", fn: function () { Cloud.getPost(id).then(function (pp) { editTextModal("Editar publicación", pp && pp.body, function (v, close) { Cloud.updatePost(id, v).then(function () { close(); toast("Editado"); route(); }).catch(function () { toast("No se pudo"); }); }); }); } },
+         { label: "Eliminar publicación", danger: true, fn: function () { if (!confirm("¿Eliminar esta publicación?")) return; Cloud.deletePost(id).then(function () { toast("Eliminada"); if (cardEl) cardEl.remove(); }).catch(function () { toast("No se pudo"); }); } }]
+      : [{ label: "Reportar publicación", fn: function () { reportReasons("post", id); } },
          { label: "Bloquear a @" + (handle || "este mago"), danger: true, fn: function () { if (!confirm("¿Bloquear? Dejarás de ver su contenido y él el tuyo.")) return; Cloud.block(author).then(function () { toast("Bloqueado"); var h = location.hash || ""; if (h === "#/comunidad" || h === "#/siguiendo") route(); else if (cardEl) cardEl.remove(); }).catch(function () {}); } }];
     actionSheet(opts);
   }
@@ -1581,10 +1627,10 @@
     return '<div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1>' +
       (myStreak >= 2 ? '<span class="streak" title="Racha de ' + myStreak + ' días">' + icon("flame", "i-sm") + myStreak + "</span>" : "") +
       '<span class="spacer"></span>' +
-      '<button class="iconbtn" id="searchBtn">' + icon("search") + "</button>" +
-      '<button class="iconbtn" id="msgBtn">' + icon("chat") + '<span class="badge" id="msgBadge" style="display:none"></span></button>' +
-      '<button class="iconbtn" id="notifBtn">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
-      '<button class="iconbtn" id="meBtn">' + icon("user") + "</button></div>" +
+      '<button class="iconbtn" id="searchBtn" aria-label="Buscar">' + icon("search") + "</button>" +
+      '<button class="iconbtn" id="msgBtn" aria-label="Mensajes">' + icon("chat") + '<span class="badge" id="msgBadge" style="display:none"></span></button>' +
+      '<button class="iconbtn" id="notifBtn" aria-label="Notificaciones">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
+      '<button class="iconbtn" id="meBtn" aria-label="Mi perfil">' + icon("user") + "</button></div>" +
       '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
   }
   function bindCommunityHeader() {
@@ -1723,7 +1769,7 @@
   }
   function renderNotifications() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Avisos</h1></div><div id="nBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Avisos</h1></div><div id="nBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getNotifications().then(function (d) {
       var items = d.items || [];
       var b = document.getElementById("nBody");
@@ -1750,7 +1796,7 @@
   var discoverSpec = null;
   function renderDiscover() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Descubrir magos</h1></div>' +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Descubrir magos</h1></div>' +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="dscQ" placeholder="Buscar por nombre o @usuario…"></div>' +
       '<div class="chips" id="dscSpec"><div class="chip ' + (!discoverSpec ? "active" : "") + '" data-s="">Todas</div>' + SPECIALTIES.map(function (s) { return '<div class="chip ' + (discoverSpec === s ? "active" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</div>"; }).join("") + "</div>" +
       '<div id="dscBody"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div></div>';
@@ -1771,7 +1817,7 @@
   }
   function renderReto() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Reto</h1></div><div id="rtBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Reto</h1></div><div id="rtBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getActiveChallenge().then(function (chal) {
       var b = document.getElementById("rtBody");
       if (!chal) { b.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("flame") + "</div><h3>Sin reto activo</h3><p>Vuelve pronto, habrá uno nuevo.</p></div>"; return; }
@@ -1785,7 +1831,7 @@
   }
   function renderLeaderboard() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Top magos</h1></div><div id="lbBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Top magos</h1></div><div id="lbBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getLeaderboard().then(function (rows) {
       var b = document.getElementById("lbBody");
       b.innerHTML = rows.length ? '<p class="subtitle">Ranking de la semana por actividad e interacción.</p><div class="lb-list">' + rows.map(function (m, i) {
@@ -1799,7 +1845,7 @@
   }
   function renderTagFeed(tag) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>#' + esc(tag) + '</h1></div><div id="tBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>#' + esc(tag) + '</h1></div><div id="tBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getFeed(null, "discover", tag).then(function (rows) {
       var b = document.getElementById("tBody");
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("search") + "</div><p>Nada con #" + esc(tag) + " todavía.</p></div>";
@@ -1809,7 +1855,7 @@
   }
   function renderMagicianList(uid, which) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>' + (which === "followers" ? "Seguidores" : "Siguiendo") + '</h1></div><div id="mlBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>' + (which === "followers" ? "Seguidores" : "Siguiendo") + '</h1></div><div id="mlBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getFollowList(uid, which).then(function (rows) {
       var b = document.getElementById("mlBody");
       b.innerHTML = rows.length ? '<div class="mago-list">' + rows.map(magicianRow).join("") + "</div>" : '<p class="hint" style="padding:24px 2px">' + (which === "followers" ? "Nadie todavía." : "No sigue a nadie todavía.") + "</p>";
@@ -1818,7 +1864,7 @@
   }
   function renderSaved() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Guardados</h1></div><div id="svBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Guardados</h1></div><div id="svBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getFeed(null, "saved").then(function (rows) {
       var b = document.getElementById("svBody");
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bookmark") + "</div><h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
@@ -1834,7 +1880,7 @@
   }
   function renderMessages() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Mensajes</h1></div><div id="msBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Mensajes</h1></div><div id="msBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Cloud.getConversations().then(function (rows) {
       var b = document.getElementById("msBody");
       b.innerHTML = rows.length ? '<div class="conv-list">' + rows.map(function (c) {
@@ -1848,7 +1894,7 @@
   var chatCh = null;
   function renderChat(cid) {
     clearTabbar();
-    view.innerHTML = '<div class="screen chat"><div class="pagehead"><button class="back" onclick="location.hash=\'#/mensajes\'">' + icon("back") + '</button><h1>Chat</h1></div><div class="chat-scroll" id="chatMsgs"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div><div class="chat-in"><input id="chIn" placeholder="Escribe un mensaje…"><button class="btn small" id="chSend">' + icon("send", "i-sm") + "</button></div></div>";
+    view.innerHTML = '<div class="screen chat"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mensajes\'">' + icon("back") + '</button><h1>Chat</h1></div><div class="chat-scroll" id="chatMsgs"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div><div class="chat-in"><input id="chIn" placeholder="Escribe un mensaje…"><button class="btn small" id="chSend">' + icon("send", "i-sm") + "</button></div></div>";
     var paint = function (msgs) { var el0 = document.getElementById("chatMsgs"); if (!el0) return; el0.innerHTML = msgs.length ? msgs.map(function (m) { return '<div class="bubble ' + (m.mine ? "me" : "") + '">' + esc(m.body) + "</div>"; }).join("") : '<p class="hint" style="text-align:center;padding:20px">Empieza la conversación.</p>'; el0.scrollTop = el0.scrollHeight; };
     Cloud.getMessages(cid).then(function (msgs) { paint(msgs); Cloud.markMessagesRead(cid).catch(function () {}); }).catch(function () {});
     if (chatCh) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
@@ -1888,7 +1934,7 @@
   function renderCompose() {
     clearTabbar(); composeTrick = null;
     var chal = composeChallenge;
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Nueva publicación</h1></div>' +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Nueva publicación</h1></div>' +
       (chal ? '<div class="chal-chip">' + icon("flame", "i-sm") + " Participando en: <b>" + esc(chal.title) + "</b></div>" : "") +
       '<div class="field"><textarea id="cpBody" rows="4" placeholder="Comparte una idea, un logro, una pregunta… usa #hashtags y @menciones">' + (chal && chal.hashtag ? "#" + esc(chal.hashtag) + " " : "") + "</textarea></div>" +
       '<div class="pc-attach"><button class="btn ghost" id="cpPhoto">' + icon("plus", "i-sm") + ' Fotos</button><button class="btn ghost" id="cpVid">' + icon("play", "i-sm") + ' Vídeo</button><button class="btn ghost" id="cpTrick">' + icon("cards", "i-sm") + ' Truco</button></div>' +
@@ -1900,6 +1946,7 @@
       document.getElementById("cpPrev").innerHTML = (media.length ? '<div class="pc-media">' + mediaHtml(media) + "</div>" : "") +
         (composeTrick ? trickCardHtml({ title: composeTrick.title, category: composeTrick.category, difficulty: composeTrick.difficulty }) : "");
     };
+    attachAutocomplete(document.getElementById("cpBody"));
     document.getElementById("cpPhoto").addEventListener("click", function () { document.getElementById("cpFile").click(); });
     document.getElementById("cpFile").addEventListener("change", function () {
       var files = Array.prototype.slice.call(this.files || []); this.value = "";
@@ -1934,7 +1981,7 @@
   /* ------------------------- Post detail ---------------------------- */
   function renderPostDetail(id) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Promise.all([Cloud.getPost(id), Cloud.getComments(id)]).then(function (res) {
       var p = res[0], comments = res[1] || [];
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
@@ -1942,10 +1989,11 @@
       var tops = comments.filter(function (c) { return !c.parent_id; });
       var commentHtml = function (c, reply) {
         return '<div class="cmt' + (reply ? " reply" : "") + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") +
-          '<div class="cmt-body"><div class="c-who" data-mago="' + esc(c.author) + '">' + esc(c.name || c.handle || "Mago") + " <span>" + timeAgo(c.created_at) + "</span></div>" +
+          '<div class="cmt-body"><div class="c-who" data-mago="' + esc(c.author) + '">' + esc(c.name || c.handle || "Mago") + " <span>" + timeAgo(c.created_at) + (c.edited_at ? " · editado" : "") + "</span></div>" +
           '<div class="c-b">' + linkify(c.body) + "</div>" +
-          '<div class="c-acts"><button class="c-like ' + (c.liked ? "on" : "") + '" data-clike="' + esc(c.id) + '">' + icon(c.liked ? "heartfill" : "heart", "i-sm") + "<span>" + (c.likes || 0) + "</span></button>" +
-          (reply ? "" : '<button class="c-reply" data-reply="' + esc(c.id) + '" data-h="' + esc(c.handle || "") + '">Responder</button>') + "</div></div>" +
+          '<div class="c-acts"><button class="c-like ' + (c.liked ? "on" : "") + '" data-clike="' + esc(c.id) + '" aria-label="Me gusta">' + icon(c.liked ? "heartfill" : "heart", "i-sm") + "<span>" + (c.likes || 0) + "</span></button>" +
+          (reply ? "" : '<button class="c-reply" data-reply="' + esc(c.id) + '" data-h="' + esc(c.handle || "") + '">Responder</button>') +
+          (c.mine ? '<button class="c-edit" data-editc="' + esc(c.id) + '">Editar</button>' : "") + "</div></div>" +
           (c.mine ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>";
       };
       var commentsHtml = tops.length ? tops.map(function (c) { return commentHtml(c, false) + ((byParent[c.id] || []).length ? '<div class="cmt-replies">' + byParent[c.id].map(function (r) { return commentHtml(r, true); }).join("") + "</div>" : ""); }).join("") : '<p class="hint">Sé el primero en comentar.</p>';
@@ -1957,9 +2005,11 @@
       var input = document.getElementById("cmtIn"), bar = document.getElementById("cmtBar");
       var send = function () { var t = (input.value || "").trim(); if (!t) return; input.value = ""; var parent = replyTo; replyTo = null; var chip = document.getElementById("replyChip"); if (chip) chip.remove(); Cloud.addComment(id, t, parent).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
       document.getElementById("cmtSend").addEventListener("click", send);
+      attachAutocomplete(input);
       input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
       b.querySelectorAll(".c-who[data-mago]").forEach(function (w) { w.addEventListener("click", function () { location.hash = "#/mago/" + w.getAttribute("data-mago"); }); });
       b.querySelectorAll("[data-delc]").forEach(function (x) { x.addEventListener("click", function () { if (!confirm("¿Eliminar comentario?")) return; Cloud.deleteComment(x.getAttribute("data-delc")).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); });
+      b.querySelectorAll("[data-editc]").forEach(function (x) { x.addEventListener("click", function () { var cid = x.getAttribute("data-editc"); var cur = ""; comments.forEach(function (c) { if (c.id === cid) cur = c.body; }); editTextModal("Editar comentario", cur, function (v, close) { Cloud.updateComment(cid, v).then(function () { close(); toast("Editado"); renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); }); });
       b.querySelectorAll("[data-clike]").forEach(function (bt) { bt.addEventListener("click", function () { var cid = bt.getAttribute("data-clike"); var on = bt.classList.contains("on"); var sp = bt.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0; bt.classList.toggle("on"); sp.textContent = on ? Math.max(0, n - 1) : n + 1; bt.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + sp.textContent + "</span>"; (on ? Cloud.unlikeComment(cid) : Cloud.likeComment(cid)).catch(function () {}); }); });
       b.querySelectorAll("[data-reply]").forEach(function (bt) { bt.addEventListener("click", function () { replyTo = bt.getAttribute("data-reply"); var h = bt.getAttribute("data-h"); var old = document.getElementById("replyChip"); if (old) old.remove(); var chip = el('<div class="reply-chip" id="replyChip">Respondiendo a @' + esc(h || "comentario") + ' <button>✕</button></div>'); bar.parentNode.insertBefore(chip, bar); chip.querySelector("button").addEventListener("click", function () { replyTo = null; chip.remove(); }); input.focus(); }); });
     }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
@@ -1968,7 +2018,7 @@
   /* ---------------------------- Perfil ------------------------------ */
   function renderProfile(uid) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Promise.all([Cloud.getProfileInfo(uid), Cloud.getFeed(uid), Cloud.getMarket(uid).catch(function () { return []; })]).then(function (res) {
       var p = res[0], posts = res[1] || [], listings = res[2] || [];
       var b = document.getElementById("prBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>Perfil no disponible.</p></div>'; return; }
@@ -2004,7 +2054,7 @@
   }
   function renderEditProfile() {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Editar perfil</h1></div>' +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Editar perfil</h1></div>' +
       '<div class="field"><label>Nombre artístico</label><input id="epName" value="' + esc(onb.name) + '"></div>' +
       '<div class="field"><label>Usuario (@)</label><input id="epHandle" value="' + esc(onb.handle) + '"></div>' +
       '<div class="field"><label>Bio</label><textarea id="epBio" rows="3" placeholder="Cuéntate en una línea…">' + esc(myProfile && myProfile.bio || "") + "</textarea></div>" +
@@ -2036,20 +2086,28 @@
   function starsHtml(n, cls) { var o = ""; for (var i = 1; i <= 5; i++) o += '<span class="star ' + (i <= Math.round(n) ? "on" : "") + '" ' + (cls ? 'data-r="' + i + '"' : "") + ">★</span>"; return '<span class="stars ' + (cls || "") + '">' + o + "</span>"; }
   function renderListing(id) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
     Promise.all([Cloud.getListing(id), Cloud.getReviews(id)]).then(function (res) {
       var l = res[0], reviews = res[1] || [];
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      var isSeller = l.seller === (myProfile && myProfile.user_id);
+      var paused = l.status && l.status !== "active";
       var ratingLine = l.reviews ? '<div class="li-rating">' + starsHtml(l.rating || 0) + '<span>' + (l.rating || 0) + " · " + l.reviews + (l.reviews === 1 ? " reseña" : " reseñas") + "</span></div>" : "";
       b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
-        '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
+        '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
         (l.description ? '<div class="notes">' + esc(l.description) + "</div>" : "") +
-        '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + "</div>" +
-        (l.owned ? '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>'
-          : (l.price ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
-        (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "") +
+        (isSeller
+          ? '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + '</div><span class="li-sales">' + (l.sales || 0) + (l.sales === 1 ? " venta" : " ventas") + '</span></div>' +
+            '<div class="li-owner"><button class="btn ghost" id="liEdit">' + icon("edit", "i-sm") + ' Editar</button>' +
+            '<button class="btn ghost" id="liPause">' + (paused ? icon("play", "i-sm") + " Reactivar" : icon("pause", "i-sm") + " Pausar") + "</button>" +
+            '<button class="btn ghost danger" id="liDel">' + icon("trash", "i-sm") + " Eliminar</button></div>" +
+            '<p class="hint" style="text-align:center">' + (paused ? "Pausado: no aparece en el mercado." : "En venta en el mercado.") + " El cobro con tarjeta llegará muy pronto.</p>"
+          : '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + "</div>" +
+            (l.owned ? '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>'
+              : (l.price ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
+            (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "")) +
         (l.owned && l.seller !== (myProfile && myProfile.user_id) ? '<div class="sec-label">Tu valoración</div><div class="rate-box" id="rateBox">' + starsHtml(0, "pick") + '<textarea id="revBody" rows="2" placeholder="¿Qué te ha parecido? (opcional)"></textarea><button class="btn small" id="revSend">Enviar valoración</button></div>' : "") +
         '<div class="sec-label">Reseñas</div>' + (reviews.length ? '<div class="reviews">' + reviews.map(function (r) { return '<div class="rev">' + avatarHtml(Cloud.publicUrl(r.avatar), r.name || r.handle, "sm") + '<div><div class="c-who">' + esc(r.name || r.handle || "Mago") + " " + starsHtml(r.rating) + "</div>" + (r.body ? '<div class="c-b">' + esc(r.body) + "</div>" : "") + "</div></div>"; }).join("") + "</div>" : '<p class="hint">Aún no hay reseñas.</p>');
       var sel = b.querySelector(".li-seller[data-mago]"); if (sel) sel.addEventListener("click", function () { location.hash = "#/mago/" + l.seller; });
@@ -2061,6 +2119,9 @@
         Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
           .catch(function () { fr.disabled = false; fr.textContent = "Obtener gratis"; toast("No se pudo obtener"); });
       });
+      var eb = document.getElementById("liEdit"); if (eb) eb.addEventListener("click", function () { location.hash = "#/vender/" + id; });
+      var pb = document.getElementById("liPause"); if (pb) pb.addEventListener("click", function () { pb.disabled = true; var next = paused ? "active" : "paused"; Cloud.updateListing(id, { status: next }).then(function () { toast(paused ? "Reactivado" : "Pausado"); renderListing(id); }).catch(function () { pb.disabled = false; toast("No se pudo"); }); });
+      var db = document.getElementById("liDel"); if (db) db.addEventListener("click", function () { if (!confirm("¿Eliminar este truco del mercado? No se podrá deshacer.")) return; db.disabled = true; Cloud.deleteListing(id).then(function () { toast("Eliminado del mercado"); location.hash = "#/mercado"; }).catch(function () { db.disabled = false; toast("No se pudo eliminar"); }); });
       var picked = 0, rb = document.getElementById("rateBox");
       if (rb) {
         rb.querySelectorAll(".stars.pick .star").forEach(function (st) { st.addEventListener("click", function () { picked = parseInt(st.getAttribute("data-r"), 10); rb.querySelectorAll(".stars.pick .star").forEach(function (x, i) { x.classList.toggle("on", i < picked); }); }); });
@@ -2073,19 +2134,39 @@
     }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
   var sellTrick = null, sellCover = null;
-  function renderSellForm() {
+  function renderSellForm(editId) {
     clearTabbar(); sellTrick = null; sellCover = null;
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/mercado\'">' + icon("back") + '</button><h1>Vender un truco</h1></div>' +
+    if (editId) {
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado/' + esc(editId) + '\'">' + icon("back") + '</button><h1>Editar truco</h1></div><div id="slLoad"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+      Promise.all([Cloud.getListing(editId), Cloud.getListingContent(editId).catch(function () { return null; })]).then(function (res) {
+        var l = res[0], content = res[1];
+        if (!l || l.seller !== (myProfile && myProfile.user_id)) { view.innerHTML = '<div class="screen"><div class="empty" style="padding:40px"><p>No disponible.</p></div></div>'; return; }
+        buildSellForm(editId, l, content);
+      }).catch(function () { view.innerHTML = '<div class="screen"><div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div></div>'; });
+    } else {
+      buildSellForm(null, null, null);
+    }
+  }
+  function buildSellForm(editId, existing, content) {
+    var ex = existing || {};
+    var prefTitle = ex.title || "", prefDesc = ex.description || "", prefCents = ex.price || 0;
+    sellCover = ex.cover || null;
+    if (content) sellTrick = { title: content.title, category: content.category, difficulty: content.difficulty, meta: content.meta || {}, notes: content.notes || "", tags: content.tags || [], media: content.media || [] };
+    var host = editId ? document.getElementById("slLoad") : view;
+    var html = (editId ? "" : '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado\'">' + icon("back") + '</button><h1>Vender un truco</h1></div>') +
       '<p class="subtitle">Comparte tu método con la comunidad. Se entregan las notas, la ficha y los vídeos con enlace (YouTube/Vimeo).</p>' +
-      '<button class="btn ghost" id="slPick">' + icon("cards", "i-sm") + ' Elegir truco de mi biblioteca</button><div id="slPrev"></div>' +
-      '<div class="field"><label>Título</label><input id="slTitle" placeholder="Nombre del efecto"></div>' +
-      '<div class="field"><label>Descripción (escaparate)</label><textarea id="slDesc" rows="3" placeholder="Qué recibe el comprador, ángulos, nivel…"></textarea></div>' +
-      '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="on" type="button">Gratis</button><button data-v="paid" type="button">De pago</button></div>' +
-      '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="display:none;margin-top:8px"></div>' +
-      '<button class="btn ghost" id="slCoverBtn">' + icon("plus", "i-sm") + ' Portada (opcional)</button><input type="file" id="slCoverFile" accept="image/*" style="display:none"><div id="slCoverPrev"></div>' +
-      '<button class="btn" id="slPublish">Publicar en el mercado</button></div>';
-    document.getElementById("slPick").addEventListener("click", function () { pickTrick(function (t) { sellTrick = t; document.getElementById("slTitle").value = t.title; document.getElementById("slPrev").innerHTML = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }); });
-    var paid = false;
+      '<button class="btn ghost" id="slPick">' + icon("cards", "i-sm") + (editId ? ' Cambiar truco de mi biblioteca' : ' Elegir truco de mi biblioteca') + '</button><div id="slPrev">' +
+      (sellTrick ? '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(sellTrick.title || "") + '</div><div class="d">' + esc(sellTrick.category || "") + "</div></div></div>" : "") + "</div>" +
+      '<div class="field"><label>Título</label><input id="slTitle" placeholder="Nombre del efecto" value="' + esc(prefTitle) + '"></div>' +
+      '<div class="field"><label>Descripción (escaparate)</label><textarea id="slDesc" rows="3" placeholder="Qué recibe el comprador, ángulos, nivel…">' + esc(prefDesc) + '</textarea></div>' +
+      '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="' + (prefCents ? "" : "on") + '" type="button">Gratis</button><button data-v="paid" class="' + (prefCents ? "on" : "") + '" type="button">De pago</button></div>' +
+      '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="' + (prefCents ? "" : "display:none;") + 'margin-top:8px" value="' + (prefCents ? (prefCents / 100).toFixed(2).replace(".", ",") : "") + '"></div>' +
+      '<button class="btn ghost" id="slCoverBtn">' + icon("plus", "i-sm") + ' Portada (opcional)</button><input type="file" id="slCoverFile" accept="image/*" style="display:none"><div id="slCoverPrev">' +
+      (sellCover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(sellCover) || sellCover) + ')"></div>' : "") + "</div>" +
+      '<button class="btn" id="slPublish">' + (editId ? "Guardar cambios" : "Publicar en el mercado") + "</button>";
+    if (editId) host.innerHTML = html; else view.innerHTML = '<div class="screen">' + html + "</div>";
+    document.getElementById("slPick").addEventListener("click", function () { pickTrick(function (t) { sellTrick = t; document.getElementById("slTitle").value = document.getElementById("slTitle").value || t.title; document.getElementById("slPrev").innerHTML = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }); });
+    var paid = !!prefCents;
     view.querySelectorAll("#slPrice button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slPrice", b); paid = b.getAttribute("data-v") === "paid"; document.getElementById("slAmount").style.display = paid ? "" : "none"; }); });
     document.getElementById("slCoverBtn").addEventListener("click", function () { document.getElementById("slCoverFile").click(); });
     document.getElementById("slCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { sellCover = r.path; document.getElementById("slCoverPrev").innerHTML = '<div class="li-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
@@ -2095,12 +2176,20 @@
       if (!title) { toast("Ponle un título"); return; }
       var cents = 0;
       if (paid) { var a = parseFloat((document.getElementById("slAmount").value || "").replace(",", ".")); if (!a || a <= 0) { toast("Pon un precio válido"); return; } cents = Math.round(a * 100); }
-      var btn = document.getElementById("slPublish"); btn.disabled = true; btn.textContent = "Publicando…";
-      var listing = { title: title, description: (document.getElementById("slDesc").value || "").trim(), price_cents: cents, currency: "eur", cover_path: sellCover };
-      Cloud.createListing(listing, buildSellPayload(sellTrick)).then(function (l) {
-        return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
-      }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
-        .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });
+      var btn = document.getElementById("slPublish"); btn.disabled = true; btn.textContent = "Guardando…";
+      var desc = (document.getElementById("slDesc").value || "").trim();
+      if (editId) {
+        Cloud.updateListing(editId, { title: title, description: desc, price_cents: cents, currency: "eur", cover_path: sellCover })
+          .then(function () { return content ? Cloud.updateListingContent(editId, buildSellPayload(sellTrick)) : null; })
+          .then(function () { toast("Cambios guardados"); location.hash = "#/mercado/" + editId; })
+          .catch(function () { btn.disabled = false; btn.textContent = "Guardar cambios"; toast("No se pudo guardar"); });
+      } else {
+        var listing = { title: title, description: desc, price_cents: cents, currency: "eur", cover_path: sellCover };
+        Cloud.createListing(listing, buildSellPayload(sellTrick)).then(function (l) {
+          return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
+        }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
+          .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });
+      }
     });
   }
   function buildSellPayload(t) {
@@ -2118,9 +2207,12 @@
     if (!cloudReady() || !logged() || !socialEnabled || !Cloud.subscribeFeed) return;
     stopFeedRealtime();
     feedCh = Cloud.subscribeFeed(function () { var h = location.hash || ""; if (h === "#/comunidad" || h === "#/mercado") { if (feedTimer) return; feedTimer = setTimeout(function () { feedTimer = null; route(); }, 600); } });
+    if (myProfile && myProfile.user_id && Cloud.subscribeNotifications) {
+      notifCh = Cloud.subscribeNotifications(myProfile.user_id, function (kind) { if (kind === "message") refreshMsgBadge(); else refreshNotifBadge(); });
+    }
   }
   var feedTimer = null;
-  function stopFeedRealtime() { if (feedCh) { Cloud.unsubscribeRealtime(feedCh); feedCh = null; } }
+  function stopFeedRealtime() { if (feedCh) { Cloud.unsubscribeRealtime(feedCh); feedCh = null; } if (notifCh) { Cloud.unsubscribeRealtime(notifCh); notifCh = null; } }
 
   /* ========================= TRUCOS INCLUIDOS ======================== */
   function renderIncluded() {
@@ -2145,7 +2237,7 @@
     clearTabbar();
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
       '<div class="scanwrap" id="scan"><div class="orb" id="orb"></div>' +
       '<div class="prompt" id="prompt">Coloca tu dedo en la esfera y piensa con fuerza en tu carta.</div>' +
       '<div class="sub">Cuando estés listo, pulsa la esfera.</div></div>' +
@@ -2204,7 +2296,7 @@
     else if (loaded.type === "text") result = { kind: "text", text: loaded.text };
     else result = { kind: "card", card: { suit: SUITS[rnd(4)].sym, val: VALUES[rnd(13)] } };
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
       '<div class="scanwrap" style="min-height:52vh"><div class="orb ' + (loaded.type ? "armed" : "") + '"></div>' +
       '<div class="prompt">Leyendo tu mente…</div><div class="progress"><i id="bar"></i></div><div class="scanstatus" id="st"></div></div></div>';
     var bar = document.getElementById("bar"), st = document.getElementById("st");
@@ -2222,7 +2314,7 @@
       body = '<div class="cardface ' + (red ? "red" : "") + '"><div class="corner tl">' + c.val + "<br>" + c.suit + '</div><div class="center">' + c.suit + '</div><div class="corner br">' + c.val + "<br>" + c.suit + "</div></div>" +
         '<div class="lbl" style="text-align:center;margin-top:18px;color:var(--ink-soft)">Tu carta era el <b>' + c.val + " de " + suitName(c.suit) + "</b>.</div>";
     } else { body = '<div class="textreveal">' + esc(result.text) + "</div>"; }
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div><div class="panel">' + body +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div><div class="panel">' + body +
       '<button class="btn" onclick="location.hash=\'#/incluidos\'">Terminar</button></div></div>';
     loaded = { type: null, card: null, text: null };
   }
@@ -2234,7 +2326,7 @@
   function renderLectorMethod() {
     clearTabbar();
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Método</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Método</h1></div>' +
       '<div class="backstage-bar"><span class="dot"></span> Solo para tus ojos — no lo enseñes al público</div>' +
       '<div class="panel tut"><h2>Lector Mental</h2>' +
       sec("Qué ve el público", "pub", "<p>El espectador piensa una carta (o una palabra, un nombre…). Pone el dedo en la esfera de SU teléfono, la app “lee su mente” y revela justo lo que pensaba.</p>") +
@@ -2345,7 +2437,7 @@
   function renderAccount() {
     clearTabbar();
     if (!cloudReady()) {
-      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
         '<div class="panel"><p>La sincronización en la nube no está disponible ahora mismo (sin conexión). Tu biblioteca sigue guardándose en este dispositivo.</p></div></div>';
       return;
     }
@@ -2356,7 +2448,7 @@
 
   function renderAccountLogged() {
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
       '<div class="setrow"><span class="si">' + icon("user") + '</span><div class="st"><div class="t">' + esc(session.email) + '</div><div class="d">Sesión iniciada · tu biblioteca se sincroniza</div></div></div>' +
       '<button class="btn" id="syncNow">Sincronizar ahora</button>' +
       '<button class="btn ghost" id="signOut">Cerrar sesión</button>' +
@@ -2370,7 +2462,7 @@
   function renderAuthForm() {
     var isSignup = authMode === "signup";
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
       '<p class="subtitle">Sincroniza tu biblioteca entre dispositivos y sube tus vídeos.</p>' +
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
       '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
@@ -2399,7 +2491,7 @@
 
   function renderConfirm() {
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/cuenta\'">' + icon("back") + '</button><h1>Confirma tu email</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/cuenta\'">' + icon("back") + '</button><h1>Confirma tu email</h1></div>' +
       '<p class="subtitle">Te hemos enviado un <b>código</b> a <b>' + esc(pendingEmail) + "</b>. Escríbelo aquí para activar tu cuenta.</p>" +
       '<div class="field"><label>Código de confirmación</label><input id="cCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos"></div>' +
       '<button class="btn" id="cGo">Confirmar</button>' +
@@ -2628,6 +2720,7 @@
       if (h.indexOf("#/chat/") === 0) return socialEnabled ? renderChat(h.slice(7)) : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
+      if (h.indexOf("#/vender/") === 0) return socialEnabled ? renderSellForm(h.slice(9)) : renderLibrary();
       if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));
       if (h.indexOf("#/seguidores/") === 0) return renderMagicianList(h.slice(13), "followers");
       if (h.indexOf("#/seguidos/") === 0) return renderMagicianList(h.slice(11), "following");

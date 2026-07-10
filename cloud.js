@@ -115,12 +115,32 @@ window.Cloud = (function () {
     return sb.storage.from(bucket || "videos").createSignedUrl(path, 3600)
       .then(function (r) { return (r.data && r.data.signedUrl) || null; }).catch(function () { return null; });
   }
+  // Redimensiona/comprime imágenes en el navegador antes de subir (ahorra datos y coste).
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      if (!file || !/^image\//.test(file.type || "") || file.size < 220 * 1024) { resolve(file); return; }
+      try {
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function () {
+          try {
+            var max = 1600, w = img.width, h = img.height, scale = Math.min(1, max / Math.max(w, h));
+            var c = document.createElement("canvas"); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+            c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+            try { URL.revokeObjectURL(url); } catch (e) {}
+            c.toBlob(function (blob) { resolve(blob && blob.size < file.size ? new File([blob], (file.name || "img").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }) : file); }, "image/jpeg", 0.82);
+          } catch (e) { resolve(file); }
+        };
+        img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} resolve(file); };
+        img.src = url;
+      } catch (e) { resolve(file); }
+    });
+  }
   function uploadPhoto(file) {
-    return currentUser().then(function (u) {
-      if (!u) throw new Error("sin sesión");
-      var ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+    return Promise.all([currentUser(), compressImage(file)]).then(function (res) {
+      var u = res[0], f = res[1]; if (!u) throw new Error("sin sesión");
+      var ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
       var path = u.id + "/" + uid() + "." + ext;
-      return sb.storage.from("photos").upload(path, file, { contentType: file.type || undefined, upsert: true })
+      return sb.storage.from("photos").upload(path, f, { contentType: f.type || undefined, upsert: true })
         .then(function (r) { if (r.error) throw r.error; return { path: path }; });
     });
   }
@@ -218,11 +238,11 @@ window.Cloud = (function () {
       .then(function (r) { return r.data ? r.data.user_id : null; }).catch(function () { return null; });
   }
   function uploadSocial(file) {
-    return currentUser().then(function (u) {
-      if (!u) throw new Error("sin sesión");
-      var ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+    return Promise.all([currentUser(), compressImage(file)]).then(function (res) {
+      var u = res[0], f = res[1]; if (!u) throw new Error("sin sesión");
+      var ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
       var path = u.id + "/" + uid() + "." + ext;
-      return sb.storage.from("social").upload(path, file, { contentType: file.type || undefined, upsert: true })
+      return sb.storage.from("social").upload(path, f, { contentType: f.type || undefined, upsert: true })
         .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
     });
   }
@@ -266,6 +286,8 @@ window.Cloud = (function () {
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function updatePost(id, body) { return sb.from("posts").update({ body: body, edited_at: new Date().toISOString() }).eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function updateComment(id, body) { return sb.from("comments").update({ body: body, edited_at: new Date().toISOString() }).eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
   function likePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function unlikePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function addComment(pid, body, parentId) { return sb.from("comments").insert({ post_id: pid, body: body, parent_id: parentId || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -287,6 +309,9 @@ window.Cloud = (function () {
       return sb.from("listing_content").insert({ listing_id: l.id, payload: content }).then(function (r2) { if (r2.error) throw r2.error; return l; });
     });
   }
+  function updateListing(id, fields) { return sb.from("listings").update(Object.assign({ updated_at: new Date().toISOString() }, fields)).eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function updateListingContent(id, payload) { return sb.from("listing_content").update({ payload: payload }).eq("listing_id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function deleteListing(id) { return sb.from("posts").delete().eq("listing_id", id).then(function () { return sb.from("listings").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function claimFree(id) { return sb.rpc("claim_free_listing", { l: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function getListingContent(id) { return sb.from("listing_content").select("payload").eq("listing_id", id).maybeSingle().then(function (r) { if (r.error) throw r.error; return r.data ? r.data.payload : null; }); }
   function subscribeFeed(onEvent) {
@@ -295,6 +320,15 @@ window.Cloud = (function () {
     ["posts", "comments", "post_likes"].forEach(function (t) {
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, function (pl) { try { onEvent(t, pl.eventType, pl.new, pl.old); } catch (e) {} });
     });
+    ch.subscribe();
+    return ch;
+  }
+  // Realtime del badge: nuevas notificaciones para mí y mensajes entrantes.
+  function subscribeNotifications(uid, cb) {
+    if (!sb) return null;
+    var ch = sb.channel("notif-" + Math.random().toString(36).slice(2));
+    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "user_id=eq." + uid }, function () { try { cb("notification"); } catch (e) {} });
+    ch.on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, function () { try { cb("message"); } catch (e) {} });
     ch.subscribe();
     return ch;
   }
@@ -312,9 +346,10 @@ window.Cloud = (function () {
     subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
     publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
     getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
-    createPost: createPost, deletePost: deletePost, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
+    createPost: createPost, deletePost: deletePost, updatePost: updatePost, updateComment: updateComment, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
+    updateListing: updateListing, updateListingContent: updateListingContent, deleteListing: deleteListing,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
-    subscribeFeed: subscribeFeed,
+    subscribeFeed: subscribeFeed, subscribeNotifications: subscribeNotifications,
     bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
     getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
     searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,

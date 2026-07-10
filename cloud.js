@@ -198,6 +198,63 @@ window.Cloud = (function () {
       .then(function (r) { return r.error ? null : r.data; }).catch(function () { return null; });
   }
 
+  /* ===================== comunidad / mercado ===================== */
+  function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
+  function getMyProfile() {
+    return currentUser().then(function (u) {
+      if (!u) return null;
+      return sb.from("profiles").select("*").eq("user_id", u.id).maybeSingle().then(function (r) { if (r.error) throw r.error; return r.data; });
+    });
+  }
+  function upsertProfile(fields) {
+    return currentUser().then(function (u) {
+      if (!u) throw new Error("sin sesión");
+      var row = Object.assign({ user_id: u.id, updated_at: new Date().toISOString() }, fields);
+      return sb.from("profiles").upsert(row, { onConflict: "user_id" }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; });
+    });
+  }
+  function handleOwner(handle) {
+    return sb.from("profiles").select("user_id").ilike("handle", handle).maybeSingle()
+      .then(function (r) { return r.data ? r.data.user_id : null; }).catch(function () { return null; });
+  }
+  function uploadSocial(file) {
+    return currentUser().then(function (u) {
+      if (!u) throw new Error("sin sesión");
+      var ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+      var path = u.id + "/" + uid() + "." + ext;
+      return sb.storage.from("social").upload(path, file, { contentType: file.type || undefined, upsert: true })
+        .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
+    });
+  }
+  function getFeed(who) { return sb.rpc("get_feed", { lim: 40, who: who || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function createPost(row) { return sb.from("posts").insert(row).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function likePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function unlikePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function addComment(pid, body) { return sb.from("comments").insert({ post_id: pid, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function createListing(listing, content) {
+    return sb.from("listings").insert(listing).select().single().then(function (r) {
+      if (r.error) throw r.error; var l = r.data;
+      return sb.from("listing_content").insert({ listing_id: l.id, payload: content }).then(function (r2) { if (r2.error) throw r2.error; return l; });
+    });
+  }
+  function claimFree(id) { return sb.rpc("claim_free_listing", { l: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function getListingContent(id) { return sb.from("listing_content").select("payload").eq("listing_id", id).maybeSingle().then(function (r) { if (r.error) throw r.error; return r.data ? r.data.payload : null; }); }
+  function subscribeFeed(onEvent) {
+    if (!sb) return null;
+    var ch = sb.channel("feed-" + Math.random().toString(36).slice(2));
+    ["posts", "comments", "post_likes"].forEach(function (t) {
+      ch.on("postgres_changes", { event: "*", schema: "public", table: t }, function (pl) { try { onEvent(t, pl.eventType, pl.new, pl.old); } catch (e) {} });
+    });
+    ch.subscribe();
+    return ch;
+  }
+
   return {
     available: available, currentUser: currentUser, onChange: onChange,
     signUp: signUp, verifySignup: verifySignup, resend: resend, signIn: signIn, signOut: signOut,
@@ -208,6 +265,11 @@ window.Cloud = (function () {
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
-    subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime
+    subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
+    publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
+    getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
+    createPost: createPost, deletePost: deletePost, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
+    follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
+    subscribeFeed: subscribeFeed
   };
 })();

@@ -58,6 +58,13 @@
     chart: '<path d="M4 4v16h16"/><path d="M8 16v-4M13 16v-7M18 16v-3"/>',
     share: '<circle cx="6.5" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.7 10.9l6.1-3.5M8.7 13.1l6.1 3.5"/>',
     bell: '<path d="M18 16V11a6 6 0 1 0-12 0v5l-1.6 2.4h15.2L18 16zM9.5 19.5a2.5 2.5 0 0 0 5 0"/>',
+    people: '<circle cx="9" cy="8.5" r="3.1"/><path d="M3.5 19c0-3 2.4-4.9 5.5-4.9s5.5 1.9 5.5 4.9"/><path d="M15.5 5.6a2.7 2.7 0 0 1 0 5.3"/><path d="M17 13.6c2.4.3 3.9 2 3.9 4.5"/>',
+    bag: '<path d="M6 8h12l-1 11.5H7L6 8Z"/><path d="M9 8V6.6a3 3 0 0 1 6 0V8"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/>',
+    heart: '<path d="M12 19.6C6.3 15.7 3.2 12.6 3.2 9.2 3.2 6.9 5 5.1 7.2 5.1c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.2 0 4 1.8 4 4.1 0 3.4-3.1 6.5-8.8 10.4z"/>',
+    heartfill: '<path fill="currentColor" stroke="none" d="M12 19.6C6.3 15.7 3.2 12.6 3.2 9.2 3.2 6.9 5 5.1 7.2 5.1c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.2 0 4 1.8 4 4.1 0 3.4-3.1 6.5-8.8 10.4z"/>',
+    chat: '<path d="M5 5.5h14a1.2 1.2 0 0 1 1.2 1.2v8.6a1.2 1.2 0 0 1-1.2 1.2H10l-4 3v-3H5a1.2 1.2 0 0 1-1.2-1.2V6.7A1.2 1.2 0 0 1 5 5.5Z"/>',
+    send: '<path d="M4.5 11.5 20 5l-6.4 15-2.6-6.4-6.5-2.1Z"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
@@ -386,10 +393,11 @@
     var tabs = [
       { h: "#/", ic: "library", t: "Biblioteca", k: "lib" },
       { h: "#/rutinas", ic: "list", t: "Rutinas", k: "rut" },
-      { h: "#/bolos", ic: "calendar", t: "Bolos", k: "gig" },
-      { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
-      { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
+      { h: "#/bolos", ic: "calendar", t: "Bolos", k: "gig" }
     ];
+    if (socialEnabled) tabs.push({ h: "#/comunidad", ic: "people", t: "Comunidad", k: "com" });
+    else tabs.push({ h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" });
+    tabs.push({ h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" });
     return '<nav class="tabbar"><div class="tbbrand">' + mark() + "<span>App del Mago</span></div>" + tabs.map(function (x) {
       return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
@@ -1337,6 +1345,338 @@
     }).catch(function () { view.innerHTML = sharedError("No se pudo cargar el enlace."); });
   }
 
+  /* ===================== COMUNIDAD + MERCADO ======================== */
+  var myProfile = null, needsOnboarding = false, feedCh = null;
+  var socialEnabled = (function () { try { return localStorage.getItem("magic_social") !== "0"; } catch (e) { return true; } })();
+  var SPECIALTIES = ["Cartomagia", "Mentalismo", "Close-up", "Escena", "Infantil", "Monedas", "Ilusionismo", "Comedia"];
+
+  function loadProfile() {
+    if (!cloudReady() || !logged()) { myProfile = null; return Promise.resolve(); }
+    return Cloud.getMyProfile().then(function (p) {
+      myProfile = p;
+      socialEnabled = p ? !!p.social_enabled : true;
+      try { localStorage.setItem("magic_social", socialEnabled ? "1" : "0"); } catch (e) {}
+      needsOnboarding = !p || !p.onboarded;
+    }).catch(function () { myProfile = null; });
+  }
+  function avatarHtml(url, name, cls) {
+    if (url) return '<span class="avatar ' + (cls || "") + '" style="background-image:url(' + esc(url) + ')"></span>';
+    var ini = (name || "?").trim().charAt(0).toUpperCase();
+    return '<span class="avatar ' + (cls || "") + ' ini">' + esc(ini) + "</span>";
+  }
+  function money(cents, cur) {
+    if (!cents) return "Gratis";
+    return (cents / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + ((cur || "eur") === "eur" ? "€" : (cur || "").toUpperCase());
+  }
+  function timeAgo(iso) {
+    var s = Math.max(1, Math.floor((Date.now() - (Date.parse(iso) || Date.now())) / 1000));
+    if (s < 60) return "ahora"; var m = Math.floor(s / 60); if (m < 60) return "hace " + m + " min";
+    var h = Math.floor(m / 60); if (h < 24) return "hace " + h + " h"; var d = Math.floor(h / 24);
+    if (d < 7) return "hace " + d + " d"; return new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  }
+
+  /* --------------------------- Onboarding --------------------------- */
+  var onb = { step: 0, handle: "", name: "", spec: [], city: "", avatar: null, social: true };
+  function renderOnboarding() {
+    clearTabbar();
+    if (myProfile) { onb.handle = onb.handle || myProfile.handle || ""; onb.name = onb.name || myProfile.display_name || (session && session.email ? session.email.split("@")[0] : ""); }
+    var step = onb.step;
+    var body;
+    if (step === 0) {
+      body = '<div class="onb-hero">' + mark("", true) + '<h1 class="wm">Bienvenido</h1>' +
+        '<p class="tagline">El estudio del mago</p>' +
+        '<p>Tu biblioteca privada de trucos, rutinas y bolos. Y, si quieres, una comunidad y un mercado <b>solo para magos</b>.</p></div>' +
+        '<button class="btn" id="onbNext">Empezar</button>';
+    } else if (step === 1) {
+      body = '<h1 class="title">Tu perfil de mago</h1><p class="subtitle">Así te verán otros magos (si activas la comunidad).</p>' +
+        '<div class="avatar-pick"><span id="avaPrev">' + avatarHtml(onb.avatar && onb.avatar.url, onb.name, "big") + '</span>' +
+        (logged() ? '<button class="btn ghost small" id="avaBtn">Elegir foto</button><input type="file" id="avaFile" accept="image/*" style="display:none">' : "") + "</div>" +
+        '<div class="field"><label>Nombre artístico</label><input id="onbName" placeholder="Ej. Mago Merlín" value="' + esc(onb.name) + '"></div>' +
+        '<div class="field"><label>Usuario (@)</label><input id="onbHandle" placeholder="magomerlin" value="' + esc(onb.handle) + '"><div class="hint" id="handleHint"></div></div>' +
+        '<div class="field"><label>Especialidad</label><div class="tchips" id="onbSpec">' +
+        SPECIALTIES.map(function (s) { return '<button type="button" class="tchip ' + (onb.spec.indexOf(s) >= 0 ? "on" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div></div>" +
+        '<div class="field"><label>Ciudad (opcional)</label><input id="onbCity" placeholder="Madrid" value="' + esc(onb.city) + '"></div>' +
+        '<button class="btn" id="onbNext">Continuar</button>';
+    } else {
+      body = '<h1 class="title">La comunidad</h1><p class="subtitle">Una red y un mercado exclusivos para magos.</p>' +
+        '<div class="onb-feat"><span class="i2">' + icon("people") + '</span><div><b>Comparte y descubre</b><p>Publica ideas, sigue a otros magos y aprende de la comunidad.</p></div></div>' +
+        '<div class="onb-feat"><span class="i2">' + icon("bag") + '</span><div><b>Mercado de trucos</b><p>Vende tus rutinas o consíguelas de otros magos. Tú pones el precio.</p></div></div>' +
+        '<div class="onb-feat"><span class="i2">' + icon("lock") + '</span><div><b>Tú decides</b><p>Puedes tener la comunidad desactivada y usar la app como biblioteca 100% privada. Se cambia cuando quieras en Ajustes.</p></div></div>' +
+        '<div class="toggle-row" id="socToggle"><div><b>Activar la comunidad</b><p class="hint">Recomendado. Podrás desactivarla en cualquier momento.</p></div><span class="switch ' + (onb.social ? "on" : "") + '" id="socSw"></span></div>' +
+        '<button class="btn" id="onbFinish">Entrar a App del Mago</button>';
+    }
+    view.innerHTML = '<div class="screen onb">' + (step > 0 ? '<div class="onb-steps"><i class="' + (step >= 1 ? "on" : "") + '"></i><i class="' + (step >= 2 ? "on" : "") + '"></i></div>' : "") + body + "</div>";
+
+    var nx = document.getElementById("onbNext");
+    if (nx) nx.addEventListener("click", function () {
+      if (step === 1) {
+        onb.name = (document.getElementById("onbName").value || "").trim();
+        onb.handle = (document.getElementById("onbHandle").value || "").trim().replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 24);
+        onb.city = (document.getElementById("onbCity").value || "").trim();
+        if (!onb.name) { toast("Escribe tu nombre artístico"); return; }
+        if (onb.handle.length < 3) { toast("El usuario necesita al menos 3 caracteres"); return; }
+      }
+      onb.step++; renderOnboarding();
+    });
+    if (step === 1) {
+      view.querySelectorAll("#onbSpec .tchip").forEach(function (b) {
+        b.addEventListener("click", function () { var s = b.getAttribute("data-s"); var i = onb.spec.indexOf(s); if (i >= 0) onb.spec.splice(i, 1); else onb.spec.push(s); b.classList.toggle("on"); });
+      });
+      var avaBtn = document.getElementById("avaBtn");
+      if (avaBtn) { var fi = document.getElementById("avaFile"); avaBtn.addEventListener("click", function () { fi.click(); });
+        fi.addEventListener("change", function () { var f = fi.files[0]; if (!f) return; avaBtn.textContent = "Subiendo…"; Cloud.uploadSocial(f).then(function (r) { onb.avatar = r; document.getElementById("avaPrev").innerHTML = avatarHtml(r.url, onb.name, "big"); avaBtn.textContent = "Cambiar foto"; }).catch(function () { avaBtn.textContent = "Elegir foto"; toast("No se pudo subir"); }); }); }
+      var hi = document.getElementById("onbHandle"), hint = document.getElementById("handleHint");
+      hi.addEventListener("blur", function () {
+        var h = hi.value.trim(); if (h.length < 3) return;
+        Cloud.handleOwner(h).then(function (owner) { if (owner && (!myProfile || owner !== myProfile.user_id)) { hint.textContent = "Ese usuario ya existe"; hint.style.color = "var(--danger)"; } else { hint.textContent = "Disponible"; hint.style.color = "var(--ok)"; } });
+      });
+    }
+    if (step === 2) {
+      var sw = document.getElementById("socSw"), row = document.getElementById("socToggle");
+      row.addEventListener("click", function () { onb.social = !onb.social; sw.classList.toggle("on", onb.social); });
+      document.getElementById("onbFinish").addEventListener("click", function () {
+        var btn = document.getElementById("onbFinish"); btn.disabled = true; btn.textContent = "Un momento…";
+        Cloud.upsertProfile({ handle: onb.handle, display_name: onb.name, specialty: onb.spec, city: onb.city, avatar_path: onb.avatar ? onb.avatar.path : null, social_enabled: onb.social, onboarded: true })
+          .then(function (p) { myProfile = p; socialEnabled = !!p.social_enabled; try { localStorage.setItem("magic_social", socialEnabled ? "1" : "0"); } catch (e) {} needsOnboarding = false; toast("¡Listo!"); location.hash = "#/"; route(); })
+          .catch(function (e) { btn.disabled = false; btn.textContent = "Entrar a App del Mago"; toast(/duplicate|unique/i.test(e && e.message || "") ? "Ese usuario ya existe" : "No se pudo guardar el perfil"); });
+      });
+    }
+  }
+
+  /* ----------------------------- Feed ------------------------------- */
+  function postCardHtml(p) {
+    var media = (p.media || []).filter(function (m) { return m.url; }).map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("");
+    var card = "";
+    if (p.kind === "listing" && p.listing) {
+      card = '<div class="listing-inline">' + (p.listing.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(p.listing.cover) || p.listing.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
+        '<div class="lc-info"><div class="n">' + esc(p.listing.title || "Truco") + '</div><div class="price">' + money(p.listing.price, p.listing.currency) + "</div></div>" +
+        '<span class="go">' + icon("chev") + "</span></div>";
+    } else if (p.trick_card) {
+      var tc = p.trick_card;
+      card = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(tc.title || "Truco") + '</div><div class="d">' + esc(tc.category || "") + (tc.difficulty ? " · " + (DIFF[tc.difficulty] || "") : "") + "</div></div></div>";
+    }
+    return '<article class="postcard" data-post="' + esc(p.id) + '">' +
+      '<header class="pc-head" data-mago="' + esc(p.author) + '">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle) +
+      '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + "</div></div></header>" +
+      (p.body ? '<div class="pc-body">' + esc(p.body) + "</div>" : "") +
+      (media ? '<div class="pc-media">' + media + "</div>" : "") + card +
+      '<footer class="pc-acts"><button class="pc-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '">' + icon(p.liked ? "heartfill" : "heart", "i-sm") + '<span>' + (p.likes || 0) + "</span></button>" +
+      '<button class="pc-cmt" data-post="' + esc(p.id) + '">' + icon("chat", "i-sm") + "<span>" + (p.comments || 0) + "</span></button></footer></article>";
+  }
+  function bindPostCards(scope) {
+    (scope || view).querySelectorAll(".pc-head[data-mago]").forEach(function (h) { h.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/mago/" + h.getAttribute("data-mago"); }); });
+    (scope || view).querySelectorAll(".pc-cmt[data-post], .postcard[data-post] .pc-body, .postcard .pc-media, .trick-card, .listing-inline").forEach(function (el0) {
+      el0.addEventListener("click", function () { var art = el0.closest(".postcard"); if (art) location.hash = "#/post/" + art.getAttribute("data-post"); });
+    });
+    (scope || view).querySelectorAll("[data-like]").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation(); var id = b.getAttribute("data-like"); var on = b.classList.contains("on");
+        var span = b.querySelector("span"); var n = parseInt(span.textContent, 10) || 0;
+        b.classList.toggle("on"); span.textContent = on ? Math.max(0, n - 1) : n + 1;
+        b.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + span.textContent + "</span>";
+        (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
+      });
+    });
+  }
+  function renderCommunity(tab) {
+    mountTabbar("com");
+    var f = document.getElementById("fabEl"); if (f) f.remove();
+    mountFab(tab === "market" ? "#/vender" : "#/publicar");
+    view.innerHTML = '<div class="screen wide"><div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1><span class="spacer"></span>' +
+      '<button class="iconbtn" id="meBtn">' + icon("user") + "</button></div>" +
+      '<div class="seg big" id="comSeg"><button data-t="feed" class="' + (tab !== "market" ? "on" : "") + '">Feed</button><button data-t="market" class="' + (tab === "market" ? "on" : "") + '">Mercado</button></div>' +
+      '<div id="comBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    document.getElementById("meBtn").addEventListener("click", function () { if (myProfile) location.hash = "#/mago/" + myProfile.user_id; });
+    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { location.hash = b.getAttribute("data-t") === "market" ? "#/mercado" : "#/comunidad"; }); });
+    var bodyEl = document.getElementById("comBody");
+    if (tab === "market") {
+      Cloud.getMarket().then(function (rows) {
+        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("bag") + '</div><h3>Mercado vacío</h3><p>Sé el primero en poner un truco a la venta.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender un truco</button></div>'; return; }
+        bodyEl.innerHTML = '<div class="market">' + rows.map(function (l) {
+          return '<div class="listcard" data-l="' + esc(l.id) + '">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
+            '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="by">' + esc(l.name || l.handle || "Mago") + '</div><div class="price">' + money(l.price, l.currency) + (l.owned ? ' <span class="owned">Tuyo</span>' : "") + "</div></div></div>";
+        }).join("") + "</div>";
+        bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+      }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
+    } else {
+      Cloud.getFeed().then(function (rows) {
+        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay nada</h3><p>Publica lo primero y empieza la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>'; return; }
+        bodyEl.innerHTML = '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
+        bindPostCards(bodyEl);
+      }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
+    }
+  }
+
+  /* --------------------------- Compose ------------------------------ */
+  var composeTrick = null;
+  function renderCompose() {
+    clearTabbar(); composeTrick = null;
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Nueva publicación</h1></div>' +
+      '<div class="field"><textarea id="cpBody" rows="4" placeholder="¿Qué quieres compartir con la comunidad?"></textarea></div>' +
+      '<div class="pc-attach"><button class="btn ghost" id="cpPhoto">' + icon("plus", "i-sm") + ' Foto</button><button class="btn ghost" id="cpTrick">' + icon("cards", "i-sm") + ' Adjuntar truco</button></div>' +
+      '<input type="file" id="cpFile" accept="image/*" style="display:none">' +
+      '<div id="cpPrev"></div>' +
+      '<button class="btn" id="cpPost">Publicar</button></div>';
+    var media = [];
+    var prev = function () { document.getElementById("cpPrev").innerHTML = (media.length ? '<div class="post-img" style="background-image:url(' + esc(media[0].url) + ')"></div>' : "") + (composeTrick ? '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(composeTrick.title) + '</div><div class="d">' + esc(composeTrick.category || "") + "</div></div></div>" : ""); };
+    document.getElementById("cpPhoto").addEventListener("click", function () { document.getElementById("cpFile").click(); });
+    document.getElementById("cpFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo foto…"); Cloud.uploadSocial(fl).then(function (r) { media = [{ url: r.url, path: r.path }]; prev(); }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("cpTrick").addEventListener("click", function () { pickTrick(function (t) { composeTrick = t; prev(); }); });
+    document.getElementById("cpPost").addEventListener("click", function () {
+      var body = (document.getElementById("cpBody").value || "").trim();
+      if (!body && !media.length && !composeTrick) { toast("Escribe algo o adjunta"); return; }
+      var btn = document.getElementById("cpPost"); btn.disabled = true; btn.textContent = "Publicando…";
+      var row = { kind: "post", body: body, media: media, trick_card: composeTrick ? { title: composeTrick.title, category: composeTrick.category, difficulty: composeTrick.difficulty } : null };
+      Cloud.createPost(row).then(function () { toast("Publicado"); location.hash = "#/comunidad"; }).catch(function () { btn.disabled = false; btn.textContent = "Publicar"; toast("No se pudo publicar"); });
+    });
+  }
+  function pickTrick(cb) {
+    if (!state.tricks.length) { toast("No tienes trucos guardados"); return; }
+    var ov = el('<div class="modal-ov"><div class="modal"><h3>Elige un truco</h3><div class="rlist" id="ptList">' +
+      state.tricks.map(function (t) { return '<div class="rrow" data-id="' + esc(t.id) + '"><div class="ri">' + icon("cards") + '</div><div class="rt"><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }).join("") +
+      '</div><button class="btn ghost" id="ptCancel">Cancelar</button></div></div>');
+    document.body.appendChild(ov);
+    var close = function () { ov.remove(); };
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    document.getElementById("ptCancel").addEventListener("click", close);
+    ov.querySelectorAll(".rrow[data-id]").forEach(function (r) { r.addEventListener("click", function () { var t = getTrick(r.getAttribute("data-id")); close(); if (t) cb(t); }); });
+  }
+
+  /* ------------------------- Post detail ---------------------------- */
+  function renderPostDetail(id) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Promise.all([Cloud.getFeed().then(function (rows) { return rows.filter(function (x) { return x.id === id; })[0]; }), Cloud.getComments(id)]).then(function (res) {
+      var p = res[0], comments = res[1] || [];
+      var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      b.innerHTML = postCardHtml(p) +
+        '<div class="sec-label">Comentarios</div><div class="comments">' +
+        (comments.length ? comments.map(function (c) { return '<div class="cmt">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + '<div><div class="c-who">' + esc(c.name || c.handle || "Mago") + ' <span>' + timeAgo(c.created_at) + '</span></div><div class="c-b">' + esc(c.body) + "</div></div></div>"; }).join("") : '<p class="hint">Sé el primero en comentar.</p>') + "</div>" +
+        '<div class="cmt-add"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
+      bindPostCards(b);
+      var send = function () { var t = (document.getElementById("cmtIn").value || "").trim(); if (!t) return; document.getElementById("cmtIn").value = ""; Cloud.addComment(id, t).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
+      document.getElementById("cmtSend").addEventListener("click", send);
+      document.getElementById("cmtIn").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+    }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+  }
+
+  /* ---------------------------- Perfil ------------------------------ */
+  function renderProfile(uid) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Perfil</h1></div><div id="prBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Promise.all([Cloud.getProfileInfo(uid), Cloud.getFeed(uid)]).then(function (res) {
+      var p = res[0], posts = res[1] || [];
+      var b = document.getElementById("prBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>Perfil no disponible.</p></div>'; return; }
+      var spec = (p.specialty || []).map(function (s) { return '<span class="tagchip">' + esc(s) + "</span>"; }).join("");
+      b.innerHTML = '<div class="profile-head">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "xl") +
+        '<h2 class="title" style="margin:10px 0 0">' + esc(p.name || "Mago") + "</h2>" +
+        '<div class="p-handle">' + (p.handle ? "@" + esc(p.handle) : "") + (p.city ? " · " + esc(p.city) : "") + "</div>" +
+        (p.bio ? '<p class="p-bio">' + esc(p.bio) + "</p>" : "") +
+        (spec ? '<div class="tagchips" style="justify-content:center">' + spec + "</div>" : "") +
+        '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
+        (p.is_me ? '<button class="btn ghost" id="prEdit">Editar perfil</button>' : '<button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + "</button>") + "</div>" +
+        '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
+      bindPostCards(b);
+      var fb = document.getElementById("prFollow");
+      if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });
+      var eb = document.getElementById("prEdit"); if (eb) eb.addEventListener("click", function () { onb.step = 1; onb.handle = p.handle || ""; onb.name = p.name || ""; onb.spec = (p.specialty || []).slice(); onb.city = p.city || ""; onb.social = socialEnabled; renderEditProfile(); });
+    }).catch(function () { document.getElementById("prBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el perfil.</p></div>'; });
+  }
+  function renderEditProfile() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Editar perfil</h1></div>' +
+      '<div class="field"><label>Nombre artístico</label><input id="epName" value="' + esc(onb.name) + '"></div>' +
+      '<div class="field"><label>Usuario (@)</label><input id="epHandle" value="' + esc(onb.handle) + '"></div>' +
+      '<div class="field"><label>Bio</label><textarea id="epBio" rows="3" placeholder="Cuéntate en una línea…">' + esc(myProfile && myProfile.bio || "") + "</textarea></div>" +
+      '<div class="field"><label>Especialidad</label><div class="tchips" id="epSpec">' + SPECIALTIES.map(function (s) { return '<button type="button" class="tchip ' + (onb.spec.indexOf(s) >= 0 ? "on" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div></div>" +
+      '<div class="field"><label>Ciudad</label><input id="epCity" value="' + esc(onb.city) + '"></div>' +
+      '<button class="btn" id="epSave">Guardar</button></div>';
+    view.querySelectorAll("#epSpec .tchip").forEach(function (b) { b.addEventListener("click", function () { var s = b.getAttribute("data-s"); var i = onb.spec.indexOf(s); if (i >= 0) onb.spec.splice(i, 1); else onb.spec.push(s); b.classList.toggle("on"); }); });
+    document.getElementById("epSave").addEventListener("click", function () {
+      var name = (document.getElementById("epName").value || "").trim(), handle = (document.getElementById("epHandle").value || "").trim().replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 24);
+      if (!name || handle.length < 3) { toast("Nombre y usuario (mín. 3)"); return; }
+      var btn = document.getElementById("epSave"); btn.disabled = true; btn.textContent = "Guardando…";
+      Cloud.upsertProfile({ handle: handle, display_name: name, bio: (document.getElementById("epBio").value || "").trim(), specialty: onb.spec, city: (document.getElementById("epCity").value || "").trim() })
+        .then(function (p) { myProfile = p; toast("Perfil actualizado"); location.hash = "#/mago/" + p.user_id; route(); })
+        .catch(function (e) { btn.disabled = false; btn.textContent = "Guardar"; toast(/duplicate|unique/i.test(e && e.message || "") ? "Ese usuario ya existe" : "No se pudo guardar"); });
+    });
+  }
+
+  /* --------------------------- Mercado ------------------------------ */
+  function renderListing(id) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getMarket().then(function (rows) {
+      var l = rows.filter(function (x) { return x.id === id; })[0];
+      var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
+        '<h1 class="title" style="margin-top:14px">' + esc(l.title) + "</h1>" +
+        '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
+        (l.description ? '<div class="notes">' + esc(l.description) + "</div>" : "") +
+        '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + "</div>" +
+        (l.owned ? '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>'
+          : (l.price ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
+        (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "");
+      var sel = b.querySelector(".li-seller[data-mago]"); if (sel) sel.addEventListener("click", function () { location.hash = "#/mago/" + l.seller; });
+      var op = document.getElementById("liOpen"); if (op) op.addEventListener("click", function () { location.hash = "#/"; });
+      var buy = document.getElementById("liBuy"); if (buy) buy.addEventListener("click", function () { toast("Pago con tarjeta muy pronto (Stripe)"); });
+      var fr = document.getElementById("liFree"); if (fr) fr.addEventListener("click", function () {
+        fr.disabled = true; fr.textContent = "Añadiendo…";
+        Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
+          .catch(function () { fr.disabled = false; fr.textContent = "Obtener gratis"; toast("No se pudo obtener"); });
+      });
+    }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+  }
+  var sellTrick = null, sellCover = null;
+  function renderSellForm() {
+    clearTabbar(); sellTrick = null; sellCover = null;
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/mercado\'">' + icon("back") + '</button><h1>Vender un truco</h1></div>' +
+      '<p class="subtitle">Comparte tu método con la comunidad. Se entregan las notas, la ficha y los vídeos con enlace (YouTube/Vimeo).</p>' +
+      '<button class="btn ghost" id="slPick">' + icon("cards", "i-sm") + ' Elegir truco de mi biblioteca</button><div id="slPrev"></div>' +
+      '<div class="field"><label>Título</label><input id="slTitle" placeholder="Nombre del efecto"></div>' +
+      '<div class="field"><label>Descripción (escaparate)</label><textarea id="slDesc" rows="3" placeholder="Qué recibe el comprador, ángulos, nivel…"></textarea></div>' +
+      '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="on" type="button">Gratis</button><button data-v="paid" type="button">De pago</button></div>' +
+      '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="display:none;margin-top:8px"></div>' +
+      '<button class="btn ghost" id="slCoverBtn">' + icon("plus", "i-sm") + ' Portada (opcional)</button><input type="file" id="slCoverFile" accept="image/*" style="display:none"><div id="slCoverPrev"></div>' +
+      '<button class="btn" id="slPublish">Publicar en el mercado</button></div>';
+    document.getElementById("slPick").addEventListener("click", function () { pickTrick(function (t) { sellTrick = t; document.getElementById("slTitle").value = t.title; document.getElementById("slPrev").innerHTML = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }); });
+    var paid = false;
+    view.querySelectorAll("#slPrice button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slPrice", b); paid = b.getAttribute("data-v") === "paid"; document.getElementById("slAmount").style.display = paid ? "" : "none"; }); });
+    document.getElementById("slCoverBtn").addEventListener("click", function () { document.getElementById("slCoverFile").click(); });
+    document.getElementById("slCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { sellCover = r.path; document.getElementById("slCoverPrev").innerHTML = '<div class="li-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("slPublish").addEventListener("click", function () {
+      var title = (document.getElementById("slTitle").value || "").trim();
+      if (!sellTrick) { toast("Elige un truco primero"); return; }
+      if (!title) { toast("Ponle un título"); return; }
+      var cents = 0;
+      if (paid) { var a = parseFloat((document.getElementById("slAmount").value || "").replace(",", ".")); if (!a || a <= 0) { toast("Pon un precio válido"); return; } cents = Math.round(a * 100); }
+      var btn = document.getElementById("slPublish"); btn.disabled = true; btn.textContent = "Publicando…";
+      var listing = { title: title, description: (document.getElementById("slDesc").value || "").trim(), price_cents: cents, currency: "eur", cover_path: sellCover };
+      Cloud.createListing(listing, buildSellPayload(sellTrick)).then(function (l) {
+        return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
+      }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
+        .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });
+    });
+  }
+  function buildSellPayload(t) {
+    return { title: t.title, category: t.category || "", difficulty: t.difficulty || "", meta: t.meta || {}, notes: t.notes || "", tags: t.tags || [],
+      media: (t.media || []).filter(function (m) { return m.embed; }).map(function (m) { return { provider: m.provider, embed: m.embed, url: m.url, title: m.title, thumb: m.thumb, chapters: m.chapters || [], transcript: m.transcript || "" }; }) };
+  }
+  function addDeliveredTrick(payload) {
+    var t = { id: uid(), title: payload.title || "Truco", category: payload.category || "", difficulty: payload.difficulty || "medio", status: "poraprender",
+      notes: payload.notes || "", tags: payload.tags || [], meta: payload.meta || {}, favorite: false,
+      media: (payload.media || []).filter(function (m) { return m.embed; }).map(function (m) { return { provider: m.provider || "youtube", embed: m.embed, url: m.url, title: m.title, thumb: m.thumb, chapters: m.chapters, transcript: m.transcript }; }),
+      photos: [], createdAt: Date.now(), updatedAt: Date.now() };
+    state.tricks.unshift(t); save(); syncTrick(t); return t;
+  }
+  function startFeedRealtime() {
+    if (!cloudReady() || !logged() || !socialEnabled || !Cloud.subscribeFeed) return;
+    stopFeedRealtime();
+    feedCh = Cloud.subscribeFeed(function () { var h = location.hash || ""; if (h === "#/comunidad" || h === "#/mercado") { if (feedTimer) return; feedTimer = setTimeout(function () { feedTimer = null; route(); }, 600); } });
+  }
+  var feedTimer = null;
+  function stopFeedRealtime() { if (feedCh) { Cloud.unsubscribeRealtime(feedCh); feedCh = null; } }
+
   /* ========================= TRUCOS INCLUIDOS ======================== */
   function renderIncluded() {
     mountTabbar("inc"); var f = document.getElementById("fabEl"); if (f) f.remove();
@@ -1480,6 +1820,9 @@
           (logged() ? '<button class="btn ghost" id="pushToggle">Comprobando…</button>' +
             '<div class="setrow" id="hourRow" style="display:none"><span class="si">' + icon("clock") + '</span><div class="st"><div class="t">Hora del aviso</div><div class="d">Cada día a esta hora, si tienes repasos</div></div><select id="hourSel" class="hoursel"></select></div>' : "")
         : "") +
+      (cloudReady() && logged() ? '<div class="sec-label">Comunidad</div>' +
+        '<div class="toggle-row" id="comToggle"><div><b>Red y mercado de magos</b><p class="hint">' + (socialEnabled ? "Activada · feed, perfiles y mercado" : "Desactivada · app 100% privada") + '</p></div><span class="switch ' + (socialEnabled ? "on" : "") + '" id="comSw"></span></div>' : "") +
+      '<div class="setrow" id="incRow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Trucos incluidos</div><div class="d">Efectos listos para actuar</div></div><span class="go">' + icon("chev") + "</span></div>" +
       '<div class="sec-label">Apariencia</div>' +
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
@@ -1505,6 +1848,14 @@
     var sr = document.getElementById("statsRow"); if (sr) sr.addEventListener("click", function () { location.hash = "#/stats"; });
     var shr = document.getElementById("sharesRow"); if (shr) shr.addEventListener("click", function () { location.hash = "#/enlaces"; });
     if (document.getElementById("pushToggle")) refreshPushToggle();
+    var incR = document.getElementById("incRow"); if (incR) incR.addEventListener("click", function () { location.hash = "#/incluidos"; });
+    var comT = document.getElementById("comToggle"); if (comT) comT.addEventListener("click", function () {
+      var next = !socialEnabled; socialEnabled = next; try { localStorage.setItem("magic_social", next ? "1" : "0"); } catch (e) {}
+      Cloud.upsertProfile({ social_enabled: next }).then(function (p) { myProfile = p; }).catch(function () {});
+      if (next) startFeedRealtime(); else stopFeedRealtime();
+      toast(next ? "Comunidad activada" : "Comunidad desactivada");
+      renderSettings();
+    });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
     });
@@ -1739,13 +2090,13 @@
     if (isSignup) {
       Cloud.signUp(email, pass).then(function (r) {
         if (r.error) { toast(traduce(r.error.message)); return done("Crear cuenta"); }
-        if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); return syncOnLogin(true).then(function () { location.hash = "#/"; route(); }); }
+        if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); return loadProfile().then(function () { startRealtime(); startFeedRealtime(); syncOnLogin(true); location.hash = "#/"; route(); }); }
         pendingEmail = email; renderGate();
       }).catch(function () { toast("Error de conexión"); done("Crear cuenta"); });
     } else {
       Cloud.signIn(email, pass).then(function (r) {
         if (r.error) { toast(traduce(r.error.message)); return done("Entrar"); }
-        session = r.data.user; toast("¡Hola de nuevo!"); syncOnLogin(true).then(function () { location.hash = "#/"; route(); });
+        session = r.data.user; toast("¡Hola de nuevo!"); loadProfile().then(function () { startRealtime(); startFeedRealtime(); syncOnLogin(true); location.hash = "#/"; route(); });
       }).catch(function () { toast("Error de conexión"); done("Entrar"); });
     }
   }
@@ -1797,6 +2148,8 @@
       if (hasPin() && !unlocked) return renderLock();
       // Puerta de entrada: si hay nube y no hay sesión, obligamos a iniciar sesión
       if (cloudReady() && !logged()) return renderGate();
+      // Onboarding la primera vez (perfil sin completar)
+      if (logged() && cloudReady() && needsOnboarding && (location.hash || "").indexOf("#/s/") !== 0) return renderOnboarding();
       var h = location.hash || "#/";
       if (perfState && h.indexOf("#/actuar/") !== 0) { releaseWake(); perfState = null; }
       if (h === "#/pin") return renderSetPin();
@@ -1817,6 +2170,13 @@
       if (h === "#/practica") return renderPractice();
       if (h === "#/stats") return renderStats();
       if (h === "#/enlaces") return renderShares();
+      if (h === "#/comunidad") return socialEnabled ? renderCommunity("feed") : renderLibrary();
+      if (h === "#/mercado") return socialEnabled ? renderCommunity("market") : renderLibrary();
+      if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
+      if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
+      if (h.indexOf("#/post/") === 0) return renderPostDetail(h.slice(7));
+      if (h.indexOf("#/mago/") === 0) return renderProfile(h.slice(7));
+      if (h.indexOf("#/mercado/") === 0) return renderListing(h.slice(10));
       if (h === "#/incluidos") return renderIncluded();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
@@ -1836,12 +2196,17 @@
       view.innerHTML = '<div class="screen splash"><div class="logo">' + mark("", true) + '</div><div class="wm">App del Mago</div><div class="spin"></div></div>';
       Cloud.currentUser().then(function (u) {
         session = u || null;
-        route();
-        if (session) { syncOnLogin(true); startRealtime(); }
+        loadProfile().then(function () {
+          route();
+          if (session) { syncOnLogin(true); startRealtime(); startFeedRealtime(); }
+        });
         Cloud.onChange(function (u2) {
           var was = logged(); session = u2 || null;
-          if (logged()) startRealtime(); else stopRealtime();
-          if (was !== logged()) { if (logged()) syncOnLogin(true); route(); }
+          if (logged()) {
+            startRealtime();
+            if (!myProfile) { loadProfile().then(function () { startFeedRealtime(); if (!was) syncOnLogin(true); route(); }); }
+            else if (!was) { startFeedRealtime(); syncOnLogin(true); route(); }
+          } else if (was) { stopRealtime(); stopFeedRealtime(); myProfile = null; needsOnboarding = false; route(); }
         });
       }).catch(function () { session = null; route(); });
     } else {

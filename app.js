@@ -19,6 +19,37 @@
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0, v = c === "x" ? r : (r & 0x3 | 0x8); return v.toString(16); });
   }
   function isUuid(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s || ""); }
+
+  /* Iconos SVG de línea (sin emojis, look profesional) */
+  var ICONS = {
+    hat: '<path d="M7 4.5h10v9H7z"/><path d="M4 17.5h16"/><path d="M7 13.5C5 14 4 15.6 4 17.5M17 13.5c2 .5 3 2.1 3 4"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+    star: '<path d="M12 3.5l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8 6.8 19.4l1-5.7-4.2-4.1 5.8-.9z"/>',
+    starfill: '<path d="M12 3.5l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8 6.8 19.4l1-5.7-4.2-4.1 5.8-.9z" fill="currentColor" stroke="none"/>',
+    user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-3.6 3.4-5.6 7.5-5.6s7.5 2 7.5 5.6"/>',
+    library: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
+    wand: '<path d="M4 20L13 11"/><path d="M15 3.5l.9 2.3 2.3.9-2.3.9L15 9.9l-.9-2.3-2.3-.9 2.3-.9z"/><path d="M19 11l.5 1.4 1.4.5-1.4.5L19 15l-.5-1.4-1.4-.5 1.4-.5z"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    chev: '<path d="M9 6l6 6-6 6"/>',
+    play: '<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>',
+    link: '<path d="M9 15l6-6"/><path d="M11 6.5l1-1a4 4 0 015.5 5.5l-1 1"/><path d="M13 17.5l-1 1a4 4 0 01-5.5-5.5l1-1"/>',
+    film: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M3.5 9.5h17M8 5.5v13M16 5.5v13"/>',
+    upload: '<path d="M12 16V5M8 9l4-4 4 4"/><path d="M5 19h14"/>',
+    trash: '<path d="M5 7h14M10 7V5h4v2M6.5 7l1 12.5h9L17.5 7"/>',
+    edit: '<path d="M14.5 5.5l4 4M4 20l1-4L16 4.5l3.5 3.5L8 19.5z"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
+    theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
+    disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
+    envelope: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 5.5L20 7"/>',
+    book: '<path d="M4.5 5.2C4.5 4.5 5 4 5.7 4H19v14.5H6.2c-.9 0-1.7.5-1.7 1.5z"/><path d="M4.5 20V5.2"/>',
+    logout: '<path d="M14 5H6v14h8"/><path d="M18 12H10M15 9l3 3-3 3"/>',
+    refresh: '<path d="M20 11a8 8 0 10-1 4"/><path d="M20 5v6h-6"/>',
+    cards: '<rect x="6" y="4.5" width="10" height="14" rx="2" transform="rotate(-8 11 11)"/><rect x="9" y="6" width="10" height="14" rx="2" transform="rotate(6 14 13)"/>'
+  };
+  function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }
   var toastTimer = null;
@@ -111,12 +142,12 @@
   /* ------------------------------ navegación -------------------------- */
   function tabbar(active) {
     var tabs = [
-      { h: "#/", ic: "📚", t: "Biblioteca", k: "lib" },
-      { h: "#/incluidos", ic: "✨", t: "Incluidos", k: "inc" },
-      { h: "#/ajustes", ic: "⚙️", t: "Ajustes", k: "set" }
+      { h: "#/", ic: "library", t: "Biblioteca", k: "lib" },
+      { h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" },
+      { h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" }
     ];
     return '<nav class="tabbar">' + tabs.map(function (x) {
-      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '"><span class="ti">' + x.ic + "</span>" + x.t + "</a>";
+      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
   function mountTabbar(active) {
@@ -126,7 +157,7 @@
   function clearTabbar() { var old = document.getElementById("tabbarEl"); if (old) old.remove(); var f = document.getElementById("fabEl"); if (f) f.remove(); }
   function mountFab() {
     var old = document.getElementById("fabEl"); if (old) old.remove();
-    var f = el('<button class="fab" id="fabEl" title="Nuevo truco">+</button>');
+    var f = el('<button class="fab" id="fabEl" title="Nuevo truco">' + icon("plus") + "</button>");
     f.addEventListener("click", function () { location.hash = "#/nuevo"; });
     document.body.appendChild(f);
   }
@@ -160,11 +191,11 @@
 
     var body;
     if (state.tricks.length === 0) {
-      body = '<div class="empty"><div class="big">🎩</div><h3>Tu biblioteca está vacía</h3>' +
+      body = '<div class="empty"><div class="big">' + icon("hat") + '</div><h3>Tu biblioteca está vacía</h3>' +
         "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
-      body = '<div class="empty"><div class="big">🔍</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+      body = '<div class="empty"><div class="big">' + icon("search") + '</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
     } else {
       body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
@@ -172,11 +203,11 @@
 
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="appbar"><span class="logo">🎩</span><span class="wm">The Magic <span>App</span></span>' +
+      '<div class="appbar"><span class="brandmark">' + icon("hat") + '<span class="wm">The Magic App</span></span>' +
       '<span class="spacer"></span>' +
-      '<button class="iconbtn" id="favToggle" title="Favoritos">' + (filter.fav ? "★" : "☆") + "</button>" +
-      '<button class="iconbtn" id="acctBtn" title="Cuenta">👤</button></div>' +
-      '<div class="search"><span class="mag">🔍</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
+      '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" title="Favoritos">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
+      '<button class="iconbtn" id="acctBtn" title="Cuenta">' + icon("user") + "</button></div>" +
+      '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
       '<div class="chips">' + catChips + "</div>" +
       '<div class="chips">' + statusChips + "</div>" +
       body +
@@ -204,7 +235,7 @@
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
       holder.className = "";
-      holder.innerHTML = '<div class="empty"><div class="big">🔍</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+      holder.innerHTML = '<div class="empty"><div class="big">' + icon("search") + '</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
       if (countEl) countEl.textContent = "";
       return;
     }
@@ -222,11 +253,11 @@
     var vid = (t.media || []).filter(function (m) { return m.provider !== "link"; })[0] || (t.media || [])[0];
     var thumb = vid && vid.thumb;
     var thumbHtml = thumb
-      ? '<img src="' + esc(thumb) + '" loading="lazy" alt="">' + '<span class="play">▶</span>'
-      : '<span class="ph">' + (vid ? "▶" : "🃏") + "</span>";
+      ? '<img src="' + esc(thumb) + '" loading="lazy" alt="">' + '<span class="play">' + icon("play", "i-sm") + "</span>"
+      : '<span class="ph">' + icon(vid ? "film" : "cards") + "</span>";
     return (
       '<div class="card" data-id="' + t.id + '">' +
-      '<div class="thumb">' + thumbHtml + (t.favorite ? '<span class="fav">★</span>' : "") + "</div>" +
+      '<div class="thumb">' + thumbHtml + (t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
       '<div class="body"><h3>' + esc(t.title) + "</h3>" +
       '<div class="meta">' + esc(t.category || "Sin categoría") + "</div>" +
       '<div class="foot"><span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
@@ -244,17 +275,17 @@
     var media = (t.media || []).map(function (m, i) {
       if (m.provider === "upload" && m.path) return '<div class="player" id="upl' + i + '" data-path="' + esc(m.path) + '"></div>';
       if (m.embed) return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
-      return '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">🔗</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">↗</span></a>';
+      return '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">' + icon("link") + '</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">' + icon("chev", "i-sm") + "</span></a>";
     }).join("");
 
     var tags = (t.tags || []).length ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + t.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "";
 
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">‹</button><h1>Truco</h1>' +
+      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
       '<span style="flex:1"></span>' +
-      '<button class="iconbtn" id="favBtn">' + (t.favorite ? "★" : "☆") + "</button>" +
-      '<button class="iconbtn" id="editBtn">✎</button></div>' +
+      '<button class="iconbtn ' + (t.favorite ? "on" : "") + '" id="favBtn">' + icon(t.favorite ? "starfill" : "star") + "</button>" +
+      '<button class="iconbtn" id="editBtn">' + icon("edit") + "</button></div>" +
       '<h1 class="title">' + esc(t.title) + "</h1>" +
       '<div class="detail-badges">' +
       '<span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
@@ -313,7 +344,7 @@
 
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" onclick="history.back()">‹</button><h1>' + (editing ? "Editar truco" : "Nuevo truco") + "</h1></div>" +
+      '<div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>' + (editing ? "Editar truco" : "Nuevo truco") + "</h1></div>" +
       '<div class="field"><label>Título</label><input id="fTitle" placeholder="Ej. Carta ambiciosa" value="' + esc(t ? t.title : "") + '"></div>' +
       '<div class="row">' +
       '<div class="field"><label>Categoría</label><input id="fCat" list="cats" placeholder="Elige o crea…" value="' + esc(t ? t.category : "") + '"><datalist id="cats">' + catOptions + "</datalist></div>" +
@@ -326,7 +357,7 @@
       "</div></div>" +
       '<div class="field"><label>Vídeos (pega una URL de YouTube, Vimeo…)</label>' +
       '<div class="vidadd"><input id="fVid" placeholder="https://…" inputmode="url"><button class="btn small" id="addVid" type="button">Añadir</button></div>' +
-      (logged() ? '<button class="btn ghost" id="upVid" type="button" style="margin-top:10px">⬆︎ Subir un vídeo propio</button><input type="file" id="fFile" accept="video/*" style="display:none">' :
+      (logged() ? '<button class="btn ghost" id="upVid" type="button" style="margin-top:10px">' + icon("upload", "i-sm") + ' Subir un vídeo propio</button><input type="file" id="fFile" accept="video/*" style="display:none">' :
         '<div class="hint" style="margin-top:8px">Inicia sesión (Ajustes → Cuenta) para <b>subir tus propios vídeos</b>.</div>') +
       '<div class="vidlist" id="vidList"></div>' +
       '<div class="hint">Se incrusta el reproductor y se intenta sacar la miniatura y el título automáticamente.</div></div>' +
@@ -351,15 +382,15 @@
       fileInp.addEventListener("change", function () {
         var file = fileInp.files[0]; if (!file) return;
         if (file.size > 200 * 1024 * 1024) { toast("Vídeo demasiado grande (máx 200 MB)"); return; }
-        upBtn.disabled = true; upBtn.textContent = "Subiendo… 0%";
+        upBtn.disabled = true; upBtn.textContent = "Subiendo…";
         var item = { provider: "upload", path: null, title: file.name, thumb: null, uploading: true };
         draftMedia.push(item); paintDraftMedia();
         Cloud.uploadVideo(file).then(function (res) {
-          item.path = res.path; item.uploading = false; upBtn.disabled = false; upBtn.textContent = "⬆︎ Subir un vídeo propio";
+          item.path = res.path; item.uploading = false; upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio";
           paintDraftMedia(); toast("Vídeo subido");
         }).catch(function () {
           draftMedia = draftMedia.filter(function (m) { return m !== item; });
-          upBtn.disabled = false; upBtn.textContent = "⬆︎ Subir un vídeo propio"; paintDraftMedia(); toast("No se pudo subir");
+          upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio"; paintDraftMedia(); toast("No se pudo subir");
         });
       });
     }
@@ -388,7 +419,7 @@
     var list = document.getElementById("vidList");
     if (!list) return;
     list.innerHTML = draftMedia.map(function (m, i) {
-      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : (m.provider === "upload" ? "📹" : m.provider === "link" ? "🔗" : "▶");
+      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : icon(m.provider === "upload" ? "film" : m.provider === "link" ? "link" : "play", "i-sm");
       var sub = m.uploading ? "subiendo…" : (m.provider === "upload" ? "vídeo propio" : m.provider);
       return '<div class="vidrow"><div class="vt">' + thumb + "</div>" +
         '<div class="vi"><div class="n">' + esc(m.title || m.url || "vídeo") + '</div><div class="p">' + esc(sub) + "</div></div>" +
@@ -428,9 +459,9 @@
       '<div class="screen">' +
       '<h1 class="title">Trucos incluidos</h1>' +
       '<p class="subtitle">Efectos listos para actuar, con su método explicado.</p>' +
-      '<div class="hero"><h2>🧠 Lector Mental</h2><p>La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.</p></div>' +
-      '<button class="btn" onclick="location.hash=\'#/lector\'">▶ Actuar</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/lector-metodo\'">📖 Aprender el método</button>' +
+      '<div class="hero"><h2>Lector Mental</h2><p>La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.</p></div>' +
+      '<button class="btn" onclick="location.hash=\'#/lector\'">' + icon("play", "i-sm") + " Actuar</button>" +
+      '<button class="btn ghost" onclick="location.hash=\'#/lector-metodo\'">' + icon("book", "i-sm") + " Aprender el método</button>" +
       "</div>";
   }
 
@@ -444,7 +475,7 @@
     clearTabbar();
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div>' +
+      '<div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
       '<div class="scanwrap" id="scan"><div class="orb" id="orb"></div>' +
       '<div class="prompt" id="prompt">Coloca tu dedo en la esfera y piensa con fuerza en tu carta.</div>' +
       '<div class="sub">Cuando estés listo, pulsa la esfera.</div></div>' +
@@ -503,7 +534,7 @@
     else if (loaded.type === "text") result = { kind: "text", text: loaded.text };
     else result = { kind: "card", card: { suit: SUITS[rnd(4)].sym, val: VALUES[rnd(13)] } };
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div>' +
       '<div class="scanwrap" style="min-height:52vh"><div class="orb ' + (loaded.type ? "armed" : "") + '"></div>' +
       '<div class="prompt">Leyendo tu mente…</div><div class="progress"><i id="bar"></i></div><div class="scanstatus" id="st"></div></div></div>';
     var bar = document.getElementById("bar"), st = document.getElementById("st");
@@ -521,7 +552,7 @@
       body = '<div class="cardface ' + (red ? "red" : "") + '"><div class="corner tl">' + c.val + "<br>" + c.suit + '</div><div class="center">' + c.suit + '</div><div class="corner br">' + c.val + "<br>" + c.suit + "</div></div>" +
         '<div class="lbl" style="text-align:center;margin-top:18px;color:var(--ink-soft)">Tu carta era el <b>' + c.val + " de " + suitName(c.suit) + "</b>.</div>";
     } else { body = '<div class="textreveal">' + esc(result.text) + "</div>"; }
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Lector Mental</h1></div><div class="panel">' + body +
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Lector Mental</h1></div><div class="panel">' + body +
       '<button class="btn" onclick="location.hash=\'#/incluidos\'">Terminar</button></div></div>';
     loaded = { type: null, card: null, text: null };
   }
@@ -533,15 +564,15 @@
   function renderLectorMethod() {
     clearTabbar();
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">‹</button><h1>Método</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Método</h1></div>' +
       '<div class="backstage-bar"><span class="dot"></span> Solo para tus ojos — no lo enseñes al público</div>' +
-      '<div class="panel tut"><h2 style="font-family:var(--serif)">🧠 Lector Mental</h2>' +
-      sec("👁 Qué ve el público", "pub", "<p>El espectador piensa una carta (o una palabra, un nombre…). Pone el dedo en la esfera de SU teléfono, la app “lee su mente” y revela justo lo que pensaba.</p>") +
-      sec("🔒 El secreto", "sec", "<p>La app no adivina: <b>tú le dices en secreto qué revelar</b>. Funciona con cualquier forzaje o peek que conozcas.</p><p><b>Cargar:</b> en la pantalla de la esfera, <b>desliza hacia abajo desde el borde superior</b>. Toca la carta o escribe la palabra. La esfera se pone <b>dorada</b> = cargada. Desliza arriba para cerrar.</p>") +
-      sec("🎬 Paso a paso", "", "<ol><li>Averigua la carta con tu método.</li><li>Con el móvil en tu mano, di que “calibras el sensor” y carga a la vez, sin apenas mirar.</li><li>Comprueba que la esfera está dorada.</li><li>Entrega el móvil; que ponga el dedo y pulse.</li><li>Se revela su carta exacta.</li></ol>") +
-      sec("🗣 Guion", "", '<div class="script">"Este sensor mide micro-señales de tu piel. Piensa en tu carta, pon el dedo aquí… relájate…"</div>') +
-      sec("⚠ Evita", "", "<ul><li>Ensaya la carga hasta hacerla sin mirar.</li><li>No entregues el móvil hasta ver la esfera dorada.</li><li>No repitas el efecto para el mismo público.</li></ul>") +
-      '<button class="btn" onclick="location.hash=\'#/lector\'">▶ Practicar</button></div></div>';
+      '<div class="panel tut"><h2>Lector Mental</h2>' +
+      sec("Qué ve el público", "pub", "<p>El espectador piensa una carta (o una palabra, un nombre…). Pone el dedo en la esfera de SU teléfono, la app “lee su mente” y revela justo lo que pensaba.</p>") +
+      sec("El secreto", "sec", "<p>La app no adivina: <b>tú le dices en secreto qué revelar</b>. Funciona con cualquier forzaje o peek que conozcas.</p><p><b>Cargar:</b> en la pantalla de la esfera, <b>desliza hacia abajo desde el borde superior</b>. Toca la carta o escribe la palabra. La esfera se pone <b>dorada</b> = cargada. Desliza arriba para cerrar.</p>") +
+      sec("Paso a paso", "", "<ol><li>Averigua la carta con tu método.</li><li>Con el móvil en tu mano, di que “calibras el sensor” y carga a la vez, sin apenas mirar.</li><li>Comprueba que la esfera está dorada.</li><li>Entrega el móvil; que ponga el dedo y pulse.</li><li>Se revela su carta exacta.</li></ol>") +
+      sec("Guion", "", '<div class="script">"Este sensor mide micro-señales de tu piel. Piensa en tu carta, pon el dedo aquí… relájate…"</div>') +
+      sec("Errores a evitar", "", "<ul><li>Ensaya la carga hasta hacerla sin mirar.</li><li>No entregues el móvil hasta ver la esfera dorada.</li><li>No repitas el efecto para el mismo público.</li></ul>") +
+      '<button class="btn" onclick="location.hash=\'#/lector\'">' + icon("play", "i-sm") + " Practicar</button></div></div>";
   }
 
   /* ============================= AJUSTES ============================= */
@@ -551,15 +582,15 @@
     view.innerHTML =
       '<div class="screen"><h1 class="title">Ajustes</h1><p class="subtitle">' + state.tricks.length + " trucos guardados · " + state.categories.length + " categorías</p>" +
       '<div class="sec-label">Cuenta</div>' +
-      '<div class="setrow" id="acctRow"><span class="si">' + (logged() ? "👤" : "☁️") + '</span><div class="st"><div class="t">' +
+      '<div class="setrow" id="acctRow"><span class="si">' + icon(logged() ? "user" : "cloud") + '</span><div class="st"><div class="t">' +
       (logged() ? esc(session.email) : "Iniciar sesión / crear cuenta") + '</div><div class="d">' +
-      (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go" style="color:var(--ink-faint);font-size:20px">›</span></div>' +
+      (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go">' + icon("chev") + "</span></div>" +
       '<div class="sec-label">Apariencia</div>' +
-      '<div class="setrow"><span class="si">🎨</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
+      '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
       '<div class="sec-label">Tus datos</div>' +
-      '<div class="setrow"><span class="si">💾</span><div class="st"><div class="t">Copia de seguridad</div><div class="d">Exporta tu biblioteca a un archivo, o restáurala.</div></div></div>' +
+      '<div class="setrow"><span class="si">' + icon("disk") + '</span><div class="st"><div class="t">Copia de seguridad</div><div class="d">Exporta tu biblioteca a un archivo, o restáurala.</div></div></div>' +
       '<button class="btn ghost" id="exportBtn">Exportar biblioteca</button>' +
       '<button class="btn ghost" id="importBtn">Importar biblioteca</button>' +
       '<input type="file" id="importFile" accept="application/json" style="display:none">' +
@@ -607,7 +638,7 @@
   function renderAccount() {
     clearTabbar();
     if (!cloudReady()) {
-      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>Cuenta</h1></div>' +
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
         '<div class="panel"><p>La sincronización en la nube no está disponible ahora mismo (sin conexión). Tu biblioteca sigue guardándose en este dispositivo.</p></div></div>';
       return;
     }
@@ -618,8 +649,8 @@
 
   function renderAccountLogged() {
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>Cuenta</h1></div>' +
-      '<div class="setrow"><span class="si">👤</span><div class="st"><div class="t">' + esc(session.email) + '</div><div class="d">Sesión iniciada · tu biblioteca se sincroniza</div></div></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Cuenta</h1></div>' +
+      '<div class="setrow"><span class="si">' + icon("user") + '</span><div class="st"><div class="t">' + esc(session.email) + '</div><div class="d">Sesión iniciada · tu biblioteca se sincroniza</div></div></div>' +
       '<button class="btn" id="syncNow">Sincronizar ahora</button>' +
       '<button class="btn ghost" id="signOut">Cerrar sesión</button>' +
       '<p class="subtitle" style="text-align:center;margin-top:20px">Tus trucos se guardan en tu proyecto privado y solo tú puedes verlos.</p></div>';
@@ -632,7 +663,7 @@
   function renderAuthForm() {
     var isSignup = authMode === "signup";
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
       '<p class="subtitle">Sincroniza tu biblioteca entre dispositivos y sube tus vídeos.</p>' +
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
       '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
@@ -661,7 +692,7 @@
 
   function renderConfirm() {
     view.innerHTML =
-      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/cuenta\'">‹</button><h1>Confirma tu email</h1></div>' +
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/cuenta\'">' + icon("back") + '</button><h1>Confirma tu email</h1></div>' +
       '<p class="subtitle">Te hemos enviado un <b>código</b> a <b>' + esc(pendingEmail) + "</b>. Escríbelo aquí para activar tu cuenta.</p>" +
       '<div class="field"><label>Código de confirmación</label><input id="cCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos"></div>' +
       '<button class="btn" id="cGo">Confirmar</button>' +
@@ -698,7 +729,7 @@
     var isSignup = authMode === "signup";
     view.innerHTML =
       '<div class="screen gate">' +
-      '<div class="gate-hero"><div class="logo">🎩</div>' +
+      '<div class="gate-hero"><div class="logo">' + icon("hat") + "</div>" +
       '<h1 class="wm">The Magic <span>App</span></h1>' +
       '<p>Tu biblioteca de magia, siempre contigo.</p></div>' +
       '<div class="gate-card">' +
@@ -739,7 +770,7 @@
   function gateConfirm() {
     view.innerHTML =
       '<div class="screen gate">' +
-      '<div class="gate-hero"><div class="logo">✉️</div><h1 class="wm">Confirma tu email</h1>' +
+      '<div class="gate-hero"><div class="logo">' + icon("envelope") + '</div><h1 class="wm">Confirma tu email</h1>' +
       '<p>Código enviado a <b>' + esc(pendingEmail) + "</b></p></div>" +
       '<div class="gate-card">' +
       '<div class="field"><label>Código de confirmación</label><input id="cCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos"></div>' +
@@ -800,7 +831,7 @@
   window.addEventListener("hashchange", route);
   if (cloudReady()) {
     // Splash breve mientras resolvemos la sesión (evita parpadeo de la puerta)
-    view.innerHTML = '<div class="screen splash"><div class="logo">🎩</div><div class="wm">The Magic <span>App</span></div><div class="spin"></div></div>';
+    view.innerHTML = '<div class="screen splash"><div class="logo">' + icon("hat") + '</div><div class="wm">The Magic App</div><div class="spin"></div></div>';
     Cloud.currentUser().then(function (u) {
       session = u || null;
       route();

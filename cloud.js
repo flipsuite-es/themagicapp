@@ -226,7 +226,9 @@ window.Cloud = (function () {
         .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
     });
   }
-  function getFeed(who, mode, tag, chal) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null, chal: chal || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFeed(who, mode, tag, chal, before) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null, chal: chal || null, before: before || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getPost(id) { return sb.rpc("get_post", { pid: id }).then(function (r) { if (r.error) throw r.error; return r.data || null; }); }
+  function getListing(id) { return sb.rpc("get_listing", { lid: id }).then(function (r) { if (r.error) throw r.error; return r.data || null; }); }
   function getActiveChallenge() { return sb.rpc("get_active_challenge").then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function getLeaderboard() { return sb.rpc("get_leaderboard", { lim: 20 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function bookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
@@ -318,7 +320,7 @@ window.Cloud = (function () {
     searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
     openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
-    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
+    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard, getPost: getPost, getListing: getListing,
     likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap,
     getStories: getStories, createStory: createStory, viewStory: viewStory, getStoryViewers: getStoryViewers,
     block: block, unblock: unblock, report: report

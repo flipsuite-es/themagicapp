@@ -1540,6 +1540,23 @@
     });
   }
   function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
+  // Paginación: botón "Cargar más" que trae publicaciones anteriores y las añade.
+  function appendMore(bodyEl, feedEl, rows, fetcher) {
+    if (!rows || rows.length < 40 || !feedEl) return;
+    var btn = el('<button class="btn ghost loadmore">Cargar más</button>');
+    bodyEl.appendChild(btn);
+    btn.addEventListener("click", function () {
+      var last = rows[rows.length - 1]; btn.disabled = true; btn.textContent = "Cargando…";
+      fetcher(last.created_at).then(function (more) {
+        btn.remove();
+        if (!more || !more.length) return;
+        var frag = document.createElement("div"); frag.innerHTML = more.map(postCardHtml).join("");
+        bindPostCards(frag);
+        while (frag.firstChild) feedEl.appendChild(frag.firstChild);
+        appendMore(bodyEl, feedEl, more, fetcher);
+      }).catch(function () { btn.disabled = false; btn.textContent = "Cargar más"; });
+    });
+  }
   function actionSheet(opts) {
     var ov = el('<div class="modal-ov sheet"></div>');
     var box = el('<div class="sheet-box"></div>');
@@ -1687,6 +1704,7 @@
         }
         bodyEl.innerHTML = bar + '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
         bindPostCards(bodyEl); bindStories(bodyEl, stories);
+        appendMore(bodyEl, bodyEl.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "following", null, null, before); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
     }
   }
@@ -1786,6 +1804,7 @@
       var b = document.getElementById("tBody");
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("search") + "</div><p>Nada con #" + esc(tag) + " todavía.</p></div>";
       bindPostCards(b);
+      appendMore(b, b.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "discover", tag, null, before); });
     }).catch(function () { document.getElementById("tBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
   function renderMagicianList(uid, which) {
@@ -1804,6 +1823,7 @@
       var b = document.getElementById("svBody");
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bookmark") + "</div><h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
       bindPostCards(b);
+      appendMore(b, b.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "saved", null, null, before); });
     }).catch(function () { document.getElementById("svBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 
@@ -1915,7 +1935,7 @@
   function renderPostDetail(id) {
     clearTabbar();
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Publicación</h1></div><div id="pdBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
-    Promise.all([Cloud.getFeed().then(function (rows) { return rows.filter(function (x) { return x.id === id; })[0]; }), Cloud.getComments(id)]).then(function (res) {
+    Promise.all([Cloud.getPost(id), Cloud.getComments(id)]).then(function (res) {
       var p = res[0], comments = res[1] || [];
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
       var byParent = {}; comments.forEach(function (c) { if (c.parent_id) { (byParent[c.parent_id] = byParent[c.parent_id] || []).push(c); } });
@@ -1972,6 +1992,7 @@
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
       b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+      appendMore(b, b.querySelector(".feed"), posts, function (before) { return Cloud.getFeed(uid, "discover", null, null, before); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
       if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });
@@ -2016,8 +2037,8 @@
   function renderListing(id) {
     clearTabbar();
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
-    Promise.all([Cloud.getMarket(), Cloud.getReviews(id)]).then(function (res) {
-      var l = res[0].filter(function (x) { return x.id === id; })[0], reviews = res[1] || [];
+    Promise.all([Cloud.getListing(id), Cloud.getReviews(id)]).then(function (res) {
+      var l = res[0], reviews = res[1] || [];
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
       var ratingLine = l.reviews ? '<div class="li-rating">' + starsHtml(l.rating || 0) + '<span>' + (l.rating || 0) + " · " + l.reviews + (l.reviews === 1 ? " reseña" : " reseñas") + "</span></div>" : "";
       b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +

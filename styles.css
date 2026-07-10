@@ -774,3 +774,5 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .sheet-btn.cancel { background: var(--surface-2); color: var(--ink-soft); margin-top: 4px; }
 .sv-viewers { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 8px 15px; font-size: 13px; cursor: pointer; }
 .sv-viewers .i { width: 16px; height: 16px; }
+
+.loadmore { display: block; margin: 14px auto 4px; }

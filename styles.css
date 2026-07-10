@@ -698,3 +698,24 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 /* Animación de me gusta */
 .heart-burst { position: fixed; z-index: 300; color: var(--danger); font-size: 18px; pointer-events: none; animation: heartUp .9s ease-out forwards; }
 @keyframes heartUp { 0% { opacity: 1; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(var(--dx), -70px) scale(1.3); } }
+
+/* ============ Retos, ranking, descubrir ============ */
+.sec-row { display: flex; justify-content: space-between; align-items: center; }
+.seeall { color: var(--brand); font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
+.chal-banner { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius); margin: 4px 0 6px; cursor: pointer;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 20%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--line)); }
+.chal-banner .cb-ic { color: var(--brand); flex: 0 0 auto; } .chal-banner .cb-b { flex: 1; min-width: 0; }
+.cb-t { font-family: var(--display); font-weight: 600; font-size: 16px; } .cb-p { font-size: 13px; color: var(--ink-soft); margin: 2px 0; }
+.cb-m { font-size: 12px; color: var(--brand); font-weight: 600; }
+.chal-banner .i:last-child { color: var(--ink-faint); }
+.chal-chip { display: inline-flex; align-items: center; gap: 6px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); border-radius: 999px; padding: 7px 13px; font-size: 13px; margin-bottom: 12px; }
+.reto-head { text-align: center; padding: 8px 0 6px; } .reto-head .cb-ic.big { color: var(--brand); display: inline-block; } .reto-head .cb-ic.big .i { width: 40px; height: 40px; }
+.reto-head p { color: var(--ink-soft); } .reto-head .cb-m { margin: 6px 0 12px; } .reto-head .btn { width: auto; margin: 0 auto; padding: 12px 26px; }
+.top-strip { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; } .top-strip::-webkit-scrollbar { display: none; }
+.top-m { flex: 0 0 auto; width: 76px; text-align: center; cursor: pointer; }
+.top-m .avatar.big { width: 64px; height: 64px; font-size: 26px; margin: 0 auto 5px; }
+.top-m .tm-n { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-list { display: flex; flex-direction: column; }
+.lb-row { display: flex; align-items: center; gap: 11px; padding: 11px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.lb-rank { width: 26px; text-align: center; font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--ink-faint); flex: 0 0 auto; }
+.lb-rank.r1 { color: #d4af37; } .lb-rank.r2 { color: #9aa0a6; } .lb-rank.r3 { color: #b87333; }

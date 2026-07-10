@@ -226,7 +226,9 @@ window.Cloud = (function () {
         .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
     });
   }
-  function getFeed(who, mode, tag) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFeed(who, mode, tag, chal) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null, chal: chal || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getActiveChallenge() { return sb.rpc("get_active_challenge").then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function getLeaderboard() { return sb.rpc("get_leaderboard", { lim: 20 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function bookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function unbookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function repost(origId, body) { return sb.from("posts").insert({ kind: "post", repost_of: origId, body: body || null, media: [] }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -305,6 +307,7 @@ window.Cloud = (function () {
     getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
     searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
     openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
-    getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak
+    getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
+    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard
   };
 })();

@@ -1489,11 +1489,24 @@
       '<div class="lc-info"><div class="n">' + esc(l.title || "Truco") + '</div><div class="price">' + money(l.price, l.currency) + "</div></div><span class=\"go\">" + icon("chev") + "</span></div>";
   }
   function mediaHtml(media) {
+    var out = "";
+    (media || []).forEach(function (m) {
+      if (m.kind === "video" && m.embed) out += '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+      else if (m.kind === "video" && m.url) out += '<div class="player native"><video src="' + esc(m.url) + '" controls playsinline preload="metadata"' + (m.poster ? ' poster="' + esc(m.poster) + '"' : "") + "></video></div>";
+    });
     var imgs = (media || []).filter(function (m) { return m.kind !== "video" && m.url; });
-    var vids = (media || []).filter(function (m) { return m.kind === "video" && m.embed; });
-    var out = vids.map(function (m) { return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>'; }).join("");
     if (imgs.length) out += '<div class="pc-imgs' + (imgs.length > 1 ? " multi" : "") + '">' + imgs.map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("") + "</div>";
     return out;
+  }
+  // Sube un vídeo propio al bucket público y captura su miniatura.
+  function uploadOwnVideo(file, onDone) {
+    if (!/^video\//.test(file.type || "") && !/\.(mp4|mov|webm|m4v|3gp)$/i.test(file.name || "")) { toast("Elige un archivo de vídeo"); return; }
+    toast("Subiendo vídeo…");
+    makePoster(file).then(function (poster) {
+      return Promise.all([Cloud.uploadSocial(file), poster ? Cloud.uploadSocial(poster) : Promise.resolve(null)]);
+    }).then(function (res) {
+      onDone({ kind: "video", url: res[0].url, path: res[0].path, poster: res[1] ? res[1].url : null });
+    }).catch(function () { toast("No se pudo subir el vídeo"); });
   }
   function postInnerHtml(p) {
     var media = mediaHtml(p.media);
@@ -1676,7 +1689,9 @@
       if (si >= st.length) { gi++; si = 0; if (gi >= groups.length) { close(); return; } return render(); }
       if (si < 0) { gi--; if (gi < 0) { close(); return; } si = (groups[gi].stories || []).length - 1; return render(); }
       var s = st[si], m = s.media || {};
-      var mediaHtml = (m.kind === "video" && m.embed) ? '<div class="sv-media"><iframe src="' + esc(m.embed) + '" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>' : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + esc(m.url || "") + ')"></div></div>';
+      var mediaHtml = (m.kind === "video" && m.embed) ? '<div class="sv-media"><iframe src="' + esc(m.embed) + '" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>'
+        : (m.kind === "video" && m.url) ? '<div class="sv-media"><video src="' + esc(m.url) + '" autoplay playsinline loop controls></video></div>'
+        : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + esc(m.url || "") + ')"></div></div>';
       ov.innerHTML = '<div class="sv-top"><div class="sv-bars">' + st.map(function (_, k) { return '<i class="' + (k < si ? "done" : k === si ? "cur" : "") + '"></i>'; }).join("") + "</div>" +
         '<div class="sv-head">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "sm") + "<span>" + esc(g.name || g.handle || "Mago") + '</span><span class="sv-t">' + timeAgo(s.created_at) + '</span><button class="sv-x">✕</button></div></div>' +
         mediaHtml + (s.caption ? '<div class="sv-cap">' + esc(s.caption) + "</div>" : "") +
@@ -1707,6 +1722,7 @@
     var ov = el('<div class="modal-ov"><div class="modal"><h3>Nueva historia</h3><div id="scPrev" class="sc-prev"></div>' +
       '<div class="pc-attach"><button class="btn ghost" id="scPhoto">' + icon("plus", "i-sm") + ' Foto</button><button class="btn ghost" id="scVid">' + icon("play", "i-sm") + ' Vídeo</button></div>' +
       '<input type="file" id="scFile" accept="image/*" style="display:none">' +
+      '<input type="file" id="scVidFile" accept="video/*" style="display:none">' +
       '<input id="scCap" placeholder="Añade un texto (opcional)" class="sc-cap">' +
       '<div class="modal-act"><button class="btn" id="scPost">Publicar historia</button><button class="btn ghost" id="scCancel">Cancelar</button></div></div></div>');
     document.body.appendChild(ov);
@@ -1716,7 +1732,13 @@
     var prev = function () { document.getElementById("scPrev").innerHTML = media ? (media.kind === "video" ? '<div class="sc-vid">' + icon("play") + " Vídeo añadido</div>" : '<div class="sv-img sc-img" style="background-image:url(' + esc(media.url) + ')"></div>') : ""; };
     document.getElementById("scPhoto").addEventListener("click", function () { document.getElementById("scFile").click(); });
     document.getElementById("scFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo…"); Cloud.uploadSocial(fl).then(function (r) { media = { kind: "image", url: r.url, path: r.path }; prev(); }).catch(function () { toast("No se pudo subir"); }); });
-    document.getElementById("scVid").addEventListener("click", function () { var url = prompt("Enlace de YouTube o Vimeo:"); if (!url) return; var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo"); return; } media = { kind: "video", embed: v.embed, url: v.url, thumb: v.thumb }; prev(); });
+    document.getElementById("scVidFile").addEventListener("change", function () { var fl = this.files && this.files[0]; this.value = ""; if (!fl) return; uploadOwnVideo(fl, function (m) { media = m; prev(); }); });
+    document.getElementById("scVid").addEventListener("click", function () {
+      actionSheet([
+        { label: "Subir un vídeo", fn: function () { document.getElementById("scVidFile").click(); } },
+        { label: "Enlace de YouTube o Vimeo", fn: function () { var url = prompt("Enlace de YouTube o Vimeo:"); if (!url) return; var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo"); return; } media = { kind: "video", embed: v.embed, url: v.url, thumb: v.thumb }; prev(); } }
+      ]);
+    });
     document.getElementById("scPost").addEventListener("click", function () { if (!media) { toast("Añade una foto o vídeo"); return; } var btn = document.getElementById("scPost"); btn.disabled = true; btn.textContent = "Publicando…"; Cloud.createStory(media, (document.getElementById("scCap").value || "").trim()).then(function () { toast("Historia publicada"); close(); var h = location.hash || ""; if (h === "#/comunidad" || h === "#/siguiendo") route(); }).catch(function () { btn.disabled = false; btn.textContent = "Publicar historia"; toast("No se pudo publicar"); }); });
   }
 
@@ -2147,6 +2169,7 @@
       '<div class="field"><textarea id="cpBody" rows="4" placeholder="Comparte una idea, un logro, una pregunta… usa #hashtags y @menciones">' + (chal && chal.hashtag ? "#" + esc(chal.hashtag) + " " : "") + "</textarea></div>" +
       '<div class="pc-attach"><button class="btn ghost" id="cpPhoto">' + icon("plus", "i-sm") + ' Fotos</button><button class="btn ghost" id="cpVid">' + icon("play", "i-sm") + ' Vídeo</button><button class="btn ghost" id="cpTrick">' + icon("cards", "i-sm") + ' Truco</button></div>' +
       '<input type="file" id="cpFile" accept="image/*" multiple style="display:none">' +
+      '<input type="file" id="cpVidFile" accept="video/*" style="display:none">' +
       '<div id="cpPrev"></div>' +
       '<button class="btn" id="cpPost">Publicar</button></div>';
     var media = [];
@@ -2160,10 +2183,15 @@
       var files = Array.prototype.slice.call(this.files || []); this.value = "";
       files.forEach(function (fl) { toast("Subiendo foto…"); Cloud.uploadSocial(fl).then(function (r) { media.push({ kind: "image", url: r.url, path: r.path }); prev(); }).catch(function () { toast("No se pudo subir"); }); });
     });
+    document.getElementById("cpVidFile").addEventListener("change", function () {
+      var fl = this.files && this.files[0]; this.value = ""; if (!fl) return;
+      uploadOwnVideo(fl, function (m) { media.push(m); prev(); });
+    });
     document.getElementById("cpVid").addEventListener("click", function () {
-      var url = prompt("Pega el enlace del vídeo (YouTube o Vimeo):"); if (!url) return;
-      var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo por ahora"); return; }
-      media.push({ kind: "video", embed: v.embed, url: v.url, thumb: v.thumb, provider: v.provider }); prev();
+      actionSheet([
+        { label: "Subir un vídeo", fn: function () { document.getElementById("cpVidFile").click(); } },
+        { label: "Enlace de YouTube o Vimeo", fn: function () { var url = prompt("Pega el enlace del vídeo (YouTube o Vimeo):"); if (!url) return; var v = parseVideo(url); if (!v.embed) { toast("Solo YouTube o Vimeo"); return; } media.push({ kind: "video", embed: v.embed, url: v.url, thumb: v.thumb, provider: v.provider }); prev(); } }
+      ]);
     });
     document.getElementById("cpTrick").addEventListener("click", function () { pickTrick(function (t) { composeTrick = t; prev(); }); });
     document.getElementById("cpPost").addEventListener("click", function () {

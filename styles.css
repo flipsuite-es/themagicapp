@@ -512,3 +512,16 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .shared-cta { margin-top: 30px; padding: 22px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .shared-cta p { margin: 0 0 14px; color: var(--ink-soft); }
 .shared-cta .btn { margin: 0; }
+
+/* Lista de enlaces compartidos */
+.sharelist { display: flex; flex-direction: column; gap: 9px; }
+.shareitem { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.shareitem .si { width: 22px; height: 22px; color: var(--ink-faint); flex: 0 0 auto; }
+.shareitem .stx { flex: 1; min-width: 0; }
+.shareitem .stx .n { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shareitem .stx .d { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+.shareitem .sact { display: flex; gap: 6px; flex: 0 0 auto; }
+.iconbtn.dgr { color: var(--danger); }
+
+/* Selector de hora del recordatorio */
+.hoursel { flex: 0 0 auto; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 10px; padding: 9px 11px; font-size: 15px; font-family: var(--ui); font-variant-numeric: tabular-nums; }

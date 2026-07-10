@@ -140,6 +140,14 @@ window.Cloud = (function () {
     return sb.rpc("get_share", { share_id: id })
       .then(function (r) { if (r.error) throw r.error; return r.data || null; });
   }
+  function listShares() {
+    return sb.from("shares").select("id, kind, title, created_at").order("created_at", { ascending: false })
+      .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+  }
+  function deleteShare(id) {
+    return sb.from("shares").delete().eq("id", id)
+      .then(function (r) { if (r.error) throw r.error; return true; });
+  }
   // Firma un vídeo propio con caducidad larga (para incrustarlo en un enlace).
   function signedUrlLong(path, bucket, seconds) {
     return sb.storage.from(bucket || "videos").createSignedUrl(path, seconds || 2592000)
@@ -158,6 +166,17 @@ window.Cloud = (function () {
     return sb.from("push_subscriptions").delete().eq("endpoint", endpoint)
       .then(function (r) { if (r.error) throw r.error; return true; });
   }
+  function getReminderPref() {
+    return sb.from("reminder_prefs").select("hour, tz").maybeSingle()
+      .then(function (r) { if (r.error) throw r.error; return r.data || null; }).catch(function () { return null; });
+  }
+  function saveReminderPref(hour, tz) {
+    return currentUser().then(function (u) {
+      if (!u) throw new Error("sin sesión");
+      return sb.from("reminder_prefs").upsert({ user_id: u.id, hour: hour, tz: tz, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).select("hour").single()
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    });
+  }
   // Extracción de contenido didáctico desde una URL (Edge Function)
   function extract(url) {
     return sb.functions.invoke("extract", { body: { url: url } })
@@ -171,7 +190,8 @@ window.Cloud = (function () {
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
     listGigs: listGigs, upsertGig: upsertGig, deleteGig: deleteGig,
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
-    createShare: createShare, getShare: getShare,
-    pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub
+    createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
+    pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
+    getReminderPref: getReminderPref, saveReminderPref: saveReminderPref
   };
 })();

@@ -219,14 +219,31 @@
     if (!pushSupported()) return Promise.resolve(null);
     return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).catch(function () { return null; });
   }
+  function detectTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Madrid"; } catch (e) { return "Europe/Madrid"; } }
+  function toggleHourRow(show) { var row = document.getElementById("hourRow"); if (row) row.style.display = show ? "" : "none"; }
+  function setupHourSelector() {
+    var sel = document.getElementById("hourSel"); if (!sel) return;
+    toggleHourRow(true);
+    if (!sel.options.length) {
+      var opts = "";
+      for (var h = 0; h < 24; h++) { opts += '<option value="' + h + '">' + (h < 10 ? "0" + h : h) + ":00</option>"; }
+      sel.innerHTML = opts;
+    }
+    Cloud.getReminderPref().then(function (pref) { sel.value = String(pref && typeof pref.hour === "number" ? pref.hour : 19); });
+    sel.onchange = function () {
+      Cloud.saveReminderPref(parseInt(sel.value, 10), detectTz())
+        .then(function () { toast("Aviso a las " + sel.value.padStart(2, "0") + ":00"); })
+        .catch(function () { toast("No se pudo guardar la hora"); });
+    };
+  }
   function refreshPushToggle() {
     var btn = document.getElementById("pushToggle"), desc = document.getElementById("pushDesc");
     if (!btn) return;
-    if (!pushSupported()) { btn.style.display = "none"; if (desc) desc.textContent = "Tu navegador no admite notificaciones"; return; }
+    if (!pushSupported()) { btn.style.display = "none"; toggleHourRow(false); if (desc) desc.textContent = "Tu navegador no admite notificaciones"; return; }
     currentPushSub().then(function (sub) {
       var on = !!sub && (typeof Notification !== "undefined") && Notification.permission === "granted";
-      if (on) { btn.textContent = "Desactivar recordatorios"; btn.className = "btn ghost"; btn.onclick = disablePush; }
-      else { btn.textContent = "Activar recordatorios"; btn.className = "btn"; btn.onclick = enablePush; }
+      if (on) { btn.textContent = "Desactivar recordatorios"; btn.className = "btn ghost"; btn.onclick = disablePush; setupHourSelector(); }
+      else { btn.textContent = "Activar recordatorios"; btn.className = "btn"; btn.onclick = enablePush; toggleHourRow(false); }
     });
   }
   function enablePush() {
@@ -240,6 +257,9 @@
       }).then(function (sub) {
         var j = sub.toJSON();
         return Cloud.savePushSub({ endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: (navigator.userAgent || "").slice(0, 200) });
+      }).then(function () {
+        // Preferencia de hora por defecto si aún no existe
+        return Cloud.getReminderPref().then(function (pref) { if (!pref) return Cloud.saveReminderPref(19, detectTz()); });
       }).then(function () { toast("Recordatorios activados"); if (btn) btn.disabled = false; refreshPushToggle(); });
     }).catch(function () {
       if (btn) btn.disabled = false;
@@ -1119,6 +1139,43 @@
       (p.notes ? '<div class="notes" style="margin-bottom:12px">' + esc(p.notes) + "</div>" : "") +
       '<div class="sec-label">Orden del set</div>' + (tricks || '<p class="hint">Sin trucos.</p>') + sharedFooter() + "</div>";
   }
+  // Gestión: lista de enlaces creados, con copiar y revocar.
+  function renderShares() {
+    clearTabbar();
+    if (!logged()) { location.hash = "#/ajustes"; return; }
+    var head = '<div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Enlaces compartidos</h1></div>';
+    view.innerHTML = '<div class="screen">' + head + '<div class="splash" style="padding:52px 0"><div class="spin"></div></div></div>';
+    Cloud.listShares().then(function (rows) {
+      var body;
+      if (!rows.length) {
+        body = '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("share") + '</div><p>No has compartido nada todavía.</p><p class="hint">Usa “Compartir por enlace” en un truco o una rutina.</p></div>';
+      } else {
+        body = '<p class="subtitle">Cualquiera con el enlace puede ver el contenido. Revócalo para que deje de funcionar.</p><div class="sharelist">' +
+          rows.map(function (s) {
+            var when = "";
+            try { when = new Date(s.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }); } catch (e) {}
+            return '<div class="shareitem"><div class="si">' + icon(s.kind === "routine" ? "list" : "cards") + "</div>" +
+              '<div class="stx"><div class="n">' + esc(s.title || (s.kind === "routine" ? "Rutina" : "Truco")) + '</div><div class="d">' + (s.kind === "routine" ? "Rutina" : "Truco") + (when ? " · " + when : "") + "</div></div>" +
+              '<div class="sact"><button class="iconbtn" data-copy="' + esc(s.id) + '">' + icon("copy", "i-sm") + '</button><button class="iconbtn dgr" data-revoke="' + esc(s.id) + '">' + icon("x", "i-sm") + "</button></div></div>";
+          }).join("") + "</div>";
+      }
+      view.innerHTML = '<div class="screen">' + head + body + "</div>";
+      view.querySelectorAll("[data-copy]").forEach(function (btn) {
+        btn.addEventListener("click", function () { var url = shareUrlFor(btn.getAttribute("data-copy")); copyText(url).then(function (ok) { toast(ok ? "Enlace copiado" : url); }); });
+      });
+      view.querySelectorAll("[data-revoke]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (!confirm("¿Revocar este enlace? Dejará de funcionar para quien lo tenga.")) return;
+          btn.disabled = true;
+          Cloud.deleteShare(btn.getAttribute("data-revoke")).then(function () { toast("Enlace revocado"); renderShares(); })
+            .catch(function () { btn.disabled = false; toast("No se pudo revocar"); });
+        });
+      });
+    }).catch(function () {
+      view.innerHTML = '<div class="screen">' + head + '<div class="empty" style="padding:52px 12px"><p>No se pudieron cargar los enlaces.</p></div></div>';
+    });
+  }
+
   function renderShared(token) {
     clearTabbar(); var f = document.getElementById("fabEl"); if (f) f.remove();
     view.innerHTML = '<div class="screen shared"><div class="splash" style="padding:72px 0"><div class="spin"></div></div></div>';
@@ -1263,13 +1320,15 @@
       '<div class="setrow" id="acctRow"><span class="si">' + icon(logged() ? "user" : "cloud") + '</span><div class="st"><div class="t">' +
       (logged() ? esc(session.email) : "Iniciar sesión / crear cuenta") + '</div><div class="d">' +
       (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go">' + icon("chev") + "</span></div>" +
+      (logged() ? '<div class="setrow" id="sharesRow"><span class="si">' + icon("share") + '</span><div class="st"><div class="t">Enlaces compartidos</div><div class="d">Revisa y revoca lo que has compartido</div></div><span class="go">' + icon("chev") + "</span></div>" : "") +
       '<div class="sec-label">Progreso</div>' +
       '<div class="setrow" id="statsRow"><span class="si">' + icon("chart") + '</span><div class="st"><div class="t">Estadísticas</div><div class="d">Tu repertorio, aprendizaje y bolos en números</div></div><span class="go">' + icon("chev") + "</span></div>" +
       (cloudReady()
         ? '<div class="sec-label">Notificaciones</div>' +
           '<div class="setrow"><span class="si">' + icon("bell") + '</span><div class="st"><div class="t">Recordatorios de práctica</div><div class="d" id="pushDesc">' +
           (logged() ? "Un aviso diario cuando tengas trucos para repasar" : "Inicia sesión para activarlos") + "</div></div></div>" +
-          (logged() ? '<button class="btn ghost" id="pushToggle">Comprobando…</button>' : "")
+          (logged() ? '<button class="btn ghost" id="pushToggle">Comprobando…</button>' +
+            '<div class="setrow" id="hourRow" style="display:none"><span class="si">' + icon("clock") + '</span><div class="st"><div class="t">Hora del aviso</div><div class="d">Cada día a esta hora, si tienes repasos</div></div><select id="hourSel" class="hoursel"></select></div>' : "")
         : "") +
       '<div class="sec-label">Apariencia</div>' +
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
@@ -1294,6 +1353,7 @@
     var acct = document.getElementById("acctRow");
     if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
     var sr = document.getElementById("statsRow"); if (sr) sr.addEventListener("click", function () { location.hash = "#/stats"; });
+    var shr = document.getElementById("sharesRow"); if (shr) shr.addEventListener("click", function () { location.hash = "#/enlaces"; });
     if (document.getElementById("pushToggle")) refreshPushToggle();
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
@@ -1605,6 +1665,7 @@
       if (h.indexOf("#/truco/") === 0) return renderDetail(h.slice(8));
       if (h === "#/practica") return renderPractice();
       if (h === "#/stats") return renderStats();
+      if (h === "#/enlaces") return renderShares();
       if (h === "#/incluidos") return renderIncluded();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();

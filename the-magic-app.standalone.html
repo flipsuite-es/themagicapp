@@ -774,6 +774,15 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .sc-vid { padding: 20px; text-align: center; color: var(--ink-soft); background: var(--surface-2); border-radius: var(--radius-sm); margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .sc-cap { width: 100%; margin: 8px 0; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface-2); color: var(--ink); }
 
+/* ============ Action sheet + vistas de historia ============ */
+.modal-ov.sheet { align-items: flex-end; padding: 0; }
+.sheet-box { width: 100%; max-width: 520px; margin: 0 auto; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
+.sheet-btn { width: 100%; padding: 15px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 15.5px; font-weight: 600; cursor: pointer; }
+.sheet-btn.danger { color: var(--danger); }
+.sheet-btn.cancel { background: var(--surface-2); color: var(--ink-soft); margin-top: 4px; }
+.sv-viewers { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 8px 15px; font-size: 13px; cursor: pointer; }
+.sv-viewers .i { width: 16px; height: 16px; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -1062,6 +1071,10 @@ window.Cloud = (function () {
   function getStories() { return sb.rpc("get_stories").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function createStory(media, caption) { return sb.from("stories").insert({ media: media, caption: caption || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function viewStory(id) { return currentUser().then(function (u) { return sb.from("story_views").upsert({ story_id: id, viewer: u.id }, { onConflict: "story_id,viewer" }).then(function () { return true; }).catch(function () { return false; }); }); }
+  function getStoryViewers(id) { return sb.rpc("get_story_viewers", { sid: id }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function block(id) { return sb.from("blocks").insert({ blocked: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unblock(id) { return currentUser().then(function (u) { return sb.from("blocks").delete().eq("blocker", u.id).eq("blocked", id).then(function () { return true; }); }); }
+  function report(targetType, targetId, reason) { return sb.from("reports").insert({ target_type: targetType, target_id: targetId, reason: reason || null }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function createListing(listing, content) {
@@ -1105,7 +1118,8 @@ window.Cloud = (function () {
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
     getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
     likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap,
-    getStories: getStories, createStory: createStory, viewStory: viewStory
+    getStories: getStories, createStory: createStory, viewStory: viewStory, getStoryViewers: getStoryViewers,
+    block: block, unblock: unblock, report: report
   };
 })();
 
@@ -2603,7 +2617,7 @@ window.Cloud = (function () {
     var isRepost = !!p.repost_of && p.orig;
     var head = '<header class="pc-head" data-mago="' + esc(p.author) + '">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle) +
       '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + "</div></div>" +
-      (p.author === (myProfile && myProfile.user_id) ? '<button class="pc-more" data-del="' + esc(p.id) + '">' + icon("dots", "i-sm") + "</button>" : "") + "</header>";
+      '<button class="pc-more" data-more="' + esc(p.id) + '" data-author="' + esc(p.author) + '" data-handle="' + esc(p.handle || "") + '">' + icon("dots", "i-sm") + "</button></header>";
     var inner;
     if (isRepost) {
       var o = p.orig;
@@ -2648,11 +2662,26 @@ window.Cloud = (function () {
     s.querySelectorAll("[data-rep]").forEach(function (b) {
       b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
     });
-    s.querySelectorAll("[data-del]").forEach(function (b) {
-      b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-del"); if (!confirm("¿Eliminar esta publicación?")) return; Cloud.deletePost(id).then(function () { toast("Eliminada"); var art = b.closest(".postcard"); if (art) art.remove(); }).catch(function () { toast("No se pudo eliminar"); }); });
+    s.querySelectorAll("[data-more]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); postMenu(b.getAttribute("data-more"), b.getAttribute("data-author"), b.getAttribute("data-handle"), b.closest(".postcard")); });
     });
   }
   function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
+  function actionSheet(opts) {
+    var ov = el('<div class="modal-ov sheet"></div>');
+    var box = el('<div class="sheet-box"></div>');
+    opts.forEach(function (o) { var btn = el('<button class="sheet-btn ' + (o.danger ? "danger" : "") + '"></button>'); btn.textContent = o.label; btn.addEventListener("click", function () { ov.remove(); o.fn(); }); box.appendChild(btn); });
+    var cancel = el('<button class="sheet-btn cancel">Cancelar</button>'); cancel.addEventListener("click", function () { ov.remove(); }); box.appendChild(cancel);
+    ov.appendChild(box); ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov);
+  }
+  function postMenu(id, author, handle, cardEl) {
+    var mine = author === (myProfile && myProfile.user_id);
+    var opts = mine
+      ? [{ label: "Eliminar publicación", danger: true, fn: function () { if (!confirm("¿Eliminar esta publicación?")) return; Cloud.deletePost(id).then(function () { toast("Eliminada"); if (cardEl) cardEl.remove(); }).catch(function () { toast("No se pudo"); }); } }]
+      : [{ label: "Reportar publicación", fn: function () { Cloud.report("post", id, null).then(function () { toast("Gracias, lo revisaremos"); }).catch(function () {}); } },
+         { label: "Bloquear a @" + (handle || "este mago"), danger: true, fn: function () { if (!confirm("¿Bloquear? Dejarás de ver su contenido y él el tuyo.")) return; Cloud.block(author).then(function () { toast("Bloqueado"); var h = location.hash || ""; if (h === "#/comunidad" || h === "#/siguiendo") route(); else if (cardEl) cardEl.remove(); }).catch(function () {}); } }];
+    actionSheet(opts);
+  }
   var unreadNotif = 0;
   function refreshNotifBadge() {
     if (!cloudReady() || !logged()) return;
@@ -2702,10 +2731,22 @@ window.Cloud = (function () {
       ov.innerHTML = '<div class="sv-top"><div class="sv-bars">' + st.map(function (_, k) { return '<i class="' + (k < si ? "done" : k === si ? "cur" : "") + '"></i>'; }).join("") + "</div>" +
         '<div class="sv-head">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "sm") + "<span>" + esc(g.name || g.handle || "Mago") + '</span><span class="sv-t">' + timeAgo(s.created_at) + '</span><button class="sv-x">✕</button></div></div>' +
         mediaHtml + (s.caption ? '<div class="sv-cap">' + esc(s.caption) + "</div>" : "") +
+        (g.is_me ? '<button class="sv-viewers" id="svViewers">' + icon("people", "i-sm") + " Quién la vio</button>" : "") +
         '<div class="sv-nav"><div class="sv-prev"></div><div class="sv-next"></div></div>';
       ov.querySelector(".sv-x").addEventListener("click", close);
       ov.querySelector(".sv-prev").addEventListener("click", function () { si--; render(); });
       ov.querySelector(".sv-next").addEventListener("click", function () { si++; render(); });
+      var vw = ov.querySelector("#svViewers");
+      if (vw) vw.addEventListener("click", function (e) {
+        e.stopPropagation(); if (timer) clearTimeout(timer);
+        Cloud.getStoryViewers(s.id).then(function (list) {
+          var m = el('<div class="modal-ov"><div class="modal"><h3>Vistas · ' + list.length + '</h3><div class="mago-list" id="svwl"></div><button class="btn ghost" id="svwClose">Cerrar</button></div></div>');
+          document.body.appendChild(m);
+          document.getElementById("svwl").innerHTML = list.length ? list.map(function (u) { return '<div class="mago-row"><span class="avatar sm ' + (u.avatar ? "" : "ini") + '"' + (u.avatar ? ' style="background-image:url(' + esc(Cloud.publicUrl(u.avatar)) + ')"' : "") + ">" + (u.avatar ? "" : esc((u.name || u.handle || "?").charAt(0))) + '</span><div class="mr-b"><div class="n">' + esc(u.name || u.handle || "Mago") + "</div></div></div>"; }).join("") : '<p class="hint">Nadie todavía.</p>';
+          m.addEventListener("click", function (ev) { if (ev.target === m) m.remove(); });
+          document.getElementById("svwClose").addEventListener("click", function () { m.remove(); });
+        }).catch(function () { toast("No se pudo cargar"); });
+      });
       Cloud.viewStory(s.id).catch(function () {});
       if (timer) clearTimeout(timer);
       if (m.kind !== "video") timer = setTimeout(function () { si++; render(); }, 5000);
@@ -3049,7 +3090,7 @@ window.Cloud = (function () {
         (linkHtml ? '<div class="p-links">' + linkHtml + "</div>" : "") +
         '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div data-go="#/seguidores/' + esc(uid) + '"><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div data-go="#/seguidos/' + esc(uid) + '"><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
         (function () { var ach = achievementsFor(p, p.is_me); return ach.length ? '<div class="ach-row">' + ach.map(function (a) { return '<span class="ach">' + icon(a.i, "i-sm") + esc(a.t) + "</span>"; }).join("") + "</div>" : ""; })() +
-        (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<div class="p-actions"><button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + '</button><button class="btn ghost" id="prMsg">' + icon("chat", "i-sm") + " Mensaje</button></div>") + "</div>" +
+        (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<div class="p-actions"><button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + '</button><button class="btn ghost" id="prMsg">' + icon("chat", "i-sm") + ' Mensaje</button><button class="iconbtn" id="prMore">' + icon("dots") + "</button></div>") + "</div>" +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
@@ -3058,6 +3099,7 @@ window.Cloud = (function () {
       var eb = document.getElementById("prEdit"); if (eb) eb.addEventListener("click", function () { onb.step = 1; onb.handle = p.handle || ""; onb.name = p.name || ""; onb.spec = (p.specialty || []).slice(); onb.city = p.city || ""; onb.social = socialEnabled; renderEditProfile(); });
       var sv = document.getElementById("prSaved"); if (sv) sv.addEventListener("click", function () { location.hash = "#/guardados"; });
       var pm = document.getElementById("prMsg"); if (pm) pm.addEventListener("click", function () { pm.disabled = true; Cloud.openConversation(uid).then(function (cid) { location.hash = "#/chat/" + cid; }).catch(function () { pm.disabled = false; toast("No se pudo abrir el chat"); }); });
+      var pmo = document.getElementById("prMore"); if (pmo) pmo.addEventListener("click", function () { actionSheet([{ label: "Reportar", fn: function () { Cloud.report("user", uid, null).then(function () { toast("Gracias, lo revisaremos"); }).catch(function () {}); } }, { label: "Bloquear a @" + (p.handle || "este mago"), danger: true, fn: function () { if (!confirm("¿Bloquear? Dejaréis de ver vuestro contenido.")) return; Cloud.block(uid).then(function () { toast("Bloqueado"); location.hash = "#/comunidad"; }).catch(function () {}); } }]); });
     }).catch(function () { document.getElementById("prBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el perfil.</p></div>'; });
   }
   function renderEditProfile() {

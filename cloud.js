@@ -273,6 +273,10 @@ window.Cloud = (function () {
   function getStories() { return sb.rpc("get_stories").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function createStory(media, caption) { return sb.from("stories").insert({ media: media, caption: caption || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
   function viewStory(id) { return currentUser().then(function (u) { return sb.from("story_views").upsert({ story_id: id, viewer: u.id }, { onConflict: "story_id,viewer" }).then(function () { return true; }).catch(function () { return false; }); }); }
+  function getStoryViewers(id) { return sb.rpc("get_story_viewers", { sid: id }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function block(id) { return sb.from("blocks").insert({ blocked: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function unblock(id) { return currentUser().then(function (u) { return sb.from("blocks").delete().eq("blocker", u.id).eq("blocked", id).then(function () { return true; }); }); }
+  function report(targetType, targetId, reason) { return sb.from("reports").insert({ target_type: targetType, target_id: targetId, reason: reason || null }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function createListing(listing, content) {
@@ -316,6 +320,7 @@ window.Cloud = (function () {
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
     getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
     likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap,
-    getStories: getStories, createStory: createStory, viewStory: viewStory
+    getStories: getStories, createStory: createStory, viewStory: viewStory, getStoryViewers: getStoryViewers,
+    block: block, unblock: unblock, report: report
   };
 })();

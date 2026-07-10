@@ -22,7 +22,7 @@
 
   /* Iconos SVG de línea (sin emojis, look profesional) */
   var ICONS = {
-    hat: '<path d="M7 4.5h10v9H7z"/><path d="M4 17.5h16"/><path d="M7 13.5C5 14 4 15.6 4 17.5M17 13.5c2 .5 3 2.1 3 4"/>',
+    hat: '<path d="M7.5 15V6.2c0-1 .7-1.7 1.6-1.7h5.8c.9 0 1.6.7 1.6 1.7V15"/><path d="M3.5 15h17"/><path d="M7.5 11.8h9"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
     star: '<path d="M12 3.5l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8 6.8 19.4l1-5.7-4.2-4.1 5.8-.9z"/>',
     starfill: '<path d="M12 3.5l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8 6.8 19.4l1-5.7-4.2-4.1 5.8-.9z" fill="currentColor" stroke="none"/>',
@@ -43,7 +43,6 @@
     pause: '<path d="M9 5v14M15 5v14"/>',
     sound: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 010 7M18.5 6a7 7 0 010 12"/>',
     mute: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
-    share: '<path d="M18 8a3 3 0 10-2.8-4M18 8a3 3 0 01-2.8-2M6 15a3 3 0 100-6 3 3 0 000 6zM18 22a3 3 0 100-6 3 3 0 000 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
     cloud: '<path d="M7 18h9.5a3.8 3.8 0 000-7.6 4.8 4.8 0 00-9.2-1.3A3.4 3.4 0 007 18z"/>',
     theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/>',
     disk: '<path d="M5 4h11l3 3v13H5z"/><path d="M8.5 4v4.5h6V4M8 20v-5.5h8V20"/>',
@@ -68,14 +67,14 @@
     heart: '<path d="M12 19.6C6.3 15.7 3.2 12.6 3.2 9.2 3.2 6.9 5 5.1 7.2 5.1c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.2 0 4 1.8 4 4.1 0 3.4-3.1 6.5-8.8 10.4z"/>',
     heartfill: '<path fill="currentColor" stroke="none" d="M12 19.6C6.3 15.7 3.2 12.6 3.2 9.2 3.2 6.9 5 5.1 7.2 5.1c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.2 0 4 1.8 4 4.1 0 3.4-3.1 6.5-8.8 10.4z"/>',
     chat: '<path d="M5 5.5h14a1.2 1.2 0 0 1 1.2 1.2v8.6a1.2 1.2 0 0 1-1.2 1.2H10l-4 3v-3H5a1.2 1.2 0 0 1-1.2-1.2V6.7A1.2 1.2 0 0 1 5 5.5Z"/>',
-    send: '<path d="M4.5 11.5 20 5l-6.4 15-2.6-6.4-6.5-2.1Z"/>',
+    send: '<path d="M20.5 3.5 10.2 13.8"/><path d="M20.5 3.5 14 20.5l-3.8-6.7-6.7-3.8Z"/>',
     bookmark: '<path d="M6.5 4h11a1 1 0 0 1 1 1v15l-6.5-4-6.5 4V5a1 1 0 0 1 1-1Z"/>',
     bookmarkfill: '<path fill="currentColor" stroke="none" d="M6.5 3.5h11a1.5 1.5 0 0 1 1.5 1.5v15.6a.6.6 0 0 1-.92.5L12 17.2l-6.08 3.9a.6.6 0 0 1-.92-.5V5a1.5 1.5 0 0 1 1.5-1.5Z"/>',
-    repost: '<path d="M4 9V7.5a2 2 0 0 1 2-2h9M4 9l-2-2m2 2 2-2"/><path d="M20 15v1.5a2 2 0 0 1-2 2H9m11-3.5-2 2m2-2 2 2"/>',
+    repost: '<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>',
     dots: '<circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
     globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5S14.4 18.2 12 20.5C9.6 18.2 8.4 15.2 8.4 12S9.6 5.8 12 3.5Z"/>',
     trophy: '<path d="M7 4.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M7 6H4.5v1.5A2.5 2.5 0 0 0 7 10M17 6h2.5v1.5A2.5 2.5 0 0 1 17 10M9.5 13.5h5M12 12.5V16m-2.5 3.5h5"/>',
-    flame: '<path d="M12 3c1.2 3-1.6 4.6-1.6 7.2A2.4 2.4 0 0 0 13 12.4c.8-.6 1-1.7 1-1.7 1.5 1.3 3 3.1 3 5.7a5 5 0 1 1-10 0c0-3.7 3-5.5 3-8.7 0-2 .8-3.7 2-4.7Z"/>',
+    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }

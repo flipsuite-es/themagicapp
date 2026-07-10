@@ -2069,7 +2069,9 @@
     var b = document.getElementById("clcBody"); if (!b || !clipDraft) return;
     var url; try { url = URL.createObjectURL(clipDraft.file); } catch (e) { toast("No se pudo abrir el vídeo"); clipCreateChooser(); return; }
     clipDraft.effect = null;
+    var isWebm = /webm/i.test((clipDraft.file && clipDraft.file.type) || "") || /\.webm$/i.test((clipDraft.file && clipDraft.file.name) || "");
     b.innerHTML = '<div class="clc-prev"><video src="' + esc(url) + '" controls playsinline muted loop></video></div>' +
+      (isWebm ? '<div class="backstage-bar danger"><span class="dot"></span> Formato WebM: puede que no se vea en iPhone. Si puedes, graba con la cámara de la app para máxima compatibilidad.</div>' : "") +
       '<div class="field"><label>Descripción</label><textarea id="clcCap" rows="2" placeholder="Cuenta algo… usa #hashtags y @menciones"></textarea></div>' +
       '<div class="field"><label>¿De qué es tu clip?</label><div class="tchips" id="clcEff">' + SPECIALTIES.map(function (s) { return '<button type="button" class="tchip" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div></div>" +
       '<div class="clc-acts"><button class="btn" id="clcPub">Publicar clip</button><button class="btn ghost" id="clcBack">Elegir otro vídeo</button></div>';

@@ -37,8 +37,11 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="styles.css">
+  <!-- Fuentes: carga sin bloquear el primer pintado; el texto aparece ya con la
+       tipografía de sistema (font-display:swap) y cambia a Inter/Fraunces al llegar. -->
+  <link rel="preload" href="fonts.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="fonts.css"></noscript>
   <title>App del Mago</title>
 </head>
 <body>

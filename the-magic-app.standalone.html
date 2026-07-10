@@ -728,6 +728,22 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .lb-rank { width: 26px; text-align: center; font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--ink-faint); flex: 0 0 auto; }
 .lb-rank.r1 { color: #d4af37; } .lb-rank.r2 { color: #9aa0a6; } .lb-rank.r3 { color: #b87333; }
 
+/* ============ Tu semana + comentarios enriquecidos ============ */
+.recap { background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 16%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--brand) 26%, var(--line)); border-radius: var(--radius); padding: 14px 16px; margin: 4px 0 8px; }
+.recap .rc-t { font-family: var(--display); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.recap .rc-stats { display: flex; gap: 18px; flex-wrap: wrap; color: var(--ink-soft); font-size: 13.5px; }
+.recap .rc-stats b { font-family: var(--display); font-size: 18px; color: var(--ink); margin-right: 3px; }
+.recap .rc-fire { display: inline-flex; align-items: center; gap: 3px; color: var(--brand); } .recap .rc-fire .i { width: 15px; height: 15px; }
+.c-acts { display: flex; align-items: center; gap: 16px; margin-top: 5px; }
+.c-acts button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; padding: 0; }
+.c-acts .c-like.on { color: var(--danger); }
+.c-acts .c-reply { font-weight: 600; }
+.c-who[data-mago] { cursor: pointer; }
+.cmt-replies { margin-left: 42px; display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.cmt.reply { }
+.reply-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
+.reply-chip button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 14px; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -1009,7 +1025,10 @@ window.Cloud = (function () {
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
   function likePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function unlikePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
-  function addComment(pid, body) { return sb.from("comments").insert({ post_id: pid, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function addComment(pid, body, parentId) { return sb.from("comments").insert({ post_id: pid, body: body, parent_id: parentId || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function likeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").insert({ comment_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function unlikeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").delete().eq("comment_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function getWeekRecap() { return sb.rpc("get_week_recap").then(function (r) { if (r.error) throw r.error; return r.data; }).catch(function () { return null; }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function createListing(listing, content) {
@@ -1051,7 +1070,8 @@ window.Cloud = (function () {
     searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
     openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
-    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard
+    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
+    likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap
   };
 })();
 
@@ -2639,12 +2659,13 @@ window.Cloud = (function () {
         bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
     } else if (mode === "discover") {
-      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; })]).then(function (res) {
-        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6);
+      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; })]).then(function (res) {
+        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6), rec = res[4];
+        var recap = (rec && (rec.likes + rec.followers + rec.posts) > 0) ? '<div class="recap"><div class="rc-t">Tu semana</div><div class="rc-stats"><span><b>' + rec.likes + '</b> me gusta</span><span><b>' + rec.followers + '</b> seguidores</span>' + (rec.streak >= 2 ? '<span class="rc-fire">' + icon("flame", "i-sm") + "<b>" + rec.streak + "</b> días</span>" : "") + "</div></div>" : "";
         var banner = chal ? '<div class="chal-banner" id="chalBanner"><span class="cb-ic">' + icon("flame") + '</span><div class="cb-b"><div class="cb-t">' + esc(chal.title) + '</div><div class="cb-p">' + esc(chal.prompt || "") + '</div><div class="cb-m">' + chal.participants + " participando · toca para ver</div></div>" + icon("chev") + "</div>" : "";
         var top = lead.length ? '<div class="sec-label sec-row">Top magos de la semana <a class="seeall" id="seeTop">Ver ranking</a></div><div class="top-strip">' + lead.map(function (m) { return '<div class="top-m" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle, "big") + '<div class="tm-n">' + esc(m.name || m.handle || "Mago") + "</div></div>"; }).join("") + "</div>" : "";
         var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
-        bodyEl.innerHTML = banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
+        bodyEl.innerHTML = recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
         bindPostCards(bodyEl);
         var cbn = document.getElementById("chalBanner"); if (cbn) cbn.addEventListener("click", function () { location.hash = "#/reto"; });
         var st = document.getElementById("seeTop"); if (st) st.addEventListener("click", function () { location.hash = "#/top"; });
@@ -2669,6 +2690,7 @@ window.Cloud = (function () {
     var who = "<b>" + esc(n.name || n.handle || "Alguien") + "</b> ";
     if (n.type === "like") return who + "le dio me gusta a tu publicación";
     if (n.type === "comment") return who + "comentó tu publicación";
+    if (n.type === "reply") return who + "respondió a tu comentario";
     if (n.type === "follow") return who + "empezó a seguirte";
     if (n.type === "repost") return who + "reposteó tu publicación";
     return who + "interactuó contigo";
@@ -2682,7 +2704,7 @@ window.Cloud = (function () {
       b.innerHTML = items.length ? '<div class="notif-list">' + items.map(function (n) {
         return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + (n.type === "follow" ? "mago:" + esc(n.actor) : "post:" + esc(n.post_id || "")) + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
           '<div class="n-b"><div>' + notifText(n) + "</div>" + (n.snippet ? '<div class="n-s">' + esc(n.snippet) + "</div>" : "") + '<div class="n-t">' + timeAgo(n.created_at) + "</div></div>" +
-          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : n.type === "comment" ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
+          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : (n.type === "comment" || n.type === "reply") ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
       }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bell") + "</div><h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
       b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
       Cloud.markNotificationsRead().then(function () { unreadNotif = 0; }).catch(function () {});
@@ -2886,15 +2908,30 @@ window.Cloud = (function () {
     Promise.all([Cloud.getFeed().then(function (rows) { return rows.filter(function (x) { return x.id === id; })[0]; }), Cloud.getComments(id)]).then(function (res) {
       var p = res[0], comments = res[1] || [];
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      var byParent = {}; comments.forEach(function (c) { if (c.parent_id) { (byParent[c.parent_id] = byParent[c.parent_id] || []).push(c); } });
+      var tops = comments.filter(function (c) { return !c.parent_id; });
+      var commentHtml = function (c, reply) {
+        return '<div class="cmt' + (reply ? " reply" : "") + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") +
+          '<div class="cmt-body"><div class="c-who" data-mago="' + esc(c.author) + '">' + esc(c.name || c.handle || "Mago") + " <span>" + timeAgo(c.created_at) + "</span></div>" +
+          '<div class="c-b">' + linkify(c.body) + "</div>" +
+          '<div class="c-acts"><button class="c-like ' + (c.liked ? "on" : "") + '" data-clike="' + esc(c.id) + '">' + icon(c.liked ? "heartfill" : "heart", "i-sm") + "<span>" + (c.likes || 0) + "</span></button>" +
+          (reply ? "" : '<button class="c-reply" data-reply="' + esc(c.id) + '" data-h="' + esc(c.handle || "") + '">Responder</button>') + "</div></div>" +
+          (c.mine ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>";
+      };
+      var commentsHtml = tops.length ? tops.map(function (c) { return commentHtml(c, false) + ((byParent[c.id] || []).length ? '<div class="cmt-replies">' + byParent[c.id].map(function (r) { return commentHtml(r, true); }).join("") + "</div>" : ""); }).join("") : '<p class="hint">Sé el primero en comentar.</p>';
       b.innerHTML = postCardHtml(p) +
-        '<div class="sec-label">Comentarios</div><div class="comments">' +
-        (comments.length ? comments.map(function (c) { return '<div class="cmt">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + '<div class="cmt-body"><div class="c-who">' + esc(c.name || c.handle || "Mago") + ' <span>' + timeAgo(c.created_at) + '</span></div><div class="c-b">' + linkify(c.body) + "</div></div>" + (c.author === (myProfile && myProfile.user_id) ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>"; }).join("") : '<p class="hint">Sé el primero en comentar.</p>') + "</div>" +
-        '<div class="cmt-add"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
+        '<div class="sec-label">Comentarios</div><div class="comments">' + commentsHtml + "</div>" +
+        '<div class="cmt-add" id="cmtBar"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
       bindPostCards(b);
-      var send = function () { var t = (document.getElementById("cmtIn").value || "").trim(); if (!t) return; document.getElementById("cmtIn").value = ""; Cloud.addComment(id, t).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
+      var replyTo = null;
+      var input = document.getElementById("cmtIn"), bar = document.getElementById("cmtBar");
+      var send = function () { var t = (input.value || "").trim(); if (!t) return; input.value = ""; var parent = replyTo; replyTo = null; var chip = document.getElementById("replyChip"); if (chip) chip.remove(); Cloud.addComment(id, t, parent).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
       document.getElementById("cmtSend").addEventListener("click", send);
-      document.getElementById("cmtIn").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      b.querySelectorAll(".c-who[data-mago]").forEach(function (w) { w.addEventListener("click", function () { location.hash = "#/mago/" + w.getAttribute("data-mago"); }); });
       b.querySelectorAll("[data-delc]").forEach(function (x) { x.addEventListener("click", function () { if (!confirm("¿Eliminar comentario?")) return; Cloud.deleteComment(x.getAttribute("data-delc")).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); });
+      b.querySelectorAll("[data-clike]").forEach(function (bt) { bt.addEventListener("click", function () { var cid = bt.getAttribute("data-clike"); var on = bt.classList.contains("on"); var sp = bt.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0; bt.classList.toggle("on"); sp.textContent = on ? Math.max(0, n - 1) : n + 1; bt.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + sp.textContent + "</span>"; (on ? Cloud.unlikeComment(cid) : Cloud.likeComment(cid)).catch(function () {}); }); });
+      b.querySelectorAll("[data-reply]").forEach(function (bt) { bt.addEventListener("click", function () { replyTo = bt.getAttribute("data-reply"); var h = bt.getAttribute("data-h"); var old = document.getElementById("replyChip"); if (old) old.remove(); var chip = el('<div class="reply-chip" id="replyChip">Respondiendo a @' + esc(h || "comentario") + ' <button>✕</button></div>'); bar.parentNode.insertBefore(chip, bar); chip.querySelector("button").addEventListener("click", function () { replyTo = null; chip.remove(); }); input.focus(); }); });
     }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 

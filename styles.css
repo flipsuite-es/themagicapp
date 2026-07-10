@@ -719,3 +719,19 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .lb-row { display: flex; align-items: center; gap: 11px; padding: 11px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
 .lb-rank { width: 26px; text-align: center; font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--ink-faint); flex: 0 0 auto; }
 .lb-rank.r1 { color: #d4af37; } .lb-rank.r2 { color: #9aa0a6; } .lb-rank.r3 { color: #b87333; }
+
+/* ============ Tu semana + comentarios enriquecidos ============ */
+.recap { background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 16%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--brand) 26%, var(--line)); border-radius: var(--radius); padding: 14px 16px; margin: 4px 0 8px; }
+.recap .rc-t { font-family: var(--display); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.recap .rc-stats { display: flex; gap: 18px; flex-wrap: wrap; color: var(--ink-soft); font-size: 13.5px; }
+.recap .rc-stats b { font-family: var(--display); font-size: 18px; color: var(--ink); margin-right: 3px; }
+.recap .rc-fire { display: inline-flex; align-items: center; gap: 3px; color: var(--brand); } .recap .rc-fire .i { width: 15px; height: 15px; }
+.c-acts { display: flex; align-items: center; gap: 16px; margin-top: 5px; }
+.c-acts button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; padding: 0; }
+.c-acts .c-like.on { color: var(--danger); }
+.c-acts .c-reply { font-weight: 600; }
+.c-who[data-mago] { cursor: pointer; }
+.cmt-replies { margin-left: 42px; display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.cmt.reply { }
+.reply-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
+.reply-chip button { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 14px; }

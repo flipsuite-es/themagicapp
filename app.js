@@ -1580,12 +1580,13 @@
         bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
     } else if (mode === "discover") {
-      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; })]).then(function (res) {
-        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6);
+      Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; })]).then(function (res) {
+        var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6), rec = res[4];
+        var recap = (rec && (rec.likes + rec.followers + rec.posts) > 0) ? '<div class="recap"><div class="rc-t">Tu semana</div><div class="rc-stats"><span><b>' + rec.likes + '</b> me gusta</span><span><b>' + rec.followers + '</b> seguidores</span>' + (rec.streak >= 2 ? '<span class="rc-fire">' + icon("flame", "i-sm") + "<b>" + rec.streak + "</b> días</span>" : "") + "</div></div>" : "";
         var banner = chal ? '<div class="chal-banner" id="chalBanner"><span class="cb-ic">' + icon("flame") + '</span><div class="cb-b"><div class="cb-t">' + esc(chal.title) + '</div><div class="cb-p">' + esc(chal.prompt || "") + '</div><div class="cb-m">' + chal.participants + " participando · toca para ver</div></div>" + icon("chev") + "</div>" : "";
         var top = lead.length ? '<div class="sec-label sec-row">Top magos de la semana <a class="seeall" id="seeTop">Ver ranking</a></div><div class="top-strip">' + lead.map(function (m) { return '<div class="top-m" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle, "big") + '<div class="tm-n">' + esc(m.name || m.handle || "Mago") + "</div></div>"; }).join("") + "</div>" : "";
         var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
-        bodyEl.innerHTML = banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
+        bodyEl.innerHTML = recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
         bindPostCards(bodyEl);
         var cbn = document.getElementById("chalBanner"); if (cbn) cbn.addEventListener("click", function () { location.hash = "#/reto"; });
         var st = document.getElementById("seeTop"); if (st) st.addEventListener("click", function () { location.hash = "#/top"; });
@@ -1610,6 +1611,7 @@
     var who = "<b>" + esc(n.name || n.handle || "Alguien") + "</b> ";
     if (n.type === "like") return who + "le dio me gusta a tu publicación";
     if (n.type === "comment") return who + "comentó tu publicación";
+    if (n.type === "reply") return who + "respondió a tu comentario";
     if (n.type === "follow") return who + "empezó a seguirte";
     if (n.type === "repost") return who + "reposteó tu publicación";
     return who + "interactuó contigo";
@@ -1623,7 +1625,7 @@
       b.innerHTML = items.length ? '<div class="notif-list">' + items.map(function (n) {
         return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + (n.type === "follow" ? "mago:" + esc(n.actor) : "post:" + esc(n.post_id || "")) + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
           '<div class="n-b"><div>' + notifText(n) + "</div>" + (n.snippet ? '<div class="n-s">' + esc(n.snippet) + "</div>" : "") + '<div class="n-t">' + timeAgo(n.created_at) + "</div></div>" +
-          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : n.type === "comment" ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
+          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : (n.type === "comment" || n.type === "reply") ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
       }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bell") + "</div><h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
       b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
       Cloud.markNotificationsRead().then(function () { unreadNotif = 0; }).catch(function () {});
@@ -1827,15 +1829,30 @@
     Promise.all([Cloud.getFeed().then(function (rows) { return rows.filter(function (x) { return x.id === id; })[0]; }), Cloud.getComments(id)]).then(function (res) {
       var p = res[0], comments = res[1] || [];
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
+      var byParent = {}; comments.forEach(function (c) { if (c.parent_id) { (byParent[c.parent_id] = byParent[c.parent_id] || []).push(c); } });
+      var tops = comments.filter(function (c) { return !c.parent_id; });
+      var commentHtml = function (c, reply) {
+        return '<div class="cmt' + (reply ? " reply" : "") + '">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") +
+          '<div class="cmt-body"><div class="c-who" data-mago="' + esc(c.author) + '">' + esc(c.name || c.handle || "Mago") + " <span>" + timeAgo(c.created_at) + "</span></div>" +
+          '<div class="c-b">' + linkify(c.body) + "</div>" +
+          '<div class="c-acts"><button class="c-like ' + (c.liked ? "on" : "") + '" data-clike="' + esc(c.id) + '">' + icon(c.liked ? "heartfill" : "heart", "i-sm") + "<span>" + (c.likes || 0) + "</span></button>" +
+          (reply ? "" : '<button class="c-reply" data-reply="' + esc(c.id) + '" data-h="' + esc(c.handle || "") + '">Responder</button>') + "</div></div>" +
+          (c.mine ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>";
+      };
+      var commentsHtml = tops.length ? tops.map(function (c) { return commentHtml(c, false) + ((byParent[c.id] || []).length ? '<div class="cmt-replies">' + byParent[c.id].map(function (r) { return commentHtml(r, true); }).join("") + "</div>" : ""); }).join("") : '<p class="hint">Sé el primero en comentar.</p>';
       b.innerHTML = postCardHtml(p) +
-        '<div class="sec-label">Comentarios</div><div class="comments">' +
-        (comments.length ? comments.map(function (c) { return '<div class="cmt">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + '<div class="cmt-body"><div class="c-who">' + esc(c.name || c.handle || "Mago") + ' <span>' + timeAgo(c.created_at) + '</span></div><div class="c-b">' + linkify(c.body) + "</div></div>" + (c.author === (myProfile && myProfile.user_id) ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>"; }).join("") : '<p class="hint">Sé el primero en comentar.</p>') + "</div>" +
-        '<div class="cmt-add"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
+        '<div class="sec-label">Comentarios</div><div class="comments">' + commentsHtml + "</div>" +
+        '<div class="cmt-add" id="cmtBar"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
       bindPostCards(b);
-      var send = function () { var t = (document.getElementById("cmtIn").value || "").trim(); if (!t) return; document.getElementById("cmtIn").value = ""; Cloud.addComment(id, t).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
+      var replyTo = null;
+      var input = document.getElementById("cmtIn"), bar = document.getElementById("cmtBar");
+      var send = function () { var t = (input.value || "").trim(); if (!t) return; input.value = ""; var parent = replyTo; replyTo = null; var chip = document.getElementById("replyChip"); if (chip) chip.remove(); Cloud.addComment(id, t, parent).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
       document.getElementById("cmtSend").addEventListener("click", send);
-      document.getElementById("cmtIn").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      b.querySelectorAll(".c-who[data-mago]").forEach(function (w) { w.addEventListener("click", function () { location.hash = "#/mago/" + w.getAttribute("data-mago"); }); });
       b.querySelectorAll("[data-delc]").forEach(function (x) { x.addEventListener("click", function () { if (!confirm("¿Eliminar comentario?")) return; Cloud.deleteComment(x.getAttribute("data-delc")).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); });
+      b.querySelectorAll("[data-clike]").forEach(function (bt) { bt.addEventListener("click", function () { var cid = bt.getAttribute("data-clike"); var on = bt.classList.contains("on"); var sp = bt.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0; bt.classList.toggle("on"); sp.textContent = on ? Math.max(0, n - 1) : n + 1; bt.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + sp.textContent + "</span>"; (on ? Cloud.unlikeComment(cid) : Cloud.likeComment(cid)).catch(function () {}); }); });
+      b.querySelectorAll("[data-reply]").forEach(function (bt) { bt.addEventListener("click", function () { replyTo = bt.getAttribute("data-reply"); var h = bt.getAttribute("data-h"); var old = document.getElementById("replyChip"); if (old) old.remove(); var chip = el('<div class="reply-chip" id="replyChip">Respondiendo a @' + esc(h || "comentario") + ' <button>✕</button></div>'); bar.parentNode.insertBefore(chip, bar); chip.querySelector("button").addEventListener("click", function () { replyTo = null; chip.remove(); }); input.focus(); }); });
     }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 

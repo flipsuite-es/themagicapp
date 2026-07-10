@@ -266,7 +266,10 @@ window.Cloud = (function () {
   function deletePost(id) { return sb.from("posts").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
   function likePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function unlikePost(id) { return currentUser().then(function (u) { return sb.from("post_likes").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
-  function addComment(pid, body) { return sb.from("comments").insert({ post_id: pid, body: body }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function addComment(pid, body, parentId) { return sb.from("comments").insert({ post_id: pid, body: body, parent_id: parentId || null }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function likeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").insert({ comment_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function unlikeComment(id) { return currentUser().then(function (u) { return sb.from("comment_likes").delete().eq("comment_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function getWeekRecap() { return sb.rpc("get_week_recap").then(function (r) { if (r.error) throw r.error; return r.data; }).catch(function () { return null; }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
   function createListing(listing, content) {
@@ -308,6 +311,7 @@ window.Cloud = (function () {
     searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList,
     openConversation: openConversation, getConversations: getConversations, getMessages: getMessages, sendMessage: sendMessage, markMessagesRead: markMessagesRead, subscribeMessages: subscribeMessages,
     getReviews: getReviews, addReview: addReview, wish: wish, unwish: unwish, pingStreak: pingStreak,
-    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard
+    getActiveChallenge: getActiveChallenge, getLeaderboard: getLeaderboard,
+    likeComment: likeComment, unlikeComment: unlikeComment, getWeekRecap: getWeekRecap
   };
 })();

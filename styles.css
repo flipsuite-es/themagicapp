@@ -5,62 +5,79 @@
    ========================================================================== */
 
 :root {
-  /* Claro */
-  --bg: #f4f2ec;
-  --bg-2: #eceae2;
-  --surface: #ffffff;
-  --surface-2: #f6f4ee;
-  --ink: #1b1922;
-  --ink-soft: #565060;
-  --ink-faint: #928c9c;
-  --line: rgba(20, 16, 30, 0.10);
-  --line-2: rgba(20, 16, 30, 0.06);
-  --brand: #9a7a2e;          /* latón sobrio */
-  --brand-press: #7f6323;
-  --on-brand: #fbf8ef;
+  /* Claro — "papel de galería" */
+  --bg: #f1ede4;
+  --bg-2: #e6e1d4;
+  --surface: #fffefb;
+  --surface-2: #f5f1e8;
+  --surface-3: #efe9dc;
+  --ink: #16141c;
+  --ink-soft: #4e4857;
+  --ink-faint: #8a8492;
+  --line: rgba(24, 18, 32, 0.09);
+  --line-2: rgba(24, 18, 32, 0.055);
+  --hair: rgba(152, 115, 39, 0.24);          /* filete dorado */
+  --brand: #96721f;          /* latón sobrio */
+  --brand-2: #c6a052;        /* latón claro (destello/degradado) */
+  --brand-press: #7a5c17;
+  --on-brand: #fffdf4;
   --accent: #7a3b4a;         /* burdeos apagado */
   --ok: #2e7d5b;
   --warn: #b07d22;
   --danger: #b23b3b;
-  --shadow: 0 1px 2px rgba(20, 15, 10, 0.05), 0 6px 18px rgba(20, 15, 10, 0.06);
-  --shadow-lg: 0 8px 24px rgba(20, 15, 10, 0.10);
-  --radius: 14px;
-  --radius-sm: 10px;
-  --tap: 50px;
+  --ring: 0 0 0 3px rgba(150, 114, 31, 0.18);
+  --shadow: 0 1px 2px rgba(30, 22, 10, 0.05), 0 4px 16px rgba(30, 22, 10, 0.055);
+  --shadow-lg: 0 12px 40px rgba(30, 22, 10, 0.14);
+  --shadow-brand: 0 6px 22px rgba(150, 114, 31, 0.30);
+  --grad-brand: linear-gradient(160deg, var(--brand-2), var(--brand) 62%, var(--brand-press));
+  --grad-page: radial-gradient(130% 90% at 50% -12%, #fcf9f2 0%, var(--bg) 48%, var(--bg-2) 100%);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --tap: 52px;
   --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f0e13;
-  --bg-2: #0a090d;
-  --surface: #17161d;
-  --surface-2: #201e28;
-  --ink: #ecebf1;
-  --ink-soft: #a7a3b4;
-  --ink-faint: #6f6b7c;
-  --line: rgba(255, 255, 255, 0.09);
+  /* Oscuro — "teatro de terciopelo" */
+  --bg: #0c0b11;
+  --bg-2: #070609;
+  --surface: #17161f;
+  --surface-2: #211f2b;
+  --surface-3: #2a2735;
+  --ink: #efedf4;
+  --ink-soft: #ada9ba;
+  --ink-faint: #726d80;
+  --line: rgba(255, 255, 255, 0.085);
   --line-2: rgba(255, 255, 255, 0.05);
-  --brand: #d0af5e;          /* latón cálido, no neón */
-  --brand-press: #b9963f;
-  --on-brand: #17130a;
-  --accent: #c98494;
+  --hair: rgba(216, 182, 103, 0.26);
+  --brand: #d8b667;          /* oro cálido, no neón */
+  --brand-2: #f1d391;
+  --brand-press: #bd9a48;
+  --on-brand: #1a1408;
+  --accent: #d295a3;
   --ok: #67c39a;
   --warn: #d8ab55;
   --danger: #e5807c;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.32);
-  --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.5);
+  --ring: 0 0 0 3px rgba(216, 182, 103, 0.22);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 24px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 20px 54px rgba(0, 0, 0, 0.62);
+  --shadow-brand: 0 6px 26px rgba(216, 182, 103, 0.22);
+  --grad-page: radial-gradient(130% 88% at 50% -10%, #191521 0%, var(--bg) 46%, var(--bg-2) 100%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f0e13; --bg-2: #0a090d; --surface: #17161d; --surface-2: #201e28;
-    --ink: #ecebf1; --ink-soft: #a7a3b4; --ink-faint: #6f6b7c;
-    --line: rgba(255,255,255,0.09); --line-2: rgba(255,255,255,0.05);
-    --brand: #d0af5e; --brand-press: #b9963f; --on-brand: #17130a;
-    --accent: #c98494; --ok: #67c39a; --warn: #d8ab55; --danger: #e5807c;
-    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.32);
-    --shadow-lg: 0 14px 40px rgba(0,0,0,0.5);
+    --bg: #0c0b11; --bg-2: #070609; --surface: #17161f; --surface-2: #211f2b; --surface-3: #2a2735;
+    --ink: #efedf4; --ink-soft: #ada9ba; --ink-faint: #726d80;
+    --line: rgba(255,255,255,0.085); --line-2: rgba(255,255,255,0.05); --hair: rgba(216,182,103,0.26);
+    --brand: #d8b667; --brand-2: #f1d391; --brand-press: #bd9a48; --on-brand: #1a1408;
+    --accent: #d295a3; --ok: #67c39a; --warn: #d8ab55; --danger: #e5807c;
+    --ring: 0 0 0 3px rgba(216,182,103,0.22);
+    --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 6px 24px rgba(0,0,0,0.42);
+    --shadow-lg: 0 20px 54px rgba(0,0,0,0.62);
+    --shadow-brand: 0 6px 26px rgba(216,182,103,0.22);
+    --grad-page: radial-gradient(130% 88% at 50% -10%, #191521 0%, var(--bg) 46%, var(--bg-2) 100%);
   }
 }
 
@@ -72,7 +89,8 @@ body {
   overflow: hidden; overscroll-behavior: none;
   font-family: var(--ui);
   font-size: 16px; line-height: 1.5;
-  color: var(--ink); background: var(--bg);
+  color: var(--ink); background: var(--bg); background-image: var(--grad-page);
+  background-attachment: fixed;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -870,3 +888,119 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .inv-st { flex: 1; font-size: 12.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; }
 .inv-row.used .inv-st { color: var(--ok); }
 .inv-st .i { width: 14px; height: 14px; }
+
+/* ==========================================================================
+   OVERHAUL v2 — capa premium (club privado). Sube el listón sin tocar el
+   marcado: tipografía editorial, latón con degradado, tarjetas con relieve,
+   filetes dorados y barra inferior flotante de cristal.
+   ========================================================================== */
+::selection { background: color-mix(in srgb, var(--brand) 30%, transparent); }
+.app { scroll-behavior: smooth; }
+
+/* Tipografía editorial más rotunda */
+h1.title { font-size: 31px; letter-spacing: -0.03em; line-height: 1.06; }
+.appbar .wm { font-size: 23px; letter-spacing: -0.03em; }
+.pagehead h1 { font-size: 22px; letter-spacing: -0.03em; }
+.subtitle { font-size: 14.5px; color: var(--ink-faint); }
+
+/* Etiquetas de sección con filete dorado (no en las de fila con enlace) */
+.sec-label:not(.sec-row) { display: flex; align-items: center; gap: 12px; color: var(--brand); letter-spacing: .18em; }
+.sec-label:not(.sec-row)::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--hair), transparent); }
+
+/* Botones: latón con degradado y sombra cálida, forma de cápsula */
+.btn { background: var(--grad-brand); color: var(--on-brand); border-radius: 999px; font-weight: 650; box-shadow: var(--shadow-brand); transition: transform .12s ease, box-shadow .18s ease, background .18s ease; }
+.btn:active { transform: translateY(1px) scale(.99); box-shadow: var(--shadow); background: var(--brand-press); }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.btn.ghost:active { background: var(--surface-2); box-shadow: none; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent); box-shadow: none; }
+.btn.small { border-radius: 999px; box-shadow: none; }
+.btn:disabled { opacity: .5; box-shadow: none; }
+
+/* Botones de icono y "volver": un punto más táctiles */
+.iconbtn, .pagehead .back { border-radius: 13px; box-shadow: var(--shadow); transition: transform .12s ease, border-color .18s ease; }
+.iconbtn:active, .pagehead .back:active { transform: scale(.92); }
+
+/* Campos: foco con halo dorado */
+.field input, .field textarea, .field select { border-radius: 13px; transition: border-color .15s ease, box-shadow .15s ease; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--brand); box-shadow: var(--ring); }
+
+/* Chips: activo con degradado sutil */
+.chip { border-radius: 999px; transition: transform .12s ease; }
+.chip:active { transform: scale(.95); }
+.tchip { transition: transform .12s ease; }
+.tchip.on { background: var(--grad-brand); border-color: transparent; box-shadow: var(--shadow-brand); }
+
+/* Tarjetas: relieve y elevación al pasar */
+.card, .listcard { border-radius: 18px; transition: transform .2s cubic-bezier(.2,.7,.3,1), box-shadow .2s ease, border-color .2s ease; }
+.card:hover, .listcard:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--hair); }
+.card .thumb, .listcard .lc-cover { background-image: linear-gradient(150deg, var(--surface-2), var(--surface-3)); }
+.card .thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%); pointer-events: none; }
+.card .body h3 { font-size: 16.5px; }
+
+/* Superficies de lista con relieve y micro-pulsación */
+.postcard, .panel, .setrow, .rrow, .toggle-row, .stat, .pracrow, .shareitem, .inv-row, .vidrow, .conv, .notif {
+  border-radius: 16px; box-shadow: var(--shadow);
+}
+.setrow, .rrow { transition: transform .14s ease, box-shadow .18s ease, border-color .18s ease; }
+.setrow:active, .rrow:active { transform: scale(.99); }
+.setrow:hover, .rrow:hover { border-color: var(--hair); }
+.setrow .si, .rrow .ri { color: var(--brand); }
+
+/* Emblema con leve resplandor de latón */
+.splash .logo .mk, .gate-hero .logo .mk, .onb-hero .mk, .lock .lk .mk {
+  filter: drop-shadow(0 8px 22px color-mix(in srgb, var(--brand) 42%, transparent));
+}
+
+/* Hero de bienvenida más cinematográfico */
+.hero { background: linear-gradient(150deg, #221d2b, #3a2c39 60%, #4a3324); box-shadow: var(--shadow-lg); }
+.hero::after { content: ""; position: absolute; right: -30px; top: -30px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--brand) 40%, transparent), transparent 70%); pointer-events: none; }
+
+/* Puerta de entrada: más lujo */
+.gate-hero h1 { font-size: 34px; }
+.gate-card { border-radius: 22px; box-shadow: var(--shadow-lg); }
+.gate-badge { border: 1px solid var(--hair); background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); }
+
+/* Toast y modales: cristal y profundidad */
+.toast { border-radius: 999px; box-shadow: var(--shadow-lg); background: color-mix(in srgb, var(--ink) 94%, var(--brand)); }
+.modal { border-radius: 22px; box-shadow: var(--shadow-lg); }
+
+/* Avatares con filete dorado sutil */
+.avatar { box-shadow: inset 0 0 0 1px var(--line-2); }
+.avatar.big, .avatar.xl { box-shadow: inset 0 0 0 1px var(--hair), var(--shadow); }
+
+/* Publicaciones: cabecera con más presencia */
+.postcard { padding: 15px 15px 13px; }
+.pc-who .n { font-size: 15px; letter-spacing: -0.01em; }
+.price.big { letter-spacing: -0.02em; }
+
+/* FAB: latón con degradado y resplandor */
+.fab { background: var(--grad-brand); box-shadow: var(--shadow-brand), var(--shadow-lg); border-radius: 18px; }
+.fab:active { transform: scale(.93); }
+
+/* Barra inferior flotante de cristal — SOLO móvil/tablet (en escritorio es lateral) */
+@media (max-width: 999px) {
+  .tabbar {
+    left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 9px 6px; border: 1px solid var(--line); border-radius: 22px;
+    box-shadow: var(--shadow-lg);
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    backdrop-filter: blur(22px) saturate(1.3); -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  }
+  .tabbar a { position: relative; border-radius: 14px; padding: 6px 0; transition: color .15s ease; }
+  .tabbar a.on { color: var(--brand); }
+  .tabbar a.on::before {
+    content: ""; position: absolute; inset: 0; border-radius: 14px;
+    background: color-mix(in srgb, var(--brand) 14%, transparent); z-index: -1;
+  }
+  .tabbar a.on .i { filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--brand) 55%, transparent)); }
+  .app { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+  .fab { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(100px + env(safe-area-inset-bottom)); }
+}
+
+/* Barra lateral (escritorio): marca con resplandor y activo con filete */
+@media (min-width: 1000px) {
+  .tbbrand .mk { filter: drop-shadow(0 4px 14px color-mix(in srgb, var(--brand) 40%, transparent)); }
+  .tabbar a.on { position: relative; }
+  .tabbar a.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
+}

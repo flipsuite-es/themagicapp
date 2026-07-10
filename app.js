@@ -14,7 +14,11 @@
 
   /* ---------------------------- utilidades ---------------------------- */
   function el(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0, v = c === "x" ? r : (r & 0x3 | 0x8); return v.toString(16); });
+  }
+  function isUuid(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s || ""); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }
   var toastTimer = null;
@@ -40,6 +44,45 @@
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast("No se pudo guardar"); } }
   var state = load();
   function getTrick(id) { return state.tricks.filter(function (t) { return t.id === id; })[0]; }
+
+  /* ----------------------- sesión / sincronización -------------------- */
+  var session = null;                 // usuario actual (o null si offline/local)
+  function logged() { return !!session; }
+  function cloudReady() { return window.Cloud && Cloud.available(); }
+
+  function toRow(t) {
+    return { id: t.id, title: t.title, category: t.category, difficulty: t.difficulty, status: t.status, notes: t.notes || "", tags: t.tags || [], media: t.media || [], favorite: !!t.favorite };
+  }
+  function rowToLocal(r) {
+    return { id: r.id, title: r.title, category: r.category, difficulty: r.difficulty, status: r.status, notes: r.notes || "", tags: r.tags || [], media: r.media || [], favorite: !!r.favorite, createdAt: Date.parse(r.created_at) || Date.now(), updatedAt: Date.parse(r.updated_at) || Date.now(), remote: true };
+  }
+  // Escritura a la nube (best-effort; si falla, queda local y se resube al sincronizar)
+  function syncTrick(t) { if (logged() && cloudReady()) Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {}); }
+  function syncDelete(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteTrick(id).catch(function () {}); }
+
+  function syncOnLogin() {
+    if (!logged() || !cloudReady()) return Promise.resolve();
+    // 1) subir los locales que aún no están en la nube
+    var locals = state.tricks.filter(function (t) { return !t.remote; });
+    var chain = Promise.resolve();
+    locals.forEach(function (t) {
+      chain = chain.then(function () {
+        if (!isUuid(t.id)) t.id = uid();
+        return Cloud.upsertTrick(toRow(t)).then(function () { t.remote = true; }).catch(function () {});
+      });
+    });
+    // 2) traer todo de la nube y fusionar (la nube manda)
+    return chain.then(function () { return Cloud.listTricks(); }).then(function (rows) {
+      var byId = {};
+      state.tricks.forEach(function (t) { if (!t.remote) byId[t.id] = t; }); // conserva pendientes
+      rows.forEach(function (r) { byId[r.id] = rowToLocal(r); });
+      state.tricks = Object.keys(byId).map(function (k) { return byId[k]; });
+      save();
+      if (isMain()) route();
+      toast("Biblioteca sincronizada");
+    }).catch(function () { toast("No se pudo sincronizar"); });
+  }
+  function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/ajustes" || h === "#/cuenta"; }
 
   /* --------------------------- parseo de vídeo ------------------------ */
   function parseVideo(url) {
@@ -195,7 +238,8 @@
     if (!t) { location.hash = "#/"; return; }
     clearTabbar();
 
-    var media = (t.media || []).map(function (m) {
+    var media = (t.media || []).map(function (m, i) {
+      if (m.provider === "upload" && m.path) return '<div class="player" id="upl' + i + '" data-path="' + esc(m.path) + '"></div>';
       if (m.embed) return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
       return '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">🔗</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">↗</span></a>';
     }).join("");
@@ -224,16 +268,31 @@
       '<button class="btn danger" id="delBtn">Eliminar</button>' +
       "</div>";
 
-    document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); renderDetail(id); });
+    document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); });
     document.getElementById("editBtn").addEventListener("click", function () { location.hash = "#/editar/" + id; });
     document.getElementById("editBtn2").addEventListener("click", function () { location.hash = "#/editar/" + id; });
     view.querySelectorAll("#statusSeg button").forEach(function (b) {
-      b.addEventListener("click", function () { t.status = b.getAttribute("data-st"); t.updatedAt = Date.now(); save(); renderDetail(id); toast("Estado actualizado"); });
+      b.addEventListener("click", function () { t.status = b.getAttribute("data-st"); t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); toast("Estado actualizado"); });
     });
     document.getElementById("delBtn").addEventListener("click", function () {
       if (confirm("¿Eliminar “" + t.title + "”? No se puede deshacer.")) {
+        var wasRemote = t.remote;
         state.tricks = state.tricks.filter(function (x) { return x.id !== id; }); save();
+        syncDelete(id, wasRemote);
         toast("Truco eliminado"); location.hash = "#/";
+      }
+    });
+
+    // Cargar reproductores de vídeos propios con URL firmada (caduca; se pide al ver)
+    view.querySelectorAll(".player[data-path]").forEach(function (box) {
+      if (cloudReady()) {
+        Cloud.signedUrl(box.getAttribute("data-path")).then(function (url) {
+          box.innerHTML = url
+            ? '<video controls playsinline preload="metadata" src="' + esc(url) + '" style="position:absolute;inset:0;width:100%;height:100%"></video>'
+            : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff">Vídeo no disponible</div>';
+        });
+      } else {
+        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fff">Inicia sesión para ver este vídeo</div>';
       }
     });
   }
@@ -264,6 +323,8 @@
       "</div></div>" +
       '<div class="field"><label>Vídeos (pega una URL de YouTube, Vimeo…)</label>' +
       '<div class="vidadd"><input id="fVid" placeholder="https://…" inputmode="url"><button class="btn small" id="addVid" type="button">Añadir</button></div>' +
+      (logged() ? '<button class="btn ghost" id="upVid" type="button" style="margin-top:10px">⬆︎ Subir un vídeo propio</button><input type="file" id="fFile" accept="video/*" style="display:none">' :
+        '<div class="hint" style="margin-top:8px">Inicia sesión (Ajustes → Cuenta) para <b>subir tus propios vídeos</b>.</div>') +
       '<div class="vidlist" id="vidList"></div>' +
       '<div class="hint">Se incrusta el reproductor y se intenta sacar la miniatura y el título automáticamente.</div></div>' +
       '<div class="field"><label>Notas / explicación</label><textarea id="fNotes" placeholder="El secreto, el manejo, la charla, tus recordatorios…">' + esc(t ? t.notes : "") + "</textarea></div>" +
@@ -279,6 +340,26 @@
 
     document.getElementById("addVid").addEventListener("click", addVideoFromInput);
     document.getElementById("fVid").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addVideoFromInput(); } });
+
+    var upBtn = document.getElementById("upVid");
+    if (upBtn) {
+      var fileInp = document.getElementById("fFile");
+      upBtn.addEventListener("click", function () { fileInp.click(); });
+      fileInp.addEventListener("change", function () {
+        var file = fileInp.files[0]; if (!file) return;
+        if (file.size > 200 * 1024 * 1024) { toast("Vídeo demasiado grande (máx 200 MB)"); return; }
+        upBtn.disabled = true; upBtn.textContent = "Subiendo… 0%";
+        var item = { provider: "upload", path: null, title: file.name, thumb: null, uploading: true };
+        draftMedia.push(item); paintDraftMedia();
+        Cloud.uploadVideo(file).then(function (res) {
+          item.path = res.path; item.uploading = false; upBtn.disabled = false; upBtn.textContent = "⬆︎ Subir un vídeo propio";
+          paintDraftMedia(); toast("Vídeo subido");
+        }).catch(function () {
+          draftMedia = draftMedia.filter(function (m) { return m !== item; });
+          upBtn.disabled = false; upBtn.textContent = "⬆︎ Subir un vídeo propio"; paintDraftMedia(); toast("No se pudo subir");
+        });
+      });
+    }
 
     document.getElementById("saveBtn").addEventListener("click", function () { saveForm(id); });
   }
@@ -304,9 +385,10 @@
     var list = document.getElementById("vidList");
     if (!list) return;
     list.innerHTML = draftMedia.map(function (m, i) {
-      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : (m.provider === "link" ? "🔗" : "▶");
+      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : (m.provider === "upload" ? "📹" : m.provider === "link" ? "🔗" : "▶");
+      var sub = m.uploading ? "subiendo…" : (m.provider === "upload" ? "vídeo propio" : m.provider);
       return '<div class="vidrow"><div class="vt">' + thumb + "</div>" +
-        '<div class="vi"><div class="n">' + esc(m.title || m.url) + '</div><div class="p">' + esc(m.provider) + "</div></div>" +
+        '<div class="vi"><div class="n">' + esc(m.title || m.url || "vídeo") + '</div><div class="p">' + esc(sub) + "</div></div>" +
         '<button class="x" data-i="' + i + '" type="button">×</button></div>';
     }).join("");
     list.querySelectorAll(".x").forEach(function (b) {
@@ -329,10 +411,10 @@
     if (id) {
       var t = getTrick(id); if (!t) { location.hash = "#/"; return; }
       Object.keys(data).forEach(function (k) { t[k] = data[k]; });
-      save(); toast("Cambios guardados"); location.hash = "#/truco/" + id;
+      save(); syncTrick(t); toast("Cambios guardados"); location.hash = "#/truco/" + id;
     } else {
-      data.id = uid(); data.createdAt = Date.now(); data.favorite = false;
-      state.tricks.push(data); save(); toast("Truco creado"); location.hash = "#/truco/" + data.id;
+      data.id = uid(); data.createdAt = Date.now(); data.favorite = false; data.remote = false;
+      state.tricks.push(data); save(); syncTrick(data); toast("Truco creado"); location.hash = "#/truco/" + data.id;
     }
   }
 
@@ -465,6 +547,10 @@
     var theme = localStorage.getItem("magic_theme") || "auto";
     view.innerHTML =
       '<div class="screen"><h1 class="title">Ajustes</h1><p class="subtitle">' + state.tricks.length + " trucos guardados · " + state.categories.length + " categorías</p>" +
+      '<div class="sec-label">Cuenta</div>' +
+      '<div class="setrow" id="acctRow"><span class="si">' + (logged() ? "👤" : "☁️") + '</span><div class="st"><div class="t">' +
+      (logged() ? esc(session.email) : "Iniciar sesión / crear cuenta") + '</div><div class="d">' +
+      (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go" style="color:var(--ink-faint);font-size:20px">›</span></div>' +
       '<div class="sec-label">Apariencia</div>' +
       '<div class="setrow"><span class="si">🎨</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
@@ -479,6 +565,8 @@
       '<p class="subtitle" style="text-align:center;margin-top:24px">The Magic App · tus datos se guardan solo en este dispositivo.</p>' +
       "</div>";
 
+    var acct = document.getElementById("acctRow");
+    if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
     });
@@ -509,6 +597,97 @@
     r.readAsText(file);
   }
 
+  /* ============================== CUENTA ============================= */
+  var authMode = "login";     // 'login' | 'signup'
+  var pendingEmail = null;    // email a confirmar tras registro
+
+  function renderAccount() {
+    clearTabbar();
+    if (!cloudReady()) {
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>Cuenta</h1></div>' +
+        '<div class="panel"><p>La sincronización en la nube no está disponible ahora mismo (sin conexión). Tu biblioteca sigue guardándose en este dispositivo.</p></div></div>';
+      return;
+    }
+    if (logged()) return renderAccountLogged();
+    if (pendingEmail) return renderConfirm();
+    return renderAuthForm();
+  }
+
+  function renderAccountLogged() {
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>Cuenta</h1></div>' +
+      '<div class="setrow"><span class="si">👤</span><div class="st"><div class="t">' + esc(session.email) + '</div><div class="d">Sesión iniciada · tu biblioteca se sincroniza</div></div></div>' +
+      '<button class="btn" id="syncNow">Sincronizar ahora</button>' +
+      '<button class="btn ghost" id="signOut">Cerrar sesión</button>' +
+      '<p class="subtitle" style="text-align:center;margin-top:20px">Tus trucos se guardan en tu proyecto privado y solo tú puedes verlos.</p></div>';
+    document.getElementById("syncNow").addEventListener("click", function () { toast("Sincronizando…"); syncOnLogin(); });
+    document.getElementById("signOut").addEventListener("click", function () {
+      Cloud.signOut().finally(function () { session = null; toast("Sesión cerrada"); location.hash = "#/ajustes"; });
+    });
+  }
+
+  function renderAuthForm() {
+    var isSignup = authMode === "signup";
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/ajustes\'">‹</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
+      '<p class="subtitle">Sincroniza tu biblioteca entre dispositivos y sube tus vídeos.</p>' +
+      '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
+      '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
+      '<button class="btn" id="aGo">' + (isSignup ? "Crear cuenta" : "Entrar") + "</button>" +
+      '<button class="btn ghost" id="aSwap">' + (isSignup ? "Ya tengo cuenta · Iniciar sesión" : "No tengo cuenta · Registrarme") + "</button></div>";
+    document.getElementById("aSwap").addEventListener("click", function () { authMode = isSignup ? "login" : "signup"; renderAccount(); });
+    document.getElementById("aGo").addEventListener("click", function () {
+      var email = document.getElementById("aEmail").value.trim();
+      var pass = document.getElementById("aPass").value;
+      if (!email || pass.length < 6) { toast("Email y contraseña (mín. 6)"); return; }
+      var btn = document.getElementById("aGo"); btn.disabled = true; btn.textContent = "Un momento…";
+      if (isSignup) {
+        Cloud.signUp(email, pass).then(function (r) {
+          if (r.error) { toast(traduce(r.error.message)); btn.disabled = false; btn.textContent = "Crear cuenta"; return; }
+          if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); syncOnLogin().then(function () { location.hash = "#/"; }); return; }
+          pendingEmail = email; renderConfirm();
+        }).catch(function () { toast("Error de conexión"); btn.disabled = false; btn.textContent = "Crear cuenta"; });
+      } else {
+        Cloud.signIn(email, pass).then(function (r) {
+          if (r.error) { toast(traduce(r.error.message)); btn.disabled = false; btn.textContent = "Entrar"; return; }
+          session = r.data.user; toast("¡Hola de nuevo!"); syncOnLogin().then(function () { location.hash = "#/"; });
+        }).catch(function () { toast("Error de conexión"); btn.disabled = false; btn.textContent = "Entrar"; });
+      }
+    });
+  }
+
+  function renderConfirm() {
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/cuenta\'">‹</button><h1>Confirma tu email</h1></div>' +
+      '<p class="subtitle">Te hemos enviado un <b>código</b> a <b>' + esc(pendingEmail) + "</b>. Escríbelo aquí para activar tu cuenta.</p>" +
+      '<div class="field"><label>Código de confirmación</label><input id="cCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos"></div>' +
+      '<button class="btn" id="cGo">Confirmar</button>' +
+      '<button class="btn ghost" id="cResend">Reenviar código</button>' +
+      '<button class="btn ghost" id="cCancel">Cancelar</button></div>';
+    document.getElementById("cGo").addEventListener("click", function () {
+      var code = document.getElementById("cCode").value.trim();
+      if (!code) { toast("Escribe el código"); return; }
+      var btn = document.getElementById("cGo"); btn.disabled = true; btn.textContent = "Comprobando…";
+      Cloud.verifySignup(pendingEmail, code).then(function (r) {
+        if (r.error) { toast(traduce(r.error.message)); btn.disabled = false; btn.textContent = "Confirmar"; return; }
+        session = (r.data && r.data.user) || null; pendingEmail = null;
+        toast("¡Cuenta activada!"); syncOnLogin().then(function () { location.hash = "#/"; });
+      }).catch(function () { toast("Error de conexión"); btn.disabled = false; btn.textContent = "Confirmar"; });
+    });
+    document.getElementById("cResend").addEventListener("click", function () { Cloud.resend(pendingEmail).then(function () { toast("Código reenviado"); }).catch(function () { toast("No se pudo reenviar"); }); });
+    document.getElementById("cCancel").addEventListener("click", function () { pendingEmail = null; location.hash = "#/ajustes"; });
+  }
+
+  function traduce(msg) {
+    msg = (msg || "").toLowerCase();
+    if (msg.indexOf("invalid login") >= 0) return "Email o contraseña incorrectos";
+    if (msg.indexOf("already registered") >= 0 || msg.indexOf("already been registered") >= 0) return "Ese email ya tiene cuenta";
+    if (msg.indexOf("token has expired") >= 0 || msg.indexOf("invalid") >= 0 && msg.indexOf("otp") >= 0) return "Código incorrecto o caducado";
+    if (msg.indexOf("email not confirmed") >= 0) return "Confirma tu email primero";
+    if (msg.indexOf("password") >= 0) return "La contraseña es demasiado corta";
+    return "No se pudo completar";
+  }
+
   /* ------------------------------ tema -------------------------------- */
   function setTheme(mode) {
     localStorage.setItem("magic_theme", mode);
@@ -535,13 +714,23 @@
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
       if (h === "#/ajustes") return renderSettings();
+      if (h === "#/cuenta") return renderAccount();
       renderLibrary();
     } catch (err) {
       if (view) view.innerHTML = '<div class="screen"><div class="panel"><h2>Vaya…</h2><p>Algo se atascó.</p><button class="btn" onclick="location.hash=\'#/\';location.reload()">Reiniciar</button></div></div>';
     }
   }
 
+  // Arranque: tema + primera pantalla (local, instantáneo) y luego sesión/sync
   applyTheme();
   window.addEventListener("hashchange", route);
   route();
+  if (cloudReady()) {
+    Cloud.currentUser().then(function (u) {
+      session = u || null;
+      if (session) syncOnLogin();
+      else if (isMain()) route();
+    });
+    Cloud.onChange(function (u) { session = u || null; if (isMain()) route(); });
+  }
 })();

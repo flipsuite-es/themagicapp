@@ -1,12 +1,14 @@
 /* Service worker de The Magic App.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v7";
+var CACHE = "magic-v8";
 var ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./cloud.js",
+  "./supabase.js",
   "./manifest.json",
   "./icon.svg",
   "./icon-192.png",
@@ -33,6 +35,9 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  // Solo cacheamos recursos propios; nunca las llamadas a Supabase (API, auth,
+  // Storage, streaming de vídeo) para no romper sesión ni servir datos viejos.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     caches.match(e.request).then(function (cached) {
       if (cached) return cached;

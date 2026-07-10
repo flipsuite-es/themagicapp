@@ -126,6 +126,21 @@ window.Cloud = (function () {
   }
   function removeVideo(path) { return sb.storage.from("videos").remove([path]).catch(function () {}); }
 
+  /* --------------------------- tiempo real -------------------------- */
+  // Escucha cambios en las tablas del usuario y avisa a la app al instante.
+  function subscribeRealtime(onEvent, onStatus) {
+    if (!sb) return null;
+    var ch = sb.channel("magic-db-" + Math.random().toString(36).slice(2));
+    ["tricks", "routines", "gigs"].forEach(function (table) {
+      ch.on("postgres_changes", { event: "*", schema: "public", table: table }, function (payload) {
+        try { onEvent(table, payload.eventType, payload.new, payload.old); } catch (e) {}
+      });
+    });
+    ch.subscribe(function (status) { if (onStatus) onStatus(status); });
+    return ch;
+  }
+  function unsubscribeRealtime(ch) { try { if (ch) sb.removeChannel(ch); } catch (e) {} }
+
   /* --------------------------- compartir ---------------------------- */
   // Crea un enlace público de solo lectura. Devuelve el token (id).
   function createShare(kind, title, payload) {
@@ -192,6 +207,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
-    getReminderPref: getReminderPref, saveReminderPref: saveReminderPref
+    getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
+    subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime
   };
 })();

@@ -183,6 +183,41 @@
     }).catch(function () { syncing = false; reflectSync(); if (!silent) toast("No se pudo sincronizar"); });
   }
   function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/bolos" || h === "#/ajustes" || h === "#/cuenta"; }
+
+  /* ----------------------- sincronización en vivo -------------------- */
+  var realtimeCh = null, rerenderTimer = null;
+  function startRealtime() {
+    if (!cloudReady() || !logged() || !Cloud.subscribeRealtime) return;
+    stopRealtime();
+    realtimeCh = Cloud.subscribeRealtime(handleRealtime);
+  }
+  function stopRealtime() { if (realtimeCh) { Cloud.unsubscribeRealtime(realtimeCh); realtimeCh = null; } }
+  function handleRealtime(table, event, newRow, oldRow) {
+    var conv = table === "tricks" ? rowToLocal : table === "routines" ? routineRowToLocal : gigRowToLocal;
+    var key = table === "tricks" ? "tricks" : table === "routines" ? "routines" : "gigs";
+    var id = (newRow && newRow.id) || (oldRow && oldRow.id); if (!id) return;
+    var arr = state[key], changed = false;
+    if (event === "DELETE") {
+      var next = arr.filter(function (x) { return x.id !== id; });
+      if (next.length !== arr.length) { state[key] = next; changed = true; }
+    } else if (newRow) {
+      var local = conv(newRow), idx = -1;
+      for (var i = 0; i < arr.length; i++) { if (arr[i].id === id) { idx = i; break; } }
+      if (idx >= 0) arr[idx] = local; else arr.push(local);
+      changed = true;
+    }
+    if (changed) { save(); scheduleRerender(); }
+  }
+  function scheduleRerender() {
+    if (rerenderTimer) return;
+    rerenderTimer = setTimeout(function () {
+      rerenderTimer = null;
+      var h = location.hash || "#/";
+      if (/^#\/(nuevo|editar|rutina-nueva|rutina-edit|rutina-add|bolo-nuevo|bolo-edit|pin|lector)/.test(h)) return;
+      if (perfState) return; // no interrumpir el modo actuación
+      route();
+    }, 400);
+  }
   var MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   function fmtDate(d) { if (!d) return "Sin fecha"; var p = String(d).split("-"); if (p.length < 3) return d; return (+p[2]) + " " + (MONTHS[(+p[1]) - 1] || "") + " " + p[0]; }
   function fmtDateTs(ts) { var d = new Date(ts); return d.getDate() + " " + MONTHS[d.getMonth()]; }
@@ -296,6 +331,30 @@
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) { clearTimeout(to); resolve(j && !j.error ? { title: j.title || null, thumb: j.thumbnail_url || null } : null); })
           .catch(function () { resolve(null); });
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  // Captura un fotograma del vídeo (archivo local) como miniatura JPEG.
+  function makePoster(file) {
+    return new Promise(function (resolve) {
+      try {
+        var url = URL.createObjectURL(file);
+        var v = document.createElement("video");
+        v.muted = true; v.playsInline = true; v.preload = "metadata"; v.src = url;
+        var done = false;
+        var finish = function (out) { if (done) return; done = true; clearTimeout(to); try { URL.revokeObjectURL(url); } catch (e) {} resolve(out || null); };
+        var to = setTimeout(function () { finish(null); }, 9000);
+        v.addEventListener("loadeddata", function () { try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) { finish(null); } });
+        v.addEventListener("seeked", function () {
+          try {
+            var W = 640, ratio = (v.videoWidth && v.videoHeight) ? v.videoHeight / v.videoWidth : 0.5625;
+            var c = document.createElement("canvas"); c.width = W; c.height = Math.round(W * ratio);
+            c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+            c.toBlob(function (blob) { finish(blob ? new File([blob], "poster.jpg", { type: "image/jpeg" }) : null); }, "image/jpeg", 0.82);
+          } catch (e) { finish(null); }
+        });
+        v.addEventListener("error", function () { finish(null); });
       } catch (e) { resolve(null); }
     });
   }
@@ -416,16 +475,40 @@
     view.querySelectorAll(".card[data-id]").forEach(function (c) {
       c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-id"); });
     });
+    bindCardThumbs();
+  }
+  // Carga las miniaturas que requieren URL firmada (fotos y pósters de vídeo).
+  function bindCardThumbs() {
+    if (!cloudReady()) return;
+    view.querySelectorAll(".cthumb[data-thumb]").forEach(function (sp) {
+      var path = sp.getAttribute("data-thumb"); if (!path) return;
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) { sp.style.backgroundImage = "url(" + url + ")"; sp.classList.add("loaded"); } });
+    });
+  }
+  // Decide la miniatura del truco: foto → póster de vídeo → carátula de embed →
+  // marcador de vídeo/enlace. Garantiza miniatura si hay fotos o vídeos.
+  function trickThumb(t) {
+    var media = t.media || [], photos = t.photos || [];
+    var embed = media.filter(function (m) { return m.thumb; })[0];
+    var poster = media.filter(function (m) { return m.poster; })[0];
+    if (embed) return { kind: "embedimg", url: embed.thumb };
+    if (poster) return { kind: "video", path: poster.poster };
+    if (photos[0] && photos[0].path) return { kind: "img", path: photos[0].path };
+    if (media.filter(function (m) { return m.provider !== "link"; })[0]) return { kind: "videoicon" };
+    if (media.length) return { kind: "linkicon" };
+    return null;
   }
   function trickCard(t) {
-    var vid = (t.media || []).filter(function (m) { return m.provider !== "link"; })[0] || (t.media || [])[0];
-    var thumb = vid && vid.thumb;
-    var thumbHtml = thumb
-      ? '<img src="' + esc(thumb) + '" loading="lazy" alt="">' + '<span class="play">' + icon("play", "i-sm") + "</span>"
-      : '<span class="ph">' + icon(vid ? "film" : "cards") + "</span>";
+    var th = trickThumb(t), inner, play = "";
+    if (!th) inner = '<span class="ph">' + icon("cards") + "</span>";
+    else if (th.kind === "embedimg") { inner = '<img src="' + esc(th.url) + '" loading="lazy" alt="">'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else if (th.kind === "img") inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>';
+    else if (th.kind === "video") { inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else if (th.kind === "videoicon") { inner = '<span class="ph">' + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else inner = '<span class="ph">' + icon("link") + "</span>";
     return (
       '<div class="card" data-id="' + t.id + '">' +
-      '<div class="thumb">' + thumbHtml + (t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
+      '<div class="thumb">' + inner + play + (t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
       '<div class="body"><h3>' + esc(t.title) + "</h3>" +
       '<div class="meta">' + esc(t.category || "Sin categoría") + "</div>" +
       '<div class="foot"><span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
@@ -601,9 +684,12 @@
         var file = fileInp.files[0]; if (!file) return;
         if (file.size > 5 * 1024 * 1024 * 1024) { toast("Vídeo demasiado grande (máx 5 GB)"); return; }
         upBtn.disabled = true; upBtn.textContent = "Subiendo… 0%";
-        var item = { provider: "upload", path: null, title: file.name, thumb: null, uploading: true };
+        var item = { provider: "upload", path: null, title: file.name, thumb: null, poster: null, uploading: true };
         draftMedia.push(item); paintDraftMedia();
         var resetBtn = function () { upBtn.disabled = false; upBtn.innerHTML = icon("upload", "i-sm") + " Subir un vídeo propio"; };
+        // Genera y sube una miniatura (fotograma) en paralelo, desde el archivo local.
+        makePoster(file).then(function (pf) { return pf ? Cloud.uploadPhoto(pf) : null; })
+          .then(function (pr) { if (pr) { item.poster = pr.path; paintDraftMedia(); } }).catch(function () {});
         Cloud.uploadVideo(file, function (pct) { upBtn.textContent = "Subiendo… " + pct + "%"; }).then(function (res) {
           item.path = res.path; item.uploading = false; resetBtn();
           paintDraftMedia(); toast("Vídeo subido");
@@ -1686,10 +1772,11 @@
       Cloud.currentUser().then(function (u) {
         session = u || null;
         route();
-        if (session) syncOnLogin(true);
+        if (session) { syncOnLogin(true); startRealtime(); }
         Cloud.onChange(function (u2) {
           var was = logged(); session = u2 || null;
-          if (was !== logged()) route();
+          if (logged()) startRealtime(); else stopRealtime();
+          if (was !== logged()) { if (logged()) syncOnLogin(true); route(); }
         });
       }).catch(function () { session = null; route(); });
     } else {
@@ -1699,6 +1786,12 @@
 
   applyTheme();
   window.addEventListener("hashchange", route);
+  // Ponerse al día al volver a la app o recuperar conexión (por si el realtime
+  // perdió algún cambio mientras estaba en segundo plano).
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && logged() && cloudReady()) { syncOnLogin(true); startRealtime(); }
+  });
+  window.addEventListener("online", function () { if (logged() && cloudReady()) { syncOnLogin(true); startRealtime(); } });
   if (hasPin() && !unlocked) renderLock();
   else boot();
 })();

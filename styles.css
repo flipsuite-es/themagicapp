@@ -143,6 +143,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .card .thumb { aspect-ratio: 16/10; background: linear-gradient(135deg, var(--surface-2), var(--bg-2)); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .card .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .card .thumb .ph { color: var(--ink-faint); opacity: .55; }
+.card .thumb .cthumb { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; background-color: var(--surface-2); }
 .card .thumb .ph .i { width: 30px; height: 30px; }
 .card .thumb .play { position: absolute; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
 .card .thumb .play .i { width: 18px; height: 18px; }

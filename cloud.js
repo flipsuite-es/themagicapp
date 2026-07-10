@@ -226,7 +226,17 @@ window.Cloud = (function () {
         .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
     });
   }
-  function getFeed(who) { return sb.rpc("get_feed", { lim: 40, who: who || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFeed(who, mode, tag) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function bookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function unbookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function repost(origId, body) { return sb.from("posts").insert({ kind: "post", repost_of: origId, body: body || null, media: [] }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function deleteComment(id) { return sb.from("comments").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function getNotifications() { return sb.rpc("get_notifications", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || { unread: 0, items: [] }; }); }
+  function markNotificationsRead() { return sb.rpc("mark_notifications_read").then(function (r) { if (r.error) throw r.error; return true; }); }
+  function searchMagicians(q, spec) { return sb.rpc("search_magicians", { q: q || null, spec: spec || null, lim: 30 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function suggestMagicians() { return sb.rpc("suggest_magicians", { lim: 12 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function trendingTags() { return sb.rpc("get_trending_tags", { lim: 8 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFollowList(uid, which) { return sb.rpc("get_follow_list", { uid: uid, which: which, lim: 80 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -270,6 +280,9 @@ window.Cloud = (function () {
     getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
     createPost: createPost, deletePost: deletePost, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
-    subscribeFeed: subscribeFeed
+    subscribeFeed: subscribeFeed,
+    bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
+    getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
+    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList
   };
 })();

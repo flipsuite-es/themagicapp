@@ -626,6 +626,46 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .pc-attach { display: flex; gap: 10px; margin-bottom: 12px; }
 .pc-attach .btn { margin: 0; width: auto; flex: 1; }
 
+/* ===================== Comunidad Pro ===================== */
+.iconbtn { position: relative; }
+.badge { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.chips.trending { margin: 10px 0 4px; }
+.pc-acts .pc-rep, .pc-acts .pc-save { color: var(--ink-soft); }
+.pc-save.on { color: var(--brand); }
+.pc-more { margin-left: auto; background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 4px; }
+.repost-tag { display: flex; align-items: center; gap: 6px; color: var(--ink-faint); font-size: 12.5px; margin: 4px 0 8px; }
+.repost-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; margin-top: 4px; cursor: pointer; }
+.repost-box .rb-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; }
+a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-decoration: none; }
+
+/* Avisos */
+.notif-list { display: flex; flex-direction: column; }
+.notif { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.notif.unread { background: color-mix(in srgb, var(--brand) 7%, transparent); border-radius: var(--radius-sm); padding: 13px 10px; }
+.notif .n-b { flex: 1; min-width: 0; } .notif .n-s { color: var(--ink-faint); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif .n-t { color: var(--ink-faint); font-size: 12px; margin-top: 2px; } .notif .n-ic { color: var(--brand); flex: 0 0 auto; }
+
+/* Lista de magos */
+.mago-list { display: flex; flex-direction: column; }
+.mago-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.mago-row .mr-b { flex: 1; min-width: 0; } .mago-row .mr-b .n { font-weight: 600; font-size: 15px; } .mago-row .mr-b .d { font-size: 12.5px; color: var(--ink-faint); }
+.mago-row .btn.small { flex: 0 0 auto; }
+
+/* Perfil pro */
+.p-cover { height: 132px; border-radius: var(--radius); background: linear-gradient(120deg, var(--surface-2), var(--bg-2)) center/cover no-repeat; margin-bottom: -46px; }
+.p-cover.empty { background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 22%, var(--surface-2)), var(--surface-2)); }
+.profile-head .avatar.xl { border: 3px solid var(--bg); box-shadow: var(--shadow); }
+.p-links { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0 0; }
+.p-link { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+.p-link .i { width: 15px; height: 15px; }
+.p-stats [data-go] { cursor: pointer; }
+.p-actions { display: flex; gap: 8px; justify-content: center; }
+.p-actions .btn { width: auto; margin: 0; }
+
+/* Comentarios (borrar) */
+.cmt { align-items: flex-start; } .cmt-body { flex: 1; min-width: 0; }
+.c-del { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px; flex: 0 0 auto; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -867,7 +907,17 @@ window.Cloud = (function () {
         .then(function (r) { if (r.error) throw r.error; return { path: path, url: publicUrl(path) }; });
     });
   }
-  function getFeed(who) { return sb.rpc("get_feed", { lim: 40, who: who || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFeed(who, mode, tag) { return sb.rpc("get_feed", { lim: 40, who: who || null, mode: mode || "discover", tag: tag || null }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function bookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").insert({ post_id: id, user_id: u.id }).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function unbookmark(id) { return currentUser().then(function (u) { return sb.from("bookmarks").delete().eq("post_id", id).eq("user_id", u.id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
+  function repost(origId, body) { return sb.from("posts").insert({ kind: "post", repost_of: origId, body: body || null, media: [] }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function deleteComment(id) { return sb.from("comments").delete().eq("id", id).then(function (r) { if (r.error) throw r.error; return true; }); }
+  function getNotifications() { return sb.rpc("get_notifications", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || { unread: 0, items: [] }; }); }
+  function markNotificationsRead() { return sb.rpc("mark_notifications_read").then(function (r) { if (r.error) throw r.error; return true; }); }
+  function searchMagicians(q, spec) { return sb.rpc("search_magicians", { q: q || null, spec: spec || null, lim: 30 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function suggestMagicians() { return sb.rpc("suggest_magicians", { lim: 12 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function trendingTags() { return sb.rpc("get_trending_tags", { lim: 8 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
+  function getFollowList(uid, which) { return sb.rpc("get_follow_list", { uid: uid, which: which, lim: 80 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getComments(pid) { return sb.rpc("get_comments", { pid: pid }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getMarket() { return sb.rpc("get_market", { lim: 40 }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function getProfileInfo(id) { return sb.rpc("get_profile", { uid: id }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
@@ -911,7 +961,10 @@ window.Cloud = (function () {
     getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
     createPost: createPost, deletePost: deletePost, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
-    subscribeFeed: subscribeFeed
+    subscribeFeed: subscribeFeed,
+    bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
+    getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,
+    searchMagicians: searchMagicians, suggestMagicians: suggestMagicians, trendingTags: trendingTags, getFollowList: getFollowList
   };
 })();
 
@@ -984,6 +1037,12 @@ window.Cloud = (function () {
     heartfill: '<path fill="currentColor" stroke="none" d="M12 19.6C6.3 15.7 3.2 12.6 3.2 9.2 3.2 6.9 5 5.1 7.2 5.1c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.2 0 4 1.8 4 4.1 0 3.4-3.1 6.5-8.8 10.4z"/>',
     chat: '<path d="M5 5.5h14a1.2 1.2 0 0 1 1.2 1.2v8.6a1.2 1.2 0 0 1-1.2 1.2H10l-4 3v-3H5a1.2 1.2 0 0 1-1.2-1.2V6.7A1.2 1.2 0 0 1 5 5.5Z"/>',
     send: '<path d="M4.5 11.5 20 5l-6.4 15-2.6-6.4-6.5-2.1Z"/>',
+    bookmark: '<path d="M6.5 4h11a1 1 0 0 1 1 1v15l-6.5-4-6.5 4V5a1 1 0 0 1 1-1Z"/>',
+    bookmarkfill: '<path fill="currentColor" stroke="none" d="M6.5 3.5h11a1.5 1.5 0 0 1 1.5 1.5v15.6a.6.6 0 0 1-.92.5L12 17.2l-6.08 3.9a.6.6 0 0 1-.92-.5V5a1.5 1.5 0 0 1 1.5-1.5Z"/>',
+    repost: '<path d="M4 9V7.5a2 2 0 0 1 2-2h9M4 9l-2-2m2 2 2-2"/><path d="M20 15v1.5a2 2 0 0 1-2 2H9m11-3.5-2 2m2-2 2 2"/>',
+    dots: '<circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+    globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5S14.4 18.2 12 20.5C9.6 18.2 8.4 15.2 8.4 12S9.6 5.8 12 3.5Z"/>',
+    trophy: '<path d="M7 4.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M7 6H4.5v1.5A2.5 2.5 0 0 0 7 10M17 6h2.5v1.5A2.5 2.5 0 0 1 17 10M9.5 13.5h5M12 12.5V16m-2.5 3.5h5"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
@@ -2363,31 +2422,53 @@ window.Cloud = (function () {
   }
 
   /* ----------------------------- Feed ------------------------------- */
-  function postCardHtml(p) {
+  // Enlaza #hashtags y @menciones dentro del texto (ya escapado).
+  function linkify(text) {
+    return esc(text || "").replace(/#([A-Za-z0-9_áéíóúÁÉÍÓÚñÑ]+)/g, '<a class="tag" data-tag="$1">#$1</a>')
+      .replace(/(^|\s)@([A-Za-z0-9_.]{3,})/g, '$1<a class="mention" data-h="$2">@$2</a>');
+  }
+  function trickCardHtml(tc) {
+    return '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(tc.title || "Truco") + '</div><div class="d">' + esc(tc.category || "") + (tc.difficulty ? " · " + (DIFF[tc.difficulty] || "") : "") + "</div></div></div>";
+  }
+  function listingInlineHtml(l) {
+    return '<div class="listing-inline">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
+      '<div class="lc-info"><div class="n">' + esc(l.title || "Truco") + '</div><div class="price">' + money(l.price, l.currency) + "</div></div><span class=\"go\">" + icon("chev") + "</span></div>";
+  }
+  function postInnerHtml(p) {
     var media = (p.media || []).filter(function (m) { return m.url; }).map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("");
-    var card = "";
-    if (p.kind === "listing" && p.listing) {
-      card = '<div class="listing-inline">' + (p.listing.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(p.listing.cover) || p.listing.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
-        '<div class="lc-info"><div class="n">' + esc(p.listing.title || "Truco") + '</div><div class="price">' + money(p.listing.price, p.listing.currency) + "</div></div>" +
-        '<span class="go">' + icon("chev") + "</span></div>";
-    } else if (p.trick_card) {
-      var tc = p.trick_card;
-      card = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(tc.title || "Truco") + '</div><div class="d">' + esc(tc.category || "") + (tc.difficulty ? " · " + (DIFF[tc.difficulty] || "") : "") + "</div></div></div>";
+    var card = (p.listing_id && p.listing) ? listingInlineHtml(p.listing) : (p.trick_card ? trickCardHtml(p.trick_card) : "");
+    return (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") + (media ? '<div class="pc-media">' + media + "</div>" : "") + card;
+  }
+  function postCardHtml(p) {
+    var isRepost = !!p.repost_of && p.orig;
+    var head = '<header class="pc-head" data-mago="' + esc(p.author) + '">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle) +
+      '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + "</div></div>" +
+      (p.author === (myProfile && myProfile.user_id) ? '<button class="pc-more" data-del="' + esc(p.id) + '">' + icon("dots", "i-sm") + "</button>" : "") + "</header>";
+    var inner;
+    if (isRepost) {
+      var o = p.orig;
+      inner = '<div class="repost-tag">' + icon("repost", "i-sm") + " reposteó</div>" + (p.body ? '<div class="pc-body">' + linkify(p.body) + "</div>" : "") +
+        '<div class="repost-box" data-post="' + esc(o.id) + '"><div class="rb-head">' + avatarHtml(Cloud.publicUrl(o.avatar), o.name || o.handle, "sm") + "<span>" + esc(o.name || o.handle || "Mago") + "</span></div>" +
+        (o.body ? '<div class="pc-body">' + linkify(o.body) + "</div>" : "") + (o.listing_id && o.listing ? listingInlineHtml(o.listing) : (o.trick_card ? trickCardHtml(o.trick_card) : "")) + "</div>";
+    } else {
+      inner = postInnerHtml(p);
     }
-    return '<article class="postcard" data-post="' + esc(p.id) + '">' +
-      '<header class="pc-head" data-mago="' + esc(p.author) + '">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle) +
-      '<div class="pc-who"><div class="n">' + esc(p.name || p.handle || "Mago") + "</div><div class=\"h\">" + (p.handle ? "@" + esc(p.handle) : "") + " · " + timeAgo(p.created_at) + "</div></div></header>" +
-      (p.body ? '<div class="pc-body">' + esc(p.body) + "</div>" : "") +
-      (media ? '<div class="pc-media">' + media + "</div>" : "") + card +
+    return '<article class="postcard" data-post="' + esc(p.id) + '">' + head + inner +
       '<footer class="pc-acts"><button class="pc-like ' + (p.liked ? "on" : "") + '" data-like="' + esc(p.id) + '">' + icon(p.liked ? "heartfill" : "heart", "i-sm") + '<span>' + (p.likes || 0) + "</span></button>" +
-      '<button class="pc-cmt" data-post="' + esc(p.id) + '">' + icon("chat", "i-sm") + "<span>" + (p.comments || 0) + "</span></button></footer></article>";
+      '<button class="pc-cmt" data-post="' + esc(p.id) + '">' + icon("chat", "i-sm") + "<span>" + (p.comments || 0) + "</span></button>" +
+      '<button class="pc-rep" data-rep="' + esc(p.id) + '">' + icon("repost", "i-sm") + "</button>" +
+      '<span style="flex:1"></span>' +
+      '<button class="pc-save ' + (p.saved ? "on" : "") + '" data-save="' + esc(p.id) + '">' + icon(p.saved ? "bookmarkfill" : "bookmark", "i-sm") + "</button></footer></article>";
   }
   function bindPostCards(scope) {
-    (scope || view).querySelectorAll(".pc-head[data-mago]").forEach(function (h) { h.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/mago/" + h.getAttribute("data-mago"); }); });
-    (scope || view).querySelectorAll(".pc-cmt[data-post], .postcard[data-post] .pc-body, .postcard .pc-media, .trick-card, .listing-inline").forEach(function (el0) {
-      el0.addEventListener("click", function () { var art = el0.closest(".postcard"); if (art) location.hash = "#/post/" + art.getAttribute("data-post"); });
+    var s = scope || view;
+    s.querySelectorAll(".pc-head[data-mago]").forEach(function (h) { h.addEventListener("click", function (e) { if (e.target.closest(".pc-more")) return; e.stopPropagation(); location.hash = "#/mago/" + h.getAttribute("data-mago"); }); });
+    s.querySelectorAll(".pc-cmt[data-post], .postcard .pc-body, .postcard .pc-media, .postcard .trick-card, .postcard .listing-inline, .repost-box").forEach(function (el0) {
+      el0.addEventListener("click", function (e) { if (e.target.closest("a")) return; var box = el0.closest(".repost-box"); var art = el0.closest(".postcard"); location.hash = "#/post/" + ((box && box.getAttribute("data-post")) || (art && art.getAttribute("data-post"))); });
     });
-    (scope || view).querySelectorAll("[data-like]").forEach(function (b) {
+    s.querySelectorAll("a.tag[data-tag]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); location.hash = "#/tag/" + a.getAttribute("data-tag"); }); });
+    s.querySelectorAll("a.mention[data-h]").forEach(function (a) { a.addEventListener("click", function (e) { e.stopPropagation(); openHandle(a.getAttribute("data-h")); }); });
+    s.querySelectorAll("[data-like]").forEach(function (b) {
       b.addEventListener("click", function (e) {
         e.stopPropagation(); var id = b.getAttribute("data-like"); var on = b.classList.contains("on");
         var span = b.querySelector("span"); var n = parseInt(span.textContent, 10) || 0;
@@ -2396,19 +2477,47 @@ window.Cloud = (function () {
         (on ? Cloud.unlikePost(id) : Cloud.likePost(id)).catch(function () {});
       });
     });
+    s.querySelectorAll("[data-save]").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation(); var id = b.getAttribute("data-save"); var on = b.classList.contains("on");
+        b.classList.toggle("on"); b.innerHTML = icon(on ? "bookmark" : "bookmarkfill", "i-sm");
+        (on ? Cloud.unbookmark(id) : Cloud.bookmark(id)).then(function () { toast(on ? "Quitado de guardados" : "Guardado"); }).catch(function () {});
+      });
+    });
+    s.querySelectorAll("[data-rep]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-rep"); if (!confirm("¿Repostear a tus seguidores?")) return; Cloud.repost(id).then(function () { toast("Reposteado"); }).catch(function () { toast("No se pudo repostear"); }); });
+    });
+    s.querySelectorAll("[data-del]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-del"); if (!confirm("¿Eliminar esta publicación?")) return; Cloud.deletePost(id).then(function () { toast("Eliminada"); var art = b.closest(".postcard"); if (art) art.remove(); }).catch(function () { toast("No se pudo eliminar"); }); });
+    });
   }
-  function renderCommunity(tab) {
-    mountTabbar("com");
-    var f = document.getElementById("fabEl"); if (f) f.remove();
-    mountFab(tab === "market" ? "#/vender" : "#/publicar");
-    view.innerHTML = '<div class="screen wide"><div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1><span class="spacer"></span>' +
+  function openHandle(h) { Cloud.handleOwner(h).then(function (id) { if (id) location.hash = "#/mago/" + id; else toast("No se encontró @" + h); }); }
+  var unreadNotif = 0;
+  function refreshNotifBadge() {
+    if (!cloudReady() || !logged()) return;
+    Cloud.getNotifications().then(function (d) { unreadNotif = d.unread || 0; var b = document.getElementById("notifBadge"); if (b) { b.style.display = unreadNotif ? "flex" : "none"; b.textContent = unreadNotif > 9 ? "9+" : unreadNotif; } }).catch(function () {});
+  }
+  function communityHeader(mode) {
+    return '<div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1><span class="spacer"></span>' +
+      '<button class="iconbtn" id="searchBtn">' + icon("search") + "</button>" +
+      '<button class="iconbtn" id="notifBtn">' + icon("bell") + '<span class="badge" id="notifBadge" style="display:none"></span></button>' +
       '<button class="iconbtn" id="meBtn">' + icon("user") + "</button></div>" +
-      '<div class="seg big" id="comSeg"><button data-t="feed" class="' + (tab !== "market" ? "on" : "") + '">Feed</button><button data-t="market" class="' + (tab === "market" ? "on" : "") + '">Mercado</button></div>' +
-      '<div id="comBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+      '<div class="seg big" id="comSeg"><button data-m="discover" class="' + (mode === "discover" ? "on" : "") + '">Descubrir</button><button data-m="following" class="' + (mode === "following" ? "on" : "") + '">Siguiendo</button><button data-m="market" class="' + (mode === "market" ? "on" : "") + '">Mercado</button></div>';
+  }
+  function bindCommunityHeader() {
+    document.getElementById("searchBtn").addEventListener("click", function () { location.hash = "#/descubrir"; });
+    document.getElementById("notifBtn").addEventListener("click", function () { location.hash = "#/avisos"; });
     document.getElementById("meBtn").addEventListener("click", function () { if (myProfile) location.hash = "#/mago/" + myProfile.user_id; });
-    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { location.hash = b.getAttribute("data-t") === "market" ? "#/mercado" : "#/comunidad"; }); });
+    view.querySelectorAll("#comSeg button").forEach(function (b) { b.addEventListener("click", function () { var m = b.getAttribute("data-m"); location.hash = m === "market" ? "#/mercado" : (m === "following" ? "#/siguiendo" : "#/comunidad"); }); });
+    refreshNotifBadge();
+  }
+  function renderCommunity(mode) {
+    mountTabbar("com"); var f = document.getElementById("fabEl"); if (f) f.remove();
+    mountFab(mode === "market" ? "#/vender" : "#/publicar");
+    view.innerHTML = '<div class="screen wide">' + communityHeader(mode) + '<div id="comBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    bindCommunityHeader();
     var bodyEl = document.getElementById("comBody");
-    if (tab === "market") {
+    if (mode === "market") {
       Cloud.getMarket().then(function (rows) {
         if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("bag") + '</div><h3>Mercado vacío</h3><p>Sé el primero en poner un truco a la venta.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender un truco</button></div>'; return; }
         bodyEl.innerHTML = '<div class="market">' + rows.map(function (l) {
@@ -2418,12 +2527,103 @@ window.Cloud = (function () {
         bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
     } else {
-      Cloud.getFeed().then(function (rows) {
-        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("people") + '</div><h3>Aún no hay nada</h3><p>Publica lo primero y empieza la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>'; return; }
-        bodyEl.innerHTML = '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
+      var tags = mode === "discover" ? Cloud.trendingTags().catch(function () { return []; }) : Promise.resolve([]);
+      Promise.all([Cloud.getFeed(null, mode), tags]).then(function (res) {
+        var rows = res[0], tt = res[1] || [];
+        var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
+        if (!rows.length) {
+          bodyEl.innerHTML = strip + '<div class="empty" style="padding:46px 12px"><div class="big">' + icon(mode === "following" ? "people" : "people") + "</div><h3>" + (mode === "following" ? "Aún no sigues a nadie" : "Aún no hay nada") + "</h3><p>" + (mode === "following" ? "Descubre magos y síguelos para ver aquí sus publicaciones." : "Publica lo primero y empieza la comunidad.") + '</p><button class="btn" onclick="location.hash=\'' + (mode === "following" ? "#/descubrir" : "#/publicar") + "'\">" + (mode === "following" ? "Descubrir magos" : "Crear publicación") + "</button></div>";
+          bodyEl.querySelectorAll(".chip[data-tag]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/tag/" + c.getAttribute("data-tag"); }); });
+          return;
+        }
+        bodyEl.innerHTML = strip + '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
         bindPostCards(bodyEl);
+        bodyEl.querySelectorAll(".chip[data-tag]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/tag/" + c.getAttribute("data-tag"); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
     }
+  }
+
+  /* ------------------- Avisos / Descubrir / Tag --------------------- */
+  function notifText(n) {
+    var who = "<b>" + esc(n.name || n.handle || "Alguien") + "</b> ";
+    if (n.type === "like") return who + "le dio me gusta a tu publicación";
+    if (n.type === "comment") return who + "comentó tu publicación";
+    if (n.type === "follow") return who + "empezó a seguirte";
+    if (n.type === "repost") return who + "reposteó tu publicación";
+    return who + "interactuó contigo";
+  }
+  function renderNotifications() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Avisos</h1></div><div id="nBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getNotifications().then(function (d) {
+      var items = d.items || [];
+      var b = document.getElementById("nBody");
+      b.innerHTML = items.length ? '<div class="notif-list">' + items.map(function (n) {
+        return '<div class="notif ' + (n.read ? "" : "unread") + '" data-go="' + (n.type === "follow" ? "mago:" + esc(n.actor) : "post:" + esc(n.post_id || "")) + '">' + avatarHtml(Cloud.publicUrl(n.avatar), n.name || n.handle, "sm") +
+          '<div class="n-b"><div>' + notifText(n) + "</div>" + (n.snippet ? '<div class="n-s">' + esc(n.snippet) + "</div>" : "") + '<div class="n-t">' + timeAgo(n.created_at) + "</div></div>" +
+          '<span class="n-ic">' + icon(n.type === "like" ? "heartfill" : n.type === "comment" ? "chat" : n.type === "repost" ? "repost" : "people", "i-sm") + "</span></div>";
+      }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bell") + "</div><h3>Sin avisos</h3><p>Aquí verás quién interactúa contigo.</p></div>";
+      b.querySelectorAll(".notif[data-go]").forEach(function (el0) { el0.addEventListener("click", function () { var g = el0.getAttribute("data-go"); if (g.indexOf("mago:") === 0) location.hash = "#/mago/" + g.slice(5); else if (g.slice(5)) location.hash = "#/post/" + g.slice(5); }); });
+      Cloud.markNotificationsRead().then(function () { unreadNotif = 0; }).catch(function () {});
+    }).catch(function () { document.getElementById("nBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudieron cargar los avisos.</p></div>'; });
+  }
+  function magicianRow(m) {
+    return '<div class="mago-row" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle) +
+      '<div class="mr-b"><div class="n">' + esc(m.name || "Mago") + '</div><div class="d">' + (m.handle ? "@" + esc(m.handle) : "") + ((m.specialty && m.specialty.length) ? " · " + esc(m.specialty[0]) : "") + "</div></div>" +
+      (m.is_me ? "" : '<button class="btn small ' + (m.is_following ? "ghost" : "") + '" data-follow="' + esc(m.user_id) + '">' + (m.is_following ? "Siguiendo" : "Seguir") + "</button>") + "</div>";
+  }
+  function bindMagicianRows(scope) {
+    scope.querySelectorAll(".mago-row[data-mago]").forEach(function (r) { r.addEventListener("click", function (e) { if (e.target.closest("[data-follow]")) return; location.hash = "#/mago/" + r.getAttribute("data-mago"); }); });
+    scope.querySelectorAll("[data-follow]").forEach(function (b) { b.addEventListener("click", function (e) { e.stopPropagation(); var id = b.getAttribute("data-follow"); var on = b.textContent === "Siguiendo"; b.textContent = on ? "Seguir" : "Siguiendo"; b.classList.toggle("ghost", !on); (on ? Cloud.unfollow(id) : Cloud.follow(id)).catch(function () {}); }); });
+  }
+  var discoverSpec = null;
+  function renderDiscover() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Descubrir magos</h1></div>' +
+      '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="dscQ" placeholder="Buscar por nombre o @usuario…"></div>' +
+      '<div class="chips" id="dscSpec"><div class="chip ' + (!discoverSpec ? "active" : "") + '" data-s="">Todas</div>' + SPECIALTIES.map(function (s) { return '<div class="chip ' + (discoverSpec === s ? "active" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</div>"; }).join("") + "</div>" +
+      '<div id="dscBody"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div></div>';
+    var bodyEl = document.getElementById("dscBody"), q = document.getElementById("dscQ");
+    var run = function () {
+      var query = (q.value || "").trim();
+      bodyEl.innerHTML = '<div class="splash" style="padding:24px 0"><div class="spin"></div></div>';
+      var p = (query || discoverSpec) ? Cloud.searchMagicians(query, discoverSpec) : Cloud.suggestMagicians();
+      p.then(function (rows) {
+        if (!rows.length) { bodyEl.innerHTML = '<p class="hint" style="padding:20px 0">Sin resultados.</p>'; return; }
+        bodyEl.innerHTML = (!query && !discoverSpec ? '<div class="sec-label">Sugerencias para ti</div>' : "") + '<div class="mago-list">' + rows.map(magicianRow).join("") + "</div>";
+        bindMagicianRows(bodyEl);
+      }).catch(function () { bodyEl.innerHTML = '<p class="hint">No se pudo buscar.</p>'; });
+    };
+    var to; q.addEventListener("input", function () { clearTimeout(to); to = setTimeout(run, 300); });
+    view.querySelectorAll("#dscSpec .chip").forEach(function (c) { c.addEventListener("click", function () { discoverSpec = c.getAttribute("data-s") || null; view.querySelectorAll("#dscSpec .chip").forEach(function (x) { x.classList.remove("active"); }); c.classList.add("active"); run(); }); });
+    run();
+  }
+  function renderTagFeed(tag) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>#' + esc(tag) + '</h1></div><div id="tBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getFeed(null, "discover", tag).then(function (rows) {
+      var b = document.getElementById("tBody");
+      b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("search") + "</div><p>Nada con #" + esc(tag) + " todavía.</p></div>";
+      bindPostCards(b);
+    }).catch(function () { document.getElementById("tBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+  }
+  function renderMagicianList(uid, which) {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="history.back()">' + icon("back") + '</button><h1>' + (which === "followers" ? "Seguidores" : "Siguiendo") + '</h1></div><div id="mlBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getFollowList(uid, which).then(function (rows) {
+      var b = document.getElementById("mlBody");
+      b.innerHTML = rows.length ? '<div class="mago-list">' + rows.map(magicianRow).join("") + "</div>" : '<p class="hint" style="padding:24px 2px">' + (which === "followers" ? "Nadie todavía." : "No sigue a nadie todavía.") + "</p>";
+      bindMagicianRows(b);
+    }).catch(function () { document.getElementById("mlBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+  }
+  function renderSaved() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Guardados</h1></div><div id="svBody"><div class="splash" style="padding:40px 0"><div class="spin"></div></div></div></div>';
+    Cloud.getFeed(null, "saved").then(function (rows) {
+      var b = document.getElementById("svBody");
+      b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px"><div class="big">' + icon("bookmark") + "</div><h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
+      bindPostCards(b);
+    }).catch(function () { document.getElementById("svBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 
   /* --------------------------- Compose ------------------------------ */
@@ -2470,12 +2670,13 @@ window.Cloud = (function () {
       var b = document.getElementById("pdBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
       b.innerHTML = postCardHtml(p) +
         '<div class="sec-label">Comentarios</div><div class="comments">' +
-        (comments.length ? comments.map(function (c) { return '<div class="cmt">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + '<div><div class="c-who">' + esc(c.name || c.handle || "Mago") + ' <span>' + timeAgo(c.created_at) + '</span></div><div class="c-b">' + esc(c.body) + "</div></div></div>"; }).join("") : '<p class="hint">Sé el primero en comentar.</p>') + "</div>" +
+        (comments.length ? comments.map(function (c) { return '<div class="cmt">' + avatarHtml(Cloud.publicUrl(c.avatar), c.name || c.handle, "sm") + '<div class="cmt-body"><div class="c-who">' + esc(c.name || c.handle || "Mago") + ' <span>' + timeAgo(c.created_at) + '</span></div><div class="c-b">' + linkify(c.body) + "</div></div>" + (c.author === (myProfile && myProfile.user_id) ? '<button class="c-del" data-delc="' + esc(c.id) + '">' + icon("x", "i-sm") + "</button>" : "") + "</div>"; }).join("") : '<p class="hint">Sé el primero en comentar.</p>') + "</div>" +
         '<div class="cmt-add"><input id="cmtIn" placeholder="Escribe un comentario…"><button class="btn small" id="cmtSend">' + icon("send", "i-sm") + "</button></div>";
       bindPostCards(b);
       var send = function () { var t = (document.getElementById("cmtIn").value || "").trim(); if (!t) return; document.getElementById("cmtIn").value = ""; Cloud.addComment(id, t).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo comentar"); }); };
       document.getElementById("cmtSend").addEventListener("click", send);
       document.getElementById("cmtIn").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+      b.querySelectorAll("[data-delc]").forEach(function (x) { x.addEventListener("click", function () { if (!confirm("¿Eliminar comentario?")) return; Cloud.deleteComment(x.getAttribute("data-delc")).then(function () { renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); });
     }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
 
@@ -2487,18 +2688,27 @@ window.Cloud = (function () {
       var p = res[0], posts = res[1] || [];
       var b = document.getElementById("prBody"); if (!p) { b.innerHTML = '<div class="empty" style="padding:40px"><p>Perfil no disponible.</p></div>'; return; }
       var spec = (p.specialty || []).map(function (s) { return '<span class="tagchip">' + esc(s) + "</span>"; }).join("");
-      b.innerHTML = '<div class="profile-head">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "xl") +
+      var links = p.links || {};
+      var linkHtml = "";
+      if (links.web) linkHtml += '<a class="p-link" href="' + esc(links.web) + '" target="_blank" rel="noopener">' + icon("globe", "i-sm") + "Web</a>";
+      if (links.instagram) linkHtml += '<a class="p-link" href="https://instagram.com/' + esc(links.instagram.replace(/^@/, "")) + '" target="_blank" rel="noopener">Instagram</a>';
+      if (links.youtube) linkHtml += '<a class="p-link" href="' + esc(links.youtube) + '" target="_blank" rel="noopener">YouTube</a>';
+      b.innerHTML = (p.cover ? '<div class="p-cover" style="background-image:url(' + esc(Cloud.publicUrl(p.cover) || p.cover) + ')"></div>' : '<div class="p-cover empty"></div>') +
+        '<div class="profile-head">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "xl") +
         '<h2 class="title" style="margin:10px 0 0">' + esc(p.name || "Mago") + "</h2>" +
         '<div class="p-handle">' + (p.handle ? "@" + esc(p.handle) : "") + (p.city ? " · " + esc(p.city) : "") + "</div>" +
         (p.bio ? '<p class="p-bio">' + esc(p.bio) + "</p>" : "") +
         (spec ? '<div class="tagchips" style="justify-content:center">' + spec + "</div>" : "") +
-        '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
-        (p.is_me ? '<button class="btn ghost" id="prEdit">Editar perfil</button>' : '<button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + "</button>") + "</div>" +
+        (linkHtml ? '<div class="p-links">' + linkHtml + "</div>" : "") +
+        '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div data-go="#/seguidores/' + esc(uid) + '"><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div data-go="#/seguidos/' + esc(uid) + '"><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
+        (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + "</button>") + "</div>" +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
+      b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
       if (fb) fb.addEventListener("click", function () { var on = p.is_following; p.is_following = !on; fb.textContent = p.is_following ? "Siguiendo" : "Seguir"; fb.classList.toggle("ghost", p.is_following); (on ? Cloud.unfollow(uid) : Cloud.follow(uid)).catch(function () {}); });
       var eb = document.getElementById("prEdit"); if (eb) eb.addEventListener("click", function () { onb.step = 1; onb.handle = p.handle || ""; onb.name = p.name || ""; onb.spec = (p.specialty || []).slice(); onb.city = p.city || ""; onb.social = socialEnabled; renderEditProfile(); });
+      var sv = document.getElementById("prSaved"); if (sv) sv.addEventListener("click", function () { location.hash = "#/guardados"; });
     }).catch(function () { document.getElementById("prBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el perfil.</p></div>'; });
   }
   function renderEditProfile() {
@@ -2509,13 +2719,23 @@ window.Cloud = (function () {
       '<div class="field"><label>Bio</label><textarea id="epBio" rows="3" placeholder="Cuéntate en una línea…">' + esc(myProfile && myProfile.bio || "") + "</textarea></div>" +
       '<div class="field"><label>Especialidad</label><div class="tchips" id="epSpec">' + SPECIALTIES.map(function (s) { return '<button type="button" class="tchip ' + (onb.spec.indexOf(s) >= 0 ? "on" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div></div>" +
       '<div class="field"><label>Ciudad</label><input id="epCity" value="' + esc(onb.city) + '"></div>' +
+      '<div class="field"><label>Portada</label><button class="btn ghost" id="epCoverBtn" type="button">' + icon("plus", "i-sm") + ' Cambiar portada</button><input type="file" id="epCoverFile" accept="image/*" style="display:none"><div id="epCoverPrev"></div></div>' +
+      '<div class="sec-label">Enlaces</div>' +
+      '<div class="field"><label>Web</label><input id="epWeb" placeholder="https://…" value="' + esc((myProfile && myProfile.links && myProfile.links.web) || "") + '"></div>' +
+      '<div class="field"><label>Instagram</label><input id="epIg" placeholder="@usuario" value="' + esc((myProfile && myProfile.links && myProfile.links.instagram) || "") + '"></div>' +
+      '<div class="field"><label>YouTube</label><input id="epYt" placeholder="https://youtube.com/@…" value="' + esc((myProfile && myProfile.links && myProfile.links.youtube) || "") + '"></div>' +
       '<button class="btn" id="epSave">Guardar</button></div>';
+    var epCover = (myProfile && myProfile.cover_path) || null;
+    if (epCover) document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + esc(Cloud.publicUrl(epCover)) + ')"></div>';
     view.querySelectorAll("#epSpec .tchip").forEach(function (b) { b.addEventListener("click", function () { var s = b.getAttribute("data-s"); var i = onb.spec.indexOf(s); if (i >= 0) onb.spec.splice(i, 1); else onb.spec.push(s); b.classList.toggle("on"); }); });
+    document.getElementById("epCoverBtn").addEventListener("click", function () { document.getElementById("epCoverFile").click(); });
+    document.getElementById("epCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { epCover = r.path; document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
     document.getElementById("epSave").addEventListener("click", function () {
       var name = (document.getElementById("epName").value || "").trim(), handle = (document.getElementById("epHandle").value || "").trim().replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 24);
       if (!name || handle.length < 3) { toast("Nombre y usuario (mín. 3)"); return; }
+      var links = { web: (document.getElementById("epWeb").value || "").trim(), instagram: (document.getElementById("epIg").value || "").trim(), youtube: (document.getElementById("epYt").value || "").trim() };
       var btn = document.getElementById("epSave"); btn.disabled = true; btn.textContent = "Guardando…";
-      Cloud.upsertProfile({ handle: handle, display_name: name, bio: (document.getElementById("epBio").value || "").trim(), specialty: onb.spec, city: (document.getElementById("epCity").value || "").trim() })
+      Cloud.upsertProfile({ handle: handle, display_name: name, bio: (document.getElementById("epBio").value || "").trim(), specialty: onb.spec, city: (document.getElementById("epCity").value || "").trim(), cover_path: epCover, links: links })
         .then(function (p) { myProfile = p; toast("Perfil actualizado"); location.hash = "#/mago/" + p.user_id; route(); })
         .catch(function (e) { btn.disabled = false; btn.textContent = "Guardar"; toast(/duplicate|unique/i.test(e && e.message || "") ? "Ese usuario ya existe" : "No se pudo guardar"); });
     });
@@ -3089,10 +3309,17 @@ window.Cloud = (function () {
       if (h === "#/practica") return renderPractice();
       if (h === "#/stats") return renderStats();
       if (h === "#/enlaces") return renderShares();
-      if (h === "#/comunidad") return socialEnabled ? renderCommunity("feed") : renderLibrary();
+      if (h === "#/comunidad") return socialEnabled ? renderCommunity("discover") : renderLibrary();
+      if (h === "#/siguiendo") return socialEnabled ? renderCommunity("following") : renderLibrary();
       if (h === "#/mercado") return socialEnabled ? renderCommunity("market") : renderLibrary();
+      if (h === "#/avisos") return socialEnabled ? renderNotifications() : renderLibrary();
+      if (h === "#/descubrir") return socialEnabled ? renderDiscover() : renderLibrary();
+      if (h === "#/guardados") return socialEnabled ? renderSaved() : renderLibrary();
       if (h === "#/publicar") return socialEnabled ? renderCompose() : renderLibrary();
       if (h === "#/vender") return socialEnabled ? renderSellForm() : renderLibrary();
+      if (h.indexOf("#/tag/") === 0) return renderTagFeed(decodeURIComponent(h.slice(6)));
+      if (h.indexOf("#/seguidores/") === 0) return renderMagicianList(h.slice(13), "followers");
+      if (h.indexOf("#/seguidos/") === 0) return renderMagicianList(h.slice(11), "following");
       if (h.indexOf("#/post/") === 0) return renderPostDetail(h.slice(7));
       if (h.indexOf("#/mago/") === 0) return renderProfile(h.slice(7));
       if (h.indexOf("#/mercado/") === 0) return renderListing(h.slice(10));

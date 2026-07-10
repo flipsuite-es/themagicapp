@@ -617,3 +617,43 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .cmt-add .btn { width: auto; margin: 0; padding: 0 16px; }
 .pc-attach { display: flex; gap: 10px; margin-bottom: 12px; }
 .pc-attach .btn { margin: 0; width: auto; flex: 1; }
+
+/* ===================== Comunidad Pro ===================== */
+.iconbtn { position: relative; }
+.badge { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.chips.trending { margin: 10px 0 4px; }
+.pc-acts .pc-rep, .pc-acts .pc-save { color: var(--ink-soft); }
+.pc-save.on { color: var(--brand); }
+.pc-more { margin-left: auto; background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 4px; }
+.repost-tag { display: flex; align-items: center; gap: 6px; color: var(--ink-faint); font-size: 12.5px; margin: 4px 0 8px; }
+.repost-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; margin-top: 4px; cursor: pointer; }
+.repost-box .rb-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; }
+a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-decoration: none; }
+
+/* Avisos */
+.notif-list { display: flex; flex-direction: column; }
+.notif { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.notif.unread { background: color-mix(in srgb, var(--brand) 7%, transparent); border-radius: var(--radius-sm); padding: 13px 10px; }
+.notif .n-b { flex: 1; min-width: 0; } .notif .n-s { color: var(--ink-faint); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif .n-t { color: var(--ink-faint); font-size: 12px; margin-top: 2px; } .notif .n-ic { color: var(--brand); flex: 0 0 auto; }
+
+/* Lista de magos */
+.mago-list { display: flex; flex-direction: column; }
+.mago-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.mago-row .mr-b { flex: 1; min-width: 0; } .mago-row .mr-b .n { font-weight: 600; font-size: 15px; } .mago-row .mr-b .d { font-size: 12.5px; color: var(--ink-faint); }
+.mago-row .btn.small { flex: 0 0 auto; }
+
+/* Perfil pro */
+.p-cover { height: 132px; border-radius: var(--radius); background: linear-gradient(120deg, var(--surface-2), var(--bg-2)) center/cover no-repeat; margin-bottom: -46px; }
+.p-cover.empty { background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 22%, var(--surface-2)), var(--surface-2)); }
+.profile-head .avatar.xl { border: 3px solid var(--bg); box-shadow: var(--shadow); }
+.p-links { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0 0; }
+.p-link { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+.p-link .i { width: 15px; height: 15px; }
+.p-stats [data-go] { cursor: pointer; }
+.p-actions { display: flex; gap: 8px; justify-content: center; }
+.p-actions .btn { width: auto; margin: 0; }
+
+/* Comentarios (borrar) */
+.cmt { align-items: flex-start; } .cmt-body { flex: 1; min-width: 0; }
+.c-del { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px; flex: 0 0 auto; }

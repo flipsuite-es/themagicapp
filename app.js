@@ -61,15 +61,17 @@
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'
   };
   function icon(name, cls) { return '<svg class="i ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
-  // Marca "App del Mago": emblema de sello con pica y destello. `seal` añade el
-  // anillo; sin él es el glifo suelto para acompañar al logotipo.
-  var SPADE = '<path d="M32 16 L18 40 L46 40 Z"/>' +
-    '<circle cx="25" cy="38" r="9"/><circle cx="39" cy="38" r="9"/>' +
-    '<path d="M32 40 C31.2 45 29 48 27 50.5 L37 50.5 C35 48 32.8 45 32 40 Z"/>' +
-    '<path d="M45.5 13 C46 17.4 46.6 18 51 18.6 C46.6 19.2 46 19.8 45.5 24.2 C45 19.8 44.4 19.2 40 18.6 C44.4 18 45 17.4 45.5 13 Z"/>';
+  // Marca "App del Mago": emblema de sello con pica (curvas Bézier) y destello.
+  // `seal` añade el doble anillo tipo moneda; sin él, el glifo para el logotipo.
+  var SPADE = '<path d="M12 2.6C13.6 6.2 22 11.4 22 15.4C22 18.2 20.1 20 17.6 20C15.9 20 14.6 19.1 13.9 17.8C14.1 19.8 14.9 21.2 16 22L8 22C9.1 21.2 9.9 19.8 10.1 17.8C9.4 19.1 8.1 20 6.4 20C3.9 20 2 18.2 2 15.4C2 11.4 10.4 6.2 12 2.6Z"/>';
+  var SPARK = '<path d="M19 2.6C19.28 4.5 19.6 4.82 21.5 5.1C19.6 5.38 19.28 5.7 19 7.6C18.72 5.7 18.4 5.38 16.5 5.1C18.4 4.82 18.72 4.5 19 2.6Z"/>';
   function mark(cls, seal) {
-    var ring = seal ? '<circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="32" r="24.5" fill="none" stroke="currentColor" stroke-width="1" opacity="0.38"/>' : "";
-    return '<svg class="mk ' + (cls || "") + '" viewBox="0 0 64 64" aria-hidden="true" fill="currentColor">' + ring + SPADE + "</svg>";
+    var body = seal
+      ? '<circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="0.85"/>' +
+        '<circle cx="12" cy="12" r="9.35" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.4"/>' +
+        '<g transform="translate(12 12.5) scale(0.6) translate(-12 -12.3)">' + SPADE + SPARK + "</g>"
+      : SPADE + SPARK;
+    return '<svg class="mk ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">' + body + "</svg>";
   }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }

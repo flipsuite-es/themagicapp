@@ -458,7 +458,7 @@
         "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
-      body = '<div class="empty"><div class="big">' + icon("search") + '</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+      body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
     } else {
       body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
@@ -504,7 +504,7 @@
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
       holder.className = "";
-      holder.innerHTML = '<div class="empty"><div class="big">' + icon("search") + '</div><h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+      holder.innerHTML = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
       if (countEl) countEl.textContent = "";
       return;
     }
@@ -643,12 +643,12 @@
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
       '<span style="flex:1"></span>' +
       '<button class="iconbtn ' + (t.favorite ? "on" : "") + '" id="favBtn">' + icon(t.favorite ? "starfill" : "star") + "</button>" +
-      '<button class="iconbtn" id="editBtn">' + icon("edit") + "</button></div>" +
+      '<button class="iconbtn" id="editBtn" aria-label="Editar truco">' + icon("edit") + "</button></div>" +
+      '<div class="d-eyebrow">' + esc(t.category || "Sin categoría") + "</div>" +
       '<h1 class="title">' + esc(t.title) + "</h1>" +
       '<div class="detail-badges">' +
       '<span class="pill df">' + (DIFF[t.difficulty] || "—") + "</span>" +
-      '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span>" +
-      '<span class="tagchip">' + esc(t.category || "Sin categoría") + "</span></div>" +
+      '<span class="pill st-' + (t.status || "poraprender") + '">' + (STATUS[t.status] || "") + "</span></div>" +
       '<div class="detail-grid">' +
       '<div class="dcol">' + colMedia + "</div>" +
       '<div class="dcol">' + colInfo + "</div>" +
@@ -1588,12 +1588,18 @@
       }).catch(function () { btn.disabled = false; btn.textContent = "Cargar más"; });
     });
   }
+  // Cierre animado de overlays: fundido + descenso antes de retirar del DOM.
+  function dismissOv(ov, after) {
+    if (!ov || ov.classList.contains("closing")) return;
+    ov.classList.add("closing");
+    setTimeout(function () { ov.remove(); if (after) after(); }, 170);
+  }
   function actionSheet(opts) {
     var ov = el('<div class="modal-ov sheet"></div>');
     var box = el('<div class="sheet-box"></div>');
-    opts.forEach(function (o) { var btn = el('<button class="sheet-btn ' + (o.danger ? "danger" : "") + '"></button>'); btn.textContent = o.label; btn.addEventListener("click", function () { ov.remove(); o.fn(); }); box.appendChild(btn); });
-    var cancel = el('<button class="sheet-btn cancel">Cancelar</button>'); cancel.addEventListener("click", function () { ov.remove(); }); box.appendChild(cancel);
-    ov.appendChild(box); ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov);
+    opts.forEach(function (o) { var btn = el('<button class="sheet-btn ' + (o.danger ? "danger" : "") + '"></button>'); btn.textContent = o.label; btn.addEventListener("click", function () { dismissOv(ov, o.fn); }); box.appendChild(btn); });
+    var cancel = el('<button class="sheet-btn cancel">Cancelar</button>'); cancel.addEventListener("click", function () { dismissOv(ov); }); box.appendChild(cancel);
+    ov.appendChild(box); ov.addEventListener("click", function (e) { if (e.target === ov) dismissOv(ov); }); document.body.appendChild(ov);
   }
   // Autocompletado de @menciones y #hashtags en cualquier campo de texto.
   function attachAutocomplete(inp) {
@@ -1629,7 +1635,7 @@
     ov.querySelector("h3").textContent = title;
     document.body.appendChild(ov);
     var ta = ov.querySelector("#etText"); ta.value = current || ""; setTimeout(function () { ta.focus(); }, 30);
-    var close = function () { ov.remove(); };
+    var close = function () { dismissOv(ov); };
     ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
     ov.querySelector("#etCancel").addEventListener("click", close);
     ov.querySelector("#etSave").addEventListener("click", function () { var v = (ta.value || "").trim(); if (!v) { toast("Escribe algo"); return; } var btn = ov.querySelector("#etSave"); btn.disabled = true; btn.textContent = "Guardando…"; onSave(v, close, btn); });
@@ -1926,7 +1932,7 @@
   function openClipComments(id, countEl) {
     var ov = el('<div class="modal-ov sheet clip-cmts"><div class="cc-box"><div class="cc-h">Comentarios</div><div class="cc-list" id="ccList">' + skelRows(4) + '</div><div class="cc-add"><input id="ccIn" placeholder="Añade un comentario…"><button class="btn small" id="ccSend">' + icon("send", "i-sm") + "</button></div></div></div>");
     document.body.appendChild(ov);
-    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    ov.addEventListener("click", function (e) { if (e.target === ov) dismissOv(ov); });
     var load = function () {
       Cloud.getClipComments(id).then(function (rows) {
         var l = document.getElementById("ccList"); if (!l) return;

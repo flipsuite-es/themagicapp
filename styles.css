@@ -1355,3 +1355,37 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 /* Chat a pantalla completa: los mensajes llenan y la entrada queda abajo */
 .screen.chat { display: flex; flex-direction: column; min-height: calc(100dvh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 .screen.chat .chat-scroll > .bubble:first-child { margin-top: auto; }
+
+/* ==========================================================================
+   v8 — Remates: héroe del detalle, cierres animados, visor de historias
+   refinado y destellos en la puerta.
+   ========================================================================== */
+
+/* Detalle del truco: cejilla de categoría en oro sobre el título héroe */
+.d-eyebrow { color: var(--brand); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .18em; margin: 2px 2px 4px; }
+.screen.detail h1.title { font-size: 36px; }
+
+/* Cierre animado de overlays (hojas, modales) */
+.modal-ov.closing { animation: ovout .17s ease forwards; }
+.modal-ov.closing .modal, .modal-ov.closing .sheet-box, .modal-ov.closing .cc-box { animation: modalout .17s ease forwards; }
+@keyframes ovout { to { opacity: 0; } }
+@keyframes modalout { to { opacity: 0; transform: translateY(14px) scale(.98); } }
+
+/* Visor de historias: medios con esquinas nobles y barras con brillo */
+.sv-media { padding: 54px 10px 86px; }
+.sv-media .sv-img, .sv-media iframe, .sv-media video { border-radius: 18px; }
+.sv-bars i { height: 3px; border-radius: 999px; background: rgba(255,255,255,.28); }
+.sv-bars i.done { background: #fff; }
+.sv-bars i.cur { background: linear-gradient(90deg, #fff, rgba(255,255,255,.45)); box-shadow: 0 0 8px rgba(255,255,255,.5); }
+
+/* Puerta: destellos que titilan junto al emblema */
+.gate-hero .logo { position: relative; display: inline-block; }
+.gate-hero .logo::before, .gate-hero .logo::after {
+  content: "✦"; position: absolute; color: var(--brand); pointer-events: none;
+  animation: twinkle 2.8s ease-in-out infinite;
+}
+.gate-hero .logo::before { font-size: 13px; top: -4px; right: -20px; }
+.gate-hero .logo::after { font-size: 9px; bottom: 2px; left: -16px; animation-delay: 1.3s; }
+@keyframes twinkle { 0%, 100% { opacity: .15; transform: scale(.8); } 50% { opacity: .85; transform: scale(1.05); } }
+/* La leyenda de la historia queda por encima del botón "Quién la vio" */
+.sv-cap { bottom: calc(64px + env(safe-area-inset-bottom)); padding-bottom: 12px; background: none; text-shadow: 0 1px 8px rgba(0,0,0,.75); }

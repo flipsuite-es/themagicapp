@@ -104,12 +104,17 @@ window.Cloud = (function () {
       .then(function (r) { return (r.data && r.data.signedUrl) || null; }).catch(function () { return null; });
   }
   function removeVideo(path) { return sb.storage.from("videos").remove([path]).catch(function () {}); }
+  // Extracción de contenido didáctico desde una URL (Edge Function)
+  function extract(url) {
+    return sb.functions.invoke("extract", { body: { url: url } })
+      .then(function (r) { return r.error ? null : r.data; }).catch(function () { return null; });
+  }
 
   return {
     available: available, currentUser: currentUser, onChange: onChange,
     signUp: signUp, verifySignup: verifySignup, resend: resend, signIn: signIn, signOut: signOut,
     listTricks: listTricks, upsertTrick: upsertTrick, deleteTrick: deleteTrick,
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
-    uploadVideo: uploadVideo, signedUrl: signedUrl, removeVideo: removeVideo
+    uploadVideo: uploadVideo, signedUrl: signedUrl, removeVideo: removeVideo, extract: extract
   };
 })();

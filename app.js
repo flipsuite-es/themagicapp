@@ -301,9 +301,14 @@
     clearTabbar();
 
     var media = (t.media || []).map(function (m, i) {
-      if (m.provider === "upload" && m.path) return '<div class="player" id="upl' + i + '" data-path="' + esc(m.path) + '"></div>';
-      if (m.embed) return '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
-      return '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">' + icon("link") + '</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">' + icon("chev", "i-sm") + "</span></a>";
+      var player;
+      if (m.provider === "upload" && m.path) player = '<div class="player" id="upl' + i + '" data-path="' + esc(m.path) + '"></div>';
+      else if (m.embed) player = '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+      else player = '<a class="linkcard" href="' + esc(m.url) + '" target="_blank" rel="noopener"><span class="ic">' + icon("link") + '</span><span class="n">' + esc(m.title || m.url) + '</span><span class="go">' + icon("chev", "i-sm") + "</span></a>";
+      var extras = "";
+      if (m.chapters && m.chapters.length) extras += '<div class="chapters">' + m.chapters.map(function (c) { return '<div class="chap"><span class="tm">' + esc(c.time) + "</span><span>" + esc(c.title) + "</span></div>"; }).join("") + "</div>";
+      if (m.transcript) extras += '<details class="transcript"><summary>Transcripción</summary><div class="tr">' + esc(m.transcript) + "</div></details>";
+      return player + extras;
     }).join("");
 
     var tags = (t.tags || []).length ? '<div class="sec-label">Etiquetas</div><div class="tagchips">' + t.tags.map(function (x) { return '<span class="tagchip">#' + esc(x) + "</span>"; }).join("") + "</div>" : "";
@@ -462,13 +467,31 @@
     var v = parseVideo(url);
     var item = { provider: v.provider, url: v.url, id: v.id, embed: v.embed, thumb: v.thumb, title: null };
     draftMedia.push(item); inp.value = ""; paintDraftMedia();
-    // Enriquecer con metadatos (best-effort)
-    fetchMeta(url).then(function (meta) {
-      if (!meta) return;
-      if (meta.title) item.title = meta.title;
-      if (!item.thumb && meta.thumb) item.thumb = meta.thumb;
-      paintDraftMedia();
-    });
+    // Extraer contenido: función de servidor si hay sesión; si no, metadatos básicos
+    if (logged() && cloudReady()) {
+      var addBtn = document.getElementById("addVid");
+      if (addBtn) { addBtn.disabled = true; addBtn.textContent = "Extrayendo…"; }
+      Cloud.extract(url).then(function (meta) {
+        if (meta) {
+          if (meta.title) item.title = meta.title;
+          if (!item.thumb && meta.thumbnail) item.thumb = meta.thumbnail;
+          if (meta.description) item.description = meta.description;
+          if (meta.chapters && meta.chapters.length) item.chapters = meta.chapters;
+          if (meta.transcript) item.transcript = meta.transcript;
+          paintDraftMedia();
+          var extras = (item.chapters ? item.chapters.length + " capítulos" : "") + (item.transcript ? (item.chapters ? " · " : "") + "transcripción" : "");
+          toast(extras ? "Contenido extraído: " + extras : "Datos del vídeo listos");
+        }
+        if (addBtn) { addBtn.disabled = false; addBtn.textContent = "Añadir"; }
+      });
+    } else {
+      fetchMeta(url).then(function (meta) {
+        if (!meta) return;
+        if (meta.title) item.title = meta.title;
+        if (!item.thumb && meta.thumb) item.thumb = meta.thumb;
+        paintDraftMedia();
+      });
+    }
   }
   function paintDraftMedia() {
     var list = document.getElementById("vidList");

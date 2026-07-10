@@ -373,3 +373,15 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .perform .pnav button:active { background: var(--surface-2); }
 .perform .pnav button:disabled { opacity: .35; }
 .perform .pnav button .i { width: 20px; height: 20px; }
+
+/* Contenido extraído del vídeo */
+.chapters { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+.chap { display: flex; gap: 12px; padding: 9px 13px; border-bottom: 1px solid var(--line-2); font-size: 14px; }
+.chap:last-child { border-bottom: none; }
+.chap .tm { color: var(--brand); font-variant-numeric: tabular-nums; font-weight: 600; flex: 0 0 auto; }
+.transcript { border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 12px; }
+.transcript summary { padding: 12px 14px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink-soft); list-style: none; }
+.transcript summary::-webkit-details-marker { display: none; }
+.transcript summary::before { content: "▸ "; color: var(--brand); }
+.transcript[open] summary::before { content: "▾ "; }
+.transcript .tr { padding: 0 14px 14px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); max-height: 320px; overflow-y: auto; white-space: pre-wrap; }

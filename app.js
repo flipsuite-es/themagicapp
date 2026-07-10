@@ -1396,10 +1396,11 @@
     var step = onb.step;
     var body;
     if (step === 0) {
-      body = '<div class="onb-hero">' + mark("", true) + '<h1 class="wm">Bienvenido</h1>' +
-        '<p class="tagline">El estudio del mago</p>' +
+      body = '<div class="onb-hero">' + mark("", true) + '<h1 class="wm">Bienvenido al círculo</h1>' +
+        '<p class="tagline">Solo por invitación</p>' +
         '<p>Tu biblioteca privada de trucos, rutinas y bolos. Y, si quieres, una comunidad y un mercado <b>solo para magos</b>.</p></div>' +
-        '<button class="btn" id="onbNext">Empezar</button>';
+        '<div class="field"><label>Tu código de invitación</label><input id="onbInvite" autocapitalize="characters" autocomplete="off" placeholder="MAGO-XXXXX" value="' + esc(getPendingInvite()) + '"></div>' +
+        '<button class="btn" id="onbNext">Validar y empezar</button>';
     } else if (step === 1) {
       body = '<h1 class="title">Tu perfil de mago</h1><p class="subtitle">Así te verán otros magos (si activas la comunidad).</p>' +
         '<div class="avatar-pick"><span id="avaPrev">' + avatarHtml(onb.avatar && onb.avatar.url, onb.name, "big") + '</span>' +
@@ -1430,6 +1431,15 @@
 
     var nx = document.getElementById("onbNext");
     if (nx) nx.addEventListener("click", function () {
+      if (step === 0) {
+        var code = (document.getElementById("onbInvite").value || "").trim().toUpperCase();
+        nx.disabled = true; nx.textContent = "Validando…";
+        Cloud.redeemInvite(code).then(function (ok) {
+          if (!ok) { nx.disabled = false; nx.textContent = "Validar y empezar"; toast("Esa invitación no es válida o ya se ha usado"); return; }
+          setPendingInvite(null); onb.step++; renderOnboarding();
+        }).catch(function () { nx.disabled = false; nx.textContent = "Validar y empezar"; toast("No se pudo validar la invitación"); });
+        return;
+      }
       if (step === 1) {
         onb.name = (document.getElementById("onbName").value || "").trim();
         onb.handle = (document.getElementById("onbHandle").value || "").trim().replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 24);
@@ -2546,6 +2556,7 @@
       (logged() ? esc(session.email) : "Iniciar sesión / crear cuenta") + '</div><div class="d">' +
       (logged() ? "Sincronizado en la nube" : (cloudReady() ? "Sincroniza y sube vídeos entre dispositivos" : "Sin conexión")) + '</div></div><span class="go">' + icon("chev") + "</span></div>" +
       (logged() ? '<div class="setrow" id="sharesRow"><span class="si">' + icon("share") + '</span><div class="st"><div class="t">Enlaces compartidos</div><div class="d">Revisa y revoca lo que has compartido</div></div><span class="go">' + icon("chev") + "</span></div>" : "") +
+      (logged() && myProfile ? '<div class="setrow" id="invRow"><span class="si">' + icon("people") + '</span><div class="st"><div class="t">Invitaciones</div><div class="d">Invita a otros magos al círculo privado</div></div><span class="go">' + icon("chev") + "</span></div>" : "") +
       '<div class="sec-label">Progreso</div>' +
       '<div class="setrow" id="statsRow"><span class="si">' + icon("chart") + '</span><div class="st"><div class="t">Estadísticas</div><div class="d">Tu repertorio, aprendizaje y bolos en números</div></div><span class="go">' + icon("chev") + "</span></div>" +
       (cloudReady()
@@ -2582,6 +2593,7 @@
     if (acct) acct.addEventListener("click", function () { location.hash = "#/cuenta"; });
     var sr = document.getElementById("statsRow"); if (sr) sr.addEventListener("click", function () { location.hash = "#/stats"; });
     var shr = document.getElementById("sharesRow"); if (shr) shr.addEventListener("click", function () { location.hash = "#/enlaces"; });
+    var invR = document.getElementById("invRow"); if (invR) invR.addEventListener("click", function () { location.hash = "#/invitaciones"; });
     if (document.getElementById("pushToggle")) refreshPushToggle();
     var incR = document.getElementById("incRow"); if (incR) incR.addEventListener("click", function () { location.hash = "#/incluidos"; });
     var comT = document.getElementById("comToggle"); if (comT) comT.addEventListener("click", function () {
@@ -2631,6 +2643,8 @@
   /* ============================== CUENTA ============================= */
   var authMode = "login";     // 'login' | 'signup'
   var pendingEmail = null;    // email a confirmar tras registro
+  function getPendingInvite() { try { return localStorage.getItem("magic_invite") || ""; } catch (e) { return ""; } }
+  function setPendingInvite(v) { try { if (v) localStorage.setItem("magic_invite", v); else localStorage.removeItem("magic_invite"); } catch (e) {} }
 
   function renderAccount() {
     clearTabbar();
@@ -2707,6 +2721,41 @@
     });
     document.getElementById("cResend").addEventListener("click", function () { Cloud.resend(pendingEmail).then(function () { toast("Código reenviado"); }).catch(function () { toast("No se pudo reenviar"); }); });
     document.getElementById("cCancel").addEventListener("click", function () { pendingEmail = null; location.hash = "#/ajustes"; });
+  }
+
+  // Gestión de invitaciones: generar códigos y ver su estado.
+  function renderInvites() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>Invitaciones</h1></div>' +
+      '<p class="subtitle">App del Mago es un círculo cerrado. Cada mago tiene un número limitado de invitaciones: elige bien a quién dejas entrar.</p>' +
+      '<button class="btn" id="invNew">' + icon("plus", "i-sm") + ' Crear invitación</button>' +
+      '<div id="invBody"><div class="splash" style="padding:30px 0"><div class="spin"></div></div></div></div>';
+    var load = function () {
+      Cloud.myInvites().then(function (rows) {
+        var b = document.getElementById("invBody"); if (!b) return;
+        var left = Math.max(0, 8 - rows.length);
+        b.innerHTML = '<p class="hint" style="margin:4px 0 12px">Te quedan <b>' + left + '</b> de 8 invitaciones.</p>' +
+          (rows.length ? '<div class="inv-list">' + rows.map(function (i) {
+            return '<div class="inv-row ' + (i.redeemed ? "used" : "") + '"><div class="inv-code">' + esc(i.code) + "</div>" +
+              '<div class="inv-st">' + (i.redeemed ? icon("check", "i-sm") + " Aceptada" + (i.invitee_name ? " · " + esc(i.invitee_name) : "") : "Pendiente") + "</div>" +
+              (i.redeemed ? "" : '<button class="btn small ghost" data-copy="' + esc(i.code) + '">Compartir</button>') + "</div>";
+          }).join("") + "</div>" : '<p class="hint">Aún no has creado ninguna invitación.</p>');
+        b.querySelectorAll("[data-copy]").forEach(function (btn) { btn.addEventListener("click", function () { shareInvite(btn.getAttribute("data-copy")); }); });
+      }).catch(function () { var b = document.getElementById("invBody"); if (b) b.innerHTML = '<p class="hint">No se pudieron cargar las invitaciones.</p>'; });
+    };
+    load();
+    document.getElementById("invNew").addEventListener("click", function () {
+      var btn = document.getElementById("invNew"); btn.disabled = true; btn.textContent = "Generando…";
+      Cloud.createInvite().then(function (code) { btn.disabled = false; btn.innerHTML = icon("plus", "i-sm") + " Crear invitación"; toast("Invitación creada: " + code); load(); })
+        .catch(function (e) { btn.disabled = false; btn.innerHTML = icon("plus", "i-sm") + " Crear invitación"; toast(/quota/i.test(e && e.message || "") ? "Has agotado tus invitaciones" : "No se pudo crear"); });
+    });
+  }
+  function shareInvite(code) {
+    var url = location.origin + location.pathname;
+    var text = "Te invito a App del Mago, el círculo privado de magos. Usa mi código de invitación: " + code + "\n" + url;
+    if (navigator.share) { navigator.share({ title: "App del Mago", text: text }).catch(function () {}); return; }
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(function () { toast("Invitación copiada"); }).catch(function () { toast(code); }); }
+    else toast(code);
   }
 
   function traduce(msg) {
@@ -2799,16 +2848,17 @@
       '<div class="screen gate">' +
       '<div class="gate-hero"><div class="logo">' + mark("", true) + "</div>" +
       '<h1 class="wm">App del <span>Mago</span></h1>' +
-      '<p class="tagline">El estudio del mago</p>' +
-      '<p>Tu biblioteca de magia, siempre contigo.</p></div>' +
+      '<p class="tagline">El círculo privado de los magos</p>' +
+      '<p><span class="gate-badge">' + icon("lock", "i-sm") + " Solo por invitación</span></p></div>" +
       '<div class="gate-card">' +
       '<div class="gate-tabs"><button class="' + (!isSignup ? "on" : "") + '" id="tabLogin">Entrar</button>' +
-      '<button class="' + (isSignup ? "on" : "") + '" id="tabSignup">Crear cuenta</button></div>' +
+      '<button class="' + (isSignup ? "on" : "") + '" id="tabSignup">Tengo invitación</button></div>' +
+      (isSignup ? '<div class="field"><label>Código de invitación</label><input id="aInvite" autocapitalize="characters" autocomplete="off" placeholder="MAGO-XXXXX" value="' + esc(getPendingInvite()) + '"></div>' : "") +
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
       '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
-      '<button class="btn" id="aGo">' + (isSignup ? "Crear cuenta" : "Entrar") + "</button>" +
+      '<button class="btn" id="aGo">' + (isSignup ? "Solicitar mi acceso" : "Entrar") + "</button>" +
       "</div>" +
-      '<p class="gate-foot">Necesitas una cuenta para guardar y sincronizar tus trucos.</p>' +
+      '<p class="gate-foot">' + (isSignup ? "App del Mago es un espacio cerrado. Necesitas el código de un mago que ya sea miembro." : "¿Sin cuenta? Necesitas una invitación de un miembro.") + "</p>" +
       "</div>";
     document.getElementById("tabLogin").addEventListener("click", function () { if (authMode !== "login") { authMode = "login"; renderGate(); } });
     document.getElementById("tabSignup").addEventListener("click", function () { if (authMode !== "signup") { authMode = "signup"; renderGate(); } });
@@ -2823,11 +2873,17 @@
     var btn = document.getElementById("aGo"); btn.disabled = true; btn.textContent = "Un momento…";
     var done = function (label) { if (btn) { btn.disabled = false; btn.textContent = label; } };
     if (isSignup) {
-      Cloud.signUp(email, pass).then(function (r) {
-        if (r.error) { toast(traduce(r.error.message)); return done("Crear cuenta"); }
-        if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); return loadProfile().then(function () { startRealtime(); startFeedRealtime(); syncOnLogin(true); location.hash = "#/"; route(); }); }
-        pendingEmail = email; renderGate();
-      }).catch(function () { toast("Error de conexión"); done("Crear cuenta"); });
+      var code = (document.getElementById("aInvite").value || "").trim().toUpperCase();
+      if (!code) { toast("Escribe tu código de invitación"); return done("Solicitar mi acceso"); }
+      Cloud.checkInvite(code).then(function (valid) {
+        if (!valid) { toast("Esa invitación no es válida o ya se ha usado"); return done("Solicitar mi acceso"); }
+        setPendingInvite(code);
+        return Cloud.signUp(email, pass).then(function (r) {
+          if (r.error) { toast(traduce(r.error.message)); return done("Solicitar mi acceso"); }
+          if (r.data && r.data.session) { session = r.data.session.user; toast("¡Cuenta creada!"); return loadProfile().then(function () { startRealtime(); startFeedRealtime(); syncOnLogin(true); location.hash = "#/"; route(); }); }
+          pendingEmail = email; renderGate();
+        });
+      }).catch(function () { toast("Error de conexión"); done("Solicitar mi acceso"); });
     } else {
       Cloud.signIn(email, pass).then(function (r) {
         if (r.error) { toast(traduce(r.error.message)); return done("Entrar"); }
@@ -2906,6 +2962,7 @@
       if (h === "#/practica") return renderPractice();
       if (h === "#/stats") return renderStats();
       if (h === "#/enlaces") return renderShares();
+      if (h === "#/invitaciones") return logged() ? renderInvites() : renderLibrary();
       if (h === "#/comunidad") return socialEnabled ? renderCommunity("discover") : renderLibrary();
       if (h === "#/siguiendo") return socialEnabled ? renderCommunity("following") : renderLibrary();
       if (h === "#/mercado") return socialEnabled ? renderCommunity("market") : renderLibrary();

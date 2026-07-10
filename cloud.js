@@ -229,10 +229,22 @@ window.Cloud = (function () {
   function upsertProfile(fields) {
     return currentUser().then(function (u) {
       if (!u) throw new Error("sin sesión");
-      var row = Object.assign({ user_id: u.id, updated_at: new Date().toISOString() }, fields);
-      return sb.from("profiles").upsert(row, { onConflict: "user_id" }).select().single().then(function (r) { if (r.error) throw r.error; return r.data; });
+      var row = Object.assign({ updated_at: new Date().toISOString() }, fields);
+      // Actualiza si ya existe (miembro), inserta si es alta nueva. La política
+      // de INSERT exige haber canjeado una invitación; el UPDATE no.
+      return sb.from("profiles").select("user_id").eq("user_id", u.id).maybeSingle().then(function (r) {
+        if (r.error) throw r.error;
+        if (r.data) return sb.from("profiles").update(row).eq("user_id", u.id).select().single().then(function (x) { if (x.error) throw x.error; return x.data; });
+        row.user_id = u.id;
+        return sb.from("profiles").insert(row).select().single().then(function (x) { if (x.error) throw x.error; return x.data; });
+      });
     });
   }
+  // Invitaciones (app por invitación)
+  function checkInvite(code) { return sb.rpc("check_invite", { p_code: code }).then(function (r) { if (r.error) throw r.error; return !!r.data; }); }
+  function redeemInvite(code) { return sb.rpc("redeem_invite", { p_code: code || "" }).then(function (r) { if (r.error) throw r.error; return !!r.data; }); }
+  function createInvite() { return sb.rpc("create_invite").then(function (r) { if (r.error) throw r.error; return r.data; }); }
+  function myInvites() { return sb.rpc("my_invites").then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function handleOwner(handle) {
     return sb.from("profiles").select("user_id").ilike("handle", handle).maybeSingle()
       .then(function (r) { return r.data ? r.data.user_id : null; }).catch(function () { return null; });
@@ -357,6 +369,7 @@ window.Cloud = (function () {
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
     subscribeRealtime: subscribeRealtime, unsubscribeRealtime: unsubscribeRealtime,
     publicUrl: publicUrl, getMyProfile: getMyProfile, upsertProfile: upsertProfile, handleOwner: handleOwner, uploadSocial: uploadSocial,
+    checkInvite: checkInvite, redeemInvite: redeemInvite, createInvite: createInvite, myInvites: myInvites,
     getFeed: getFeed, getComments: getComments, getMarket: getMarket, getProfileInfo: getProfileInfo,
     getClips: getClips, getClip: getClip, createClip: createClip, deleteClip: deleteClip, likeClip: likeClip, unlikeClip: unlikeClip,
     getClipComments: getClipComments, addClipComment: addClipComment, deleteClipComment: deleteClipComment, bumpClipView: bumpClipView, uploadClipVideo: uploadClipVideo,

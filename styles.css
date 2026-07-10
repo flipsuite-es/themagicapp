@@ -856,3 +856,14 @@ a.tag, a.mention { color: var(--brand); font-weight: 600; cursor: pointer; text-
 .clc-prev { border-radius: var(--radius-sm); overflow: hidden; background: #000; margin-bottom: 12px; }
 .clc-prev video { width: 100%; max-height: 52vh; display: block; background: #000; }
 .clc-acts { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+/* ============ App por invitación ============ */
+.gate-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.28); background: rgba(0,0,0,.16); font-size: 12.5px; font-weight: 700; letter-spacing: .3px; }
+.gate-badge .i { width: 14px; height: 14px; }
+.inv-list { display: flex; flex-direction: column; gap: 8px; }
+.inv-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.inv-row.used { opacity: .62; }
+.inv-code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 800; letter-spacing: 1px; font-size: 15px; }
+.inv-st { flex: 1; font-size: 12.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; }
+.inv-row.used .inv-st { color: var(--ok); }
+.inv-st .i { width: 14px; height: 14px; }

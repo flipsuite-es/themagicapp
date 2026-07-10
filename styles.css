@@ -447,3 +447,6 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   .appbar .brandmark { display: none; }
   .pagetitle { display: block; font-size: 24px; letter-spacing: -0.02em; }
 }
+
+/* Indicador de sincronización */
+.iconbtn.spinning .i { animation: spin .9s linear infinite; }

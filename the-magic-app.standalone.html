@@ -453,6 +453,9 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   .pagetitle { display: block; font-size: 24px; letter-spacing: -0.02em; }
 }
 
+/* Indicador de sincronización */
+.iconbtn.spinning .i { animation: spin .9s linear infinite; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -545,6 +548,19 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   var state = load();
   function getTrick(id) { return state.tricks.filter(function (t) { return t.id === id; })[0]; }
   function getRoutine(id) { return state.routines.filter(function (r) { return r.id === id; })[0]; }
+  // Texto indexado para búsqueda: incluye notas, ficha y transcripciones/capítulos de vídeos
+  function searchText(t) {
+    var parts = [t.title, t.notes || "", t.category || "", (t.tags || []).join(" ")];
+    var m = t.meta || {};
+    for (var k in m) { if (m[k]) parts.push(m[k]); }
+    (t.media || []).forEach(function (md) {
+      if (md.title) parts.push(md.title);
+      if (md.description) parts.push(md.description);
+      if (md.transcript) parts.push(md.transcript);
+      if (md.chapters) md.chapters.forEach(function (c) { parts.push(c.title); });
+    });
+    return parts.join(" ").toLowerCase();
+  }
 
   /* ----------------------- sesión / sincronización -------------------- */
   var session = null;                 // usuario actual (o null si offline/local)
@@ -566,9 +582,12 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
   function syncRoutine(r) { if (logged() && cloudReady()) Cloud.upsertRoutine(toRoutineRow(r)).then(function () { r.remote = true; }).catch(function () {}); }
   function syncDeleteRoutine(id, wasRemote) { if (logged() && cloudReady() && wasRemote) Cloud.deleteRoutine(id).catch(function () {}); }
 
+  var syncing = false;
+  function reflectSync() { var bl = document.getElementById("syncBtn"); if (bl) bl.classList.toggle("spinning", syncing); }
   function syncOnLogin(silent) {
     if (!logged() || !cloudReady()) return Promise.resolve();
     if (navigator.onLine === false) return Promise.resolve(); // offline: usa caché local
+    syncing = true; reflectSync();
     // 1) subir los locales que aún no están en la nube
     var locals = state.tricks.filter(function (t) { return !t.remote; });
     var chain = Promise.resolve();
@@ -598,9 +617,10 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       rrows.forEach(function (r) { rById[r.id] = routineRowToLocal(r); });
       state.routines = Object.keys(rById).map(function (k) { return rById[k]; });
       save();
+      syncing = false; reflectSync();
       if (isMain()) route();
       if (!silent) toast("Sincronizado");
-    }).catch(function () { if (!silent) toast("No se pudo sincronizar"); });
+    }).catch(function () { syncing = false; reflectSync(); if (!silent) toast("No se pudo sincronizar"); });
   }
   function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/ajustes" || h === "#/cuenta"; }
 
@@ -672,8 +692,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       if (filter.fav && !t.favorite) return false;
       if (filter.q) {
         var q = filter.q.toLowerCase();
-        var hay = (t.title + " " + (t.notes || "") + " " + (t.tags || []).join(" ") + " " + (t.category || "")).toLowerCase();
-        if (hay.indexOf(q) < 0) return false;
+        if (searchText(t).indexOf(q) < 0) return false;
       }
       return true;
     });
@@ -695,6 +714,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       '<div class="appbar"><span class="brandmark">' + icon("hat") + '<span class="wm">The Magic App</span></span>' +
       '<h1 class="pagetitle">Biblioteca</h1>' +
       '<span class="spacer"></span>' +
+      (logged() && cloudReady() ? '<button class="iconbtn ' + (syncing ? "spinning" : "") + '" id="syncBtn" title="Sincronizar">' + icon("cloud") + "</button>" : "") +
       '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" title="Favoritos">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
       '<button class="iconbtn" id="acctBtn" title="Cuenta">' + icon("user") + "</button></div>" +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
@@ -707,6 +727,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
     q.addEventListener("input", function () { filter.q = q.value; refreshCards(); });
     document.getElementById("favToggle").addEventListener("click", function () { filter.fav = !filter.fav; renderLibrary(); });
     document.getElementById("acctBtn").addEventListener("click", function () { location.hash = "#/cuenta"; });
+    var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
     bindCards();
@@ -718,7 +739,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
       if (filter.cat !== "all" && t.category !== filter.cat) return false;
       if (filter.status !== "all" && t.status !== filter.status) return false;
       if (filter.fav && !t.favorite) return false;
-      if (q) { var hay = (t.title + " " + (t.notes || "") + " " + (t.tags || []).join(" ")).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+      if (q && searchText(t).indexOf(q) < 0) return false;
       return true;
     });
     var holder = view.querySelector(".cards"); var countEl = view.querySelector(".count");

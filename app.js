@@ -1414,7 +1414,7 @@
     } else if (step === 2) {
       body = '<h1 class="title">La comunidad</h1><p class="subtitle">Una red y un mercado exclusivos para magos.</p>' +
         '<div class="onb-feat"><span class="i2">' + icon("people") + '</span><div><b>Comparte y descubre</b><p>Publica ideas, sigue a otros magos y aprende de la comunidad.</p></div></div>' +
-        '<div class="onb-feat"><span class="i2">' + icon("bag") + '</span><div><b>Mercado de trucos</b><p>Vende tus rutinas o consíguelas de otros magos. Tú pones el precio.</p></div></div>' +
+        '<div class="onb-feat"><span class="i2">' + icon("bag") + '</span><div><b>Mercado de magos</b><p>Vende métodos digitales o material físico: barajas, gimmicks, libros… Tú pones el precio.</p></div></div>' +
         '<div class="onb-feat"><span class="i2">' + icon("lock") + '</span><div><b>Tú decides</b><p>Puedes tener la comunidad desactivada y usar la app como biblioteca 100% privada. Se cambia cuando quieras en Ajustes.</p></div></div>' +
         '<div class="toggle-row" id="socToggle"><div><b>Activar la comunidad</b><p class="hint">Recomendado. Podrás desactivarla en cualquier momento.</p></div><span class="switch ' + (onb.social ? "on" : "") + '" id="socSw"></span></div>' +
         '<button class="btn" id="onbFinish">' + (onb.social ? "Continuar" : "Entrar a App del Mago") + "</button>";
@@ -1783,12 +1783,18 @@
     var bodyEl = document.getElementById("comBody");
     if (mode === "market") {
       Cloud.getMarket().then(function (rows) {
-        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px">' + emptyArt() + '<h3>Mercado vacío</h3><p>Sé el primero en poner un truco a la venta.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender un truco</button></div>'; return; }
-        bodyEl.innerHTML = '<div class="market">' + rows.map(function (l) {
-          return '<div class="listcard" data-l="' + esc(l.id) + '">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
-            '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="by">' + esc(l.name || l.handle || "Mago") + '</div><div class="price">' + money(l.price, l.currency) + (l.owned ? ' <span class="owned">Tuyo</span>' : "") + "</div></div></div>";
-        }).join("") + "</div>";
-        bodyEl.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+        if (!rows.length) { bodyEl.innerHTML = '<div class="empty" style="padding:46px 12px">' + emptyArt() + '<h3>Mercado vacío</h3><p>Sé el primero en vender algo: un método digital o material físico.</p><button class="btn" onclick="location.hash=\'#/vender\'">Vender</button></div>'; return; }
+        bodyEl.innerHTML = '<div class="chips" id="mkFilter">' +
+          [["all", "Todo"], ["digital", "Digital"], ["physical", "Físico"]].map(function (f) { return '<button class="chip' + (marketFilter === f[0] ? " active" : "") + '" data-f="' + f[0] + '">' + f[1] + "</button>"; }).join("") +
+          '</div><div class="market" id="mkGrid"></div>';
+        function draw() {
+          var vis = rows.filter(function (l) { return marketFilter === "all" || (marketFilter === "physical") === isPhysical(l); });
+          var grid = document.getElementById("mkGrid");
+          grid.innerHTML = vis.length ? vis.map(listingCard).join("") : '<div class="empty" style="grid-column:1/-1;padding:30px 12px"><p>Nada por aquí todavía.</p></div>';
+          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+        }
+        draw();
+        bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (ch) { ch.addEventListener("click", function () { marketFilter = ch.getAttribute("data-f"); bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (x) { x.classList.toggle("active", x === ch); }); draw(); }); });
       }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
     } else if (mode === "discover") {
       Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; }), Cloud.getStories().catch(function () { return []; })]).then(function (res) {
@@ -2384,7 +2390,7 @@
         '<div class="p-stats"><div><b>' + (p.posts || 0) + '</b><span>publicaciones</span></div><div data-go="#/seguidores/' + esc(uid) + '"><b>' + (p.followers || 0) + '</b><span>seguidores</span></div><div data-go="#/seguidos/' + esc(uid) + '"><b>' + (p.following || 0) + '</b><span>siguiendo</span></div></div>' +
         (function () { var ach = achievementsFor(p, p.is_me); return ach.length ? '<div class="ach-row">' + ach.map(function (a) { return '<span class="ach">' + icon(a.i, "i-sm") + esc(a.t) + "</span>"; }).join("") + "</div>" : ""; })() +
         (p.is_me ? '<div class="p-actions"><button class="btn ghost" id="prEdit">Editar perfil</button><button class="btn ghost" id="prSaved">' + icon("bookmark", "i-sm") + " Guardados</button></div>" : '<div class="p-actions"><button class="btn ' + (p.is_following ? "ghost" : "") + '" id="prFollow">' + (p.is_following ? "Siguiendo" : "Seguir") + '</button><button class="btn ghost" id="prMsg">' + icon("chat", "i-sm") + ' Mensaje</button><button class="iconbtn" id="prMore">' + icon("dots") + "</button></div>") + "</div>" +
-        (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(function (l) { return '<div class="listcard" data-l="' + esc(l.id) + '">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") + '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="price">' + money(l.price, l.currency) + "</div></div></div>"; }).join("") + "</div>" : "") +
+        (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(listingCard).join("") + "</div>" : "") +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
       b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
@@ -2429,6 +2435,25 @@
   }
 
   /* --------------------------- Mercado ------------------------------ */
+  // El mercado admite dos tipos de artículo: "digital" (el método se entrega
+  // al instante en la biblioteca del comprador) y "physical" (un objeto real
+  // —baraja, gimmick, libro, prop— con stock limitado y gastos de envío).
+  var DISCIPLINES = [["cartomagia", "Cartomagia"], ["monedas", "Numismagia"], ["mentalismo", "Mentalismo"], ["closeup", "Close-up"], ["escenario", "Escenario"], ["infantil", "Magia infantil"], ["ilusiones", "Grandes ilusiones"], ["otros", "Otros"]];
+  function discLabel(k) { for (var i = 0; i < DISCIPLINES.length; i++) if (DISCIPLINES[i][0] === k) return DISCIPLINES[i][1]; return ""; }
+  function isPhysical(l) { return l.item_type === "physical"; }
+  function soldOut(l) { return isPhysical(l) && l.stock === 0; }
+  function listingCard(l) {
+    var phys = isPhysical(l), out = soldOut(l);
+    var cover = l.cover
+      ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')">'
+      : '<div class="lc-cover ph">' + mark();
+    var tag = phys ? '<span class="lc-tag' + (out ? " out" : "") + '">' + (out ? "Agotado" : "Físico") + "</span>" : "";
+    var by = esc(l.name || l.handle || "Mago") + (l.discipline ? " · " + discLabel(l.discipline) : "");
+    return '<div class="listcard' + (out ? " sold" : "") + '" data-l="' + esc(l.id) + '">' + cover + tag + "</div>" +
+      '<div class="lc-b"><div class="n">' + esc(l.title) + '</div><div class="by">' + by + '</div><div class="price">' + money(l.price, l.currency) +
+      (phys && l.ship_cost ? ' <span class="ship">+' + money(l.ship_cost, l.currency) + " envío</span>" : "") +
+      (l.owned ? ' <span class="owned">Tuyo</span>' : "") + "</div></div></div>";
+  }
   function starsHtml(n, cls) { var o = ""; for (var i = 1; i <= 5; i++) o += '<span class="star ' + (i <= Math.round(n) ? "on" : "") + '" ' + (cls ? 'data-r="' + i + '"' : "") + ">★</span>"; return '<span class="stars ' + (cls || "") + '">' + o + "</span>"; }
   function renderListing(id) {
     clearTabbar();
@@ -2438,22 +2463,37 @@
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
       var isSeller = l.seller === (myProfile && myProfile.user_id);
       var paused = l.status && l.status !== "active";
+      var phys = isPhysical(l), out = soldOut(l);
+      var ph1 = view.querySelector(".pagehead h1"); if (ph1 && phys) ph1.textContent = "Artículo";
       var ratingLine = l.reviews ? '<div class="li-rating">' + starsHtml(l.rating || 0) + '<span>' + (l.rating || 0) + " · " + l.reviews + (l.reviews === 1 ? " reseña" : " reseñas") + "</span></div>" : "";
+      var metaBits = [];
+      if (l.discipline) metaBits.push(discLabel(l.discipline));
+      if (phys) {
+        metaBits.push("Artículo físico" + (l.condition ? " · " + (l.condition === "usado" ? "usado" : "nuevo") : ""));
+        if (l.ships_from) metaBits.push("Envía desde " + l.ships_from);
+        metaBits.push(l.ship_cost ? "Envío " + money(l.ship_cost, l.currency) : "Envío incluido");
+        if (out) metaBits.push("AGOTADO"); else if (l.stock != null) metaBits.push(l.stock === 1 ? "Última unidad" : "Quedan " + l.stock);
+      } else {
+        metaBits.push("Digital · entrega instantánea");
+      }
+      var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
       b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
+        metaLine +
         (l.description ? '<div class="notes">' + esc(l.description) + "</div>" : "") +
         (isSeller
           ? '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + '</div><span class="li-sales">' + (l.sales || 0) + (l.sales === 1 ? " venta" : " ventas") + '</span></div>' +
             '<div class="li-owner"><button class="btn ghost" id="liEdit">' + icon("edit", "i-sm") + ' Editar</button>' +
             '<button class="btn ghost" id="liPause">' + (paused ? icon("play", "i-sm") + " Reactivar" : icon("pause", "i-sm") + " Pausar") + "</button>" +
             '<button class="btn ghost danger" id="liDel">' + icon("trash", "i-sm") + " Eliminar</button></div>" +
-            '<p class="hint" style="text-align:center">' + (paused ? "Pausado: no aparece en el mercado." : "En venta en el mercado.") + " El cobro con tarjeta llegará muy pronto.</p>"
+            '<p class="hint" style="text-align:center">' + (paused ? "Pausado: no aparece en el mercado." : (phys && out ? "Agotado: edita el artículo para reponer stock." : "En venta en el mercado.")) + " El cobro con tarjeta llegará muy pronto.</p>"
           : '<div class="li-buy"><div class="price big">' + money(l.price, l.currency) + "</div>" +
-            (l.owned ? '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>'
-              : (l.price ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
-            (l.price ? '<p class="hint" style="text-align:center">El pago con tarjeta estará disponible muy pronto.</p>' : "")) +
+            (l.owned ? (phys ? '<button class="btn" disabled>Comprado</button>' : '<button class="btn" id="liOpen">Ya es tuyo · ver en biblioteca</button>')
+              : out ? '<button class="btn" disabled>Agotado</button>'
+              : (l.price || phys ? '<button class="btn" id="liBuy">Comprar</button>' : '<button class="btn" id="liFree">Obtener gratis</button>')) + "</div>" +
+            (!l.owned && !out && (l.price || phys) ? '<p class="hint" style="text-align:center">' + (phys ? "Lo envía el propio mago. " : "") + 'El pago con tarjeta estará disponible muy pronto.</p>' : "")) +
         (l.owned && l.seller !== (myProfile && myProfile.user_id) ? '<div class="sec-label">Tu valoración</div><div class="rate-box" id="rateBox">' + starsHtml(0, "pick") + '<textarea id="revBody" rows="2" placeholder="¿Qué te ha parecido? (opcional)"></textarea><button class="btn small" id="revSend">Enviar valoración</button></div>' : "") +
         '<div class="sec-label">Reseñas</div>' + (reviews.length ? '<div class="reviews">' + reviews.map(function (r) { return '<div class="rev">' + avatarHtml(Cloud.publicUrl(r.avatar), r.name || r.handle, "sm") + '<div><div class="c-who">' + esc(r.name || r.handle || "Mago") + " " + starsHtml(r.rating) + "</div>" + (r.body ? '<div class="c-b">' + esc(r.body) + "</div>" : "") + "</div></div>"; }).join("") + "</div>" : '<p class="hint">Aún no hay reseñas.</p>');
       var sel = b.querySelector(".li-seller[data-mago]"); if (sel) sel.addEventListener("click", function () { location.hash = "#/mago/" + l.seller; });
@@ -2479,11 +2519,11 @@
       }
     }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
   }
-  var sellTrick = null, sellCover = null;
+  var sellTrick = null, sellCover = null, marketFilter = "all";
   function renderSellForm(editId) {
     clearTabbar(); sellTrick = null; sellCover = null;
     if (editId) {
-      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado/' + esc(editId) + '\'">' + icon("back") + '</button><h1>Editar truco</h1></div><div id="slLoad">' + skelDetail() + '</div></div>';
+      view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado/' + esc(editId) + '\'">' + icon("back") + '</button><h1>Editar artículo</h1></div><div id="slLoad">' + skelDetail() + '</div></div>';
       Promise.all([Cloud.getListing(editId), Cloud.getListingContent(editId).catch(function () { return null; })]).then(function (res) {
         var l = res[0], content = res[1];
         if (!l || l.seller !== (myProfile && myProfile.user_id)) { view.innerHTML = '<div class="screen"><div class="empty" style="padding:40px"><p>No disponible.</p></div></div>'; return; }
@@ -2498,40 +2538,88 @@
     var prefTitle = ex.title || "", prefDesc = ex.description || "", prefCents = ex.price || 0;
     sellCover = ex.cover || null;
     if (content) sellTrick = { title: content.title, category: content.category, difficulty: content.difficulty, meta: content.meta || {}, notes: content.notes || "", tags: content.tags || [], media: content.media || [] };
+    var sellType = ex.item_type === "physical" ? "physical" : "digital";
+    var sellDisc = ex.discipline || "";
+    var sellCond = ex.condition || "nuevo";
+    var prefStock = ex.stock != null ? ex.stock : "";
+    var prefShip = ex.ship_cost || 0;
     var host = editId ? document.getElementById("slLoad") : view;
-    var html = (editId ? "" : '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado\'">' + icon("back") + '</button><h1>Vender un truco</h1></div>') +
-      '<p class="subtitle">Comparte tu método con la comunidad. Se entregan las notas, la ficha y los vídeos con enlace (YouTube/Vimeo).</p>' +
-      '<button class="btn ghost" id="slPick">' + icon("cards", "i-sm") + (editId ? ' Cambiar truco de mi biblioteca' : ' Elegir truco de mi biblioteca') + '</button><div id="slPrev">' +
-      (sellTrick ? '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(sellTrick.title || "") + '</div><div class="d">' + esc(sellTrick.category || "") + "</div></div></div>" : "") + "</div>" +
-      '<div class="field"><label>Título</label><input id="slTitle" placeholder="Nombre del efecto" value="' + esc(prefTitle) + '"></div>' +
+    var typeHints = { digital: "El método se entrega al instante: notas, ficha y vídeos con enlace pasan a la biblioteca del comprador.", physical: "Un objeto real que envías tú: baraja, gimmick, libro, prop… Tú controlas el stock y el envío." };
+    var html = (editId ? "" : '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/mercado\'">' + icon("back") + '</button><h1>Vender</h1></div>') +
+      '<p class="subtitle">Métodos digitales o material físico: el mercado es para cualquier tipo de mago.</p>' +
+      '<div class="field"><label>¿Qué vendes?</label><div class="seg" id="slType"><button data-v="digital" class="' + (sellType === "digital" ? "on" : "") + '" type="button">Digital</button><button data-v="physical" class="' + (sellType === "physical" ? "on" : "") + '" type="button">Físico</button></div>' +
+      '<p class="hint" id="slTypeHint">' + typeHints[sellType] + "</p></div>" +
+      '<div id="slDigital"' + (sellType === "physical" ? ' style="display:none"' : "") + '><button class="btn ghost" id="slPick">' + icon("cards", "i-sm") + (editId ? ' Cambiar truco de mi biblioteca' : ' Elegir truco de mi biblioteca') + '</button><div id="slPrev">' +
+      (sellTrick ? '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(sellTrick.title || "") + '</div><div class="d">' + esc(sellTrick.category || "") + "</div></div></div>" : "") + "</div></div>" +
+      '<div class="field"><label>Título</label><input id="slTitle" placeholder="' + (sellType === "physical" ? "Nombre del artículo" : "Nombre del efecto") + '" value="' + esc(prefTitle) + '"></div>' +
       '<div class="field"><label>Descripción (escaparate)</label><textarea id="slDesc" rows="3" placeholder="Qué recibe el comprador, ángulos, nivel…">' + esc(prefDesc) + '</textarea></div>' +
-      '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="' + (prefCents ? "" : "on") + '" type="button">Gratis</button><button data-v="paid" class="' + (prefCents ? "on" : "") + '" type="button">De pago</button></div>' +
-      '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="' + (prefCents ? "" : "display:none;") + 'margin-top:8px" value="' + (prefCents ? (prefCents / 100).toFixed(2).replace(".", ",") : "") + '"></div>' +
+      '<div class="field"><label>Disciplina</label><div class="chips" id="slDisc">' + DISCIPLINES.map(function (d) { return '<button class="chip' + (sellDisc === d[0] ? " active" : "") + '" data-d="' + d[0] + '" type="button">' + d[1] + "</button>"; }).join("") + "</div></div>" +
+      '<div id="slPhys"' + (sellType === "physical" ? "" : ' style="display:none"') + '>' +
+      '<div class="field"><label>Unidades en stock</label><input id="slStock" type="number" inputmode="numeric" min="0" placeholder="1" value="' + prefStock + '"></div>' +
+      '<div class="field"><label>Estado</label><div class="seg" id="slCond"><button data-v="nuevo" class="' + (sellCond === "usado" ? "" : "on") + '" type="button">Nuevo</button><button data-v="usado" class="' + (sellCond === "usado" ? "on" : "") + '" type="button">Usado</button></div></div>' +
+      '<div class="field"><label>Envío</label><div class="seg" id="slShipSeg"><button data-v="0" class="' + (prefShip ? "" : "on") + '" type="button">Incluido en el precio</button><button data-v="paid" class="' + (prefShip ? "on" : "") + '" type="button">Con coste</button></div>' +
+      '<input id="slShip" inputmode="decimal" placeholder="4,50 €" style="' + (prefShip ? "" : "display:none;") + 'margin-top:8px" value="' + (prefShip ? (prefShip / 100).toFixed(2).replace(".", ",") : "") + '"></div>' +
+      '<div class="field"><label>Envías desde</label><input id="slFrom" placeholder="España" value="' + esc(ex.ships_from || "") + '"></div></div>' +
+      '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="' + (prefCents ? "" : "on") + (sellType === "physical" ? '" style="display:none' : "") + '" type="button">Gratis</button><button data-v="paid" class="' + (prefCents || sellType === "physical" ? "on" : "") + '" type="button">De pago</button></div>' +
+      '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="' + (prefCents || sellType === "physical" ? "" : "display:none;") + 'margin-top:8px" value="' + (prefCents ? (prefCents / 100).toFixed(2).replace(".", ",") : "") + '"></div>' +
       '<button class="btn ghost" id="slCoverBtn">' + icon("plus", "i-sm") + ' Portada (opcional)</button><input type="file" id="slCoverFile" accept="image/*" style="display:none"><div id="slCoverPrev">' +
       (sellCover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(sellCover) || sellCover) + ')"></div>' : "") + "</div>" +
       '<button class="btn" id="slPublish">' + (editId ? "Guardar cambios" : "Publicar en el mercado") + "</button>";
     if (editId) host.innerHTML = html; else view.innerHTML = '<div class="screen">' + html + "</div>";
     document.getElementById("slPick").addEventListener("click", function () { pickTrick(function (t) { sellTrick = t; document.getElementById("slTitle").value = document.getElementById("slTitle").value || t.title; document.getElementById("slPrev").innerHTML = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }); });
-    var paid = !!prefCents;
+    var paid = !!prefCents || sellType === "physical";
+    var shipPaid = !!prefShip;
+    view.querySelectorAll("#slType button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSeg("#slType", b); sellType = b.getAttribute("data-v");
+        var phys = sellType === "physical";
+        document.getElementById("slDigital").style.display = phys ? "none" : "";
+        document.getElementById("slPhys").style.display = phys ? "" : "none";
+        document.getElementById("slTypeHint").textContent = typeHints[sellType];
+        document.getElementById("slTitle").placeholder = phys ? "Nombre del artículo" : "Nombre del efecto";
+        var freeBtn = view.querySelector('#slPrice [data-v="0"]');
+        freeBtn.style.display = phys ? "none" : "";
+        if (phys && !paid) { paid = true; setSeg("#slPrice", view.querySelector('#slPrice [data-v="paid"]')); document.getElementById("slAmount").style.display = ""; }
+      });
+    });
+    view.querySelectorAll("#slDisc .chip").forEach(function (ch) {
+      ch.addEventListener("click", function () {
+        var d = ch.getAttribute("data-d");
+        sellDisc = sellDisc === d ? "" : d;
+        view.querySelectorAll("#slDisc .chip").forEach(function (x) { x.classList.toggle("active", x.getAttribute("data-d") === sellDisc); });
+      });
+    });
+    view.querySelectorAll("#slCond button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slCond", b); sellCond = b.getAttribute("data-v"); }); });
+    view.querySelectorAll("#slShipSeg button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slShipSeg", b); shipPaid = b.getAttribute("data-v") === "paid"; document.getElementById("slShip").style.display = shipPaid ? "" : "none"; }); });
     view.querySelectorAll("#slPrice button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slPrice", b); paid = b.getAttribute("data-v") === "paid"; document.getElementById("slAmount").style.display = paid ? "" : "none"; }); });
     document.getElementById("slCoverBtn").addEventListener("click", function () { document.getElementById("slCoverFile").click(); });
     document.getElementById("slCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { sellCover = r.path; document.getElementById("slCoverPrev").innerHTML = '<div class="li-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
     document.getElementById("slPublish").addEventListener("click", function () {
+      var phys = sellType === "physical";
       var title = (document.getElementById("slTitle").value || "").trim();
-      if (!sellTrick) { toast("Elige un truco primero"); return; }
+      if (!phys && !sellTrick) { toast("Elige un truco primero"); return; }
       if (!title) { toast("Ponle un título"); return; }
       var cents = 0;
-      if (paid) { var a = parseFloat((document.getElementById("slAmount").value || "").replace(",", ".")); if (!a || a <= 0) { toast("Pon un precio válido"); return; } cents = Math.round(a * 100); }
+      if (paid || phys) { var a = parseFloat((document.getElementById("slAmount").value || "").replace(",", ".")); if (!a || a <= 0) { toast(phys ? "Los artículos físicos necesitan un precio" : "Pon un precio válido"); return; } cents = Math.round(a * 100); }
+      var stock = null, shipCents = 0, from = null;
+      if (phys) {
+        stock = parseInt(document.getElementById("slStock").value, 10);
+        if (isNaN(stock) || stock < 1) { toast("Indica cuántas unidades tienes"); return; }
+        if (shipPaid) { var s = parseFloat((document.getElementById("slShip").value || "").replace(",", ".")); if (!s || s <= 0) { toast("Pon un coste de envío válido"); return; } shipCents = Math.round(s * 100); }
+        from = (document.getElementById("slFrom").value || "").trim() || null;
+      }
       var btn = document.getElementById("slPublish"); btn.disabled = true; btn.textContent = "Guardando…";
       var desc = (document.getElementById("slDesc").value || "").trim();
+      var listing = { title: title, description: desc, price_cents: cents, currency: "eur", cover_path: sellCover,
+        item_type: sellType, discipline: sellDisc || null,
+        stock: stock, ship_cost_cents: shipCents, ships_from: from, condition: phys ? sellCond : null };
       if (editId) {
-        Cloud.updateListing(editId, { title: title, description: desc, price_cents: cents, currency: "eur", cover_path: sellCover })
-          .then(function () { return content ? Cloud.updateListingContent(editId, buildSellPayload(sellTrick)) : null; })
+        Cloud.updateListing(editId, listing)
+          .then(function () { return !phys && content ? Cloud.updateListingContent(editId, buildSellPayload(sellTrick)) : null; })
           .then(function () { toast("Cambios guardados"); location.hash = "#/mercado/" + editId; })
           .catch(function () { btn.disabled = false; btn.textContent = "Guardar cambios"; toast("No se pudo guardar"); });
       } else {
-        var listing = { title: title, description: desc, price_cents: cents, currency: "eur", cover_path: sellCover };
-        Cloud.createListing(listing, buildSellPayload(sellTrick)).then(function (l) {
+        Cloud.createListing(listing, phys ? null : buildSellPayload(sellTrick)).then(function (l) {
           return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
         }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
           .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });

@@ -1389,3 +1389,13 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 @keyframes twinkle { 0%, 100% { opacity: .15; transform: scale(.8); } 50% { opacity: .85; transform: scale(1.05); } }
 /* La leyenda de la historia queda por encima del botón "Quién la vio" */
 .sv-cap { bottom: calc(64px + env(safe-area-inset-bottom)); padding-bottom: 12px; background: none; text-shadow: 0 1px 8px rgba(0,0,0,.75); }
+
+/* ------------------- Mercado: artículos físicos ------------------- */
+.listcard .lc-cover { position: relative; }
+.lc-tag { position: absolute; top: 8px; left: 8px; background: color-mix(in srgb, var(--ink) 82%, transparent); color: var(--bg); font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 3px 10px; border-radius: 999px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.lc-tag.out { background: color-mix(in srgb, var(--danger) 88%, black); color: #fff; }
+.listcard.sold .lc-cover { filter: grayscale(.6); opacity: .8; }
+.price .ship { color: var(--ink-faint); font-weight: 500; font-size: 12px; font-family: var(--ui); }
+.li-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.li-meta span { font-size: 12.5px; color: var(--ink-soft); border: 1px solid var(--line); background: var(--surface); padding: 5px 11px; border-radius: 999px; }
+.li-meta span.out { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); font-weight: 600; }

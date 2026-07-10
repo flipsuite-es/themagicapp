@@ -330,6 +330,7 @@ window.Cloud = (function () {
   function createListing(listing, content) {
     return sb.from("listings").insert(listing).select().single().then(function (r) {
       if (r.error) throw r.error; var l = r.data;
+      if (!content) return l; // físico: no hay contenido digital que entregar
       return sb.from("listing_content").insert({ listing_id: l.id, payload: content }).then(function (r2) { if (r2.error) throw r2.error; return l; });
     });
   }

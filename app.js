@@ -665,6 +665,13 @@
     mesaList = list;
     mesaDeal = !!redeal;
     cancelAnimationFrame(mesaRaf);
+    // higiene: trucos borrados no dejan posiciones ni plazas de cajón huérfanas
+    var all = {}; state.tricks.forEach(function (t0) { all[t0.id] = 1; });
+    var dirty = false, k0;
+    for (k0 in mesaOrg.pos) if (!all[k0]) { delete mesaOrg.pos[k0]; dirty = true; }
+    for (k0 in mesaOrg.items) if (!all[k0]) { delete mesaOrg.items[k0]; dirty = true; }
+    if (mesaDrawer && !mesaOrg.drawers.some(function (d) { return d.id === mesaDrawer; })) mesaDrawer = null;
+    if (dirty) saveMesaOrg();
     var visible = list.filter(function (t) { return (mesaOrg.items[t.id] || null) === mesaDrawer; });
     var slot = 0, maxY = 300;
     var cardsData = visible.map(function (t) {
@@ -2078,7 +2085,7 @@
     }
     var cv = a.createConvolver(); cv.buffer = revBuf; return cv;
   }
-  var cardBuf = null;
+  var cardBuf = null, sndChain = null;
   function makeCardBuf(a) {
     if (cardBuf) return cardBuf;
     var sr = a.sampleRate, len = Math.floor(sr * 0.17);
@@ -2101,11 +2108,15 @@
     if (kind === "tap") { var n0 = performance.now(); if (n0 - lastTap < 90) return; lastTap = n0; }
     try {
       var a = audioCtx(), t = a.currentTime;
-      var comp = a.createDynamicsCompressor();
-      comp.threshold.value = -22; comp.ratio.value = 6; comp.connect(a.destination);
-      var dry = a.createGain(); dry.gain.value = 0.10; dry.connect(comp);
-      var rev = makeReverb(a); var wet = a.createGain(); wet.gain.value = 0.055;
-      rev.connect(wet); wet.connect(comp);
+      if (!sndChain || sndChain.ctx !== a) {
+        var comp = a.createDynamicsCompressor();
+        comp.threshold.value = -22; comp.ratio.value = 6; comp.connect(a.destination);
+        var dry0 = a.createGain(); dry0.gain.value = 0.10; dry0.connect(comp);
+        var rev0 = makeReverb(a); var wet = a.createGain(); wet.gain.value = 0.055;
+        rev0.connect(wet); wet.connect(comp);
+        sndChain = { ctx: a, dry: dry0, rev: rev0 };
+      }
+      var dry = sndChain.dry, rev = sndChain.rev;
       function noise(o) {
         var src = a.createBufferSource(); src.buffer = noiseBuf;
         var fl = a.createBiquadFilter(); fl.type = o.type || "bandpass"; fl.Q.value = o.q || 0.9;
@@ -2217,6 +2228,7 @@
   function initAmbient() {
     try {
       if (!fxFull() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (document.getElementById("fx")) return; // ya activo: no duplicar bucles ni listeners
       var cv = document.createElement("canvas"); cv.id = "fx"; cv.setAttribute("aria-hidden", "true");
       document.body.insertBefore(cv, document.body.firstChild);
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
@@ -2253,6 +2265,7 @@
         return m === "dark" || (m !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
       }
       function frame(ts) {
+        if (!cv.isConnected) { removeEventListener("resize", size); return; } // apagado desde Ajustes
         requestAnimationFrame(frame);
         if (document.hidden || !dark()) return;
         if (ts - last < 40) return; // ~25 fps: suficiente para humo

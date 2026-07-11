@@ -1752,6 +1752,13 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
   }
 }
 
+/* 5) Fundido en los bordes de las tiras: si hay más contenido por un lado,
+      ese borde se desvanece (lo enciende updateHFades); al llegar al final
+      desaparece. Un chip cortado se lee como "desliza", nunca como error. */
+.hfade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); }
+.hfade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px); mask-image: linear-gradient(90deg, transparent, #000 44px); }
+.hfade-l.hfade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -4169,10 +4176,11 @@ window.Cloud = (function () {
     try {
       if (!fxFull() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       if (document.getElementById("fx")) return; // ya activo: no duplicar bucles ni listeners
+      // El lienzo se prepara y pinta ANTES de entrar al DOM: si se insertara
+      // vacío sería un fotograma negro opaco (parpadeo visible en tema claro).
       var cv = document.createElement("canvas"); cv.id = "fx"; cv.setAttribute("aria-hidden", "true");
-      document.body.insertBefore(cv, document.body.firstChild);
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
-      if (!gl) { cv.remove(); return; }
+      if (!gl) return;
       var VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
       var FS = "precision mediump float;uniform vec2 R;uniform float T;uniform vec2 G;uniform float L;" +
         "float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}" +
@@ -4185,12 +4193,18 @@ window.Cloud = (function () {
         "float tw=step(.9975,sp)*pow(.5+.5*sin(T*(1.2+sp*2.5)+sp*44.),8.);float m=smoothstep(.15,.5,s);" +
         // oscuro: humo dorado aditivo sobre negro
         "vec3 cd=gold*s*.14*(1.1-u.y*.55)+gold*tw*.6*m;" +
-        // claro: papel de galería (reproduce --grad-page) con velos calidos y polvo de oro
-        "float d=length(vec2((u.x-.5)*1.15,(1.-u.y)*.82));" +
-        "vec3 base=mix(vec3(.988,.976,.949),vec3(.945,.929,.894),smoothstep(0.,.5,d));" +
-        "base=mix(base,vec3(.902,.882,.831),smoothstep(.5,1.05,d));" +
-        "vec3 cl=base-vec3(.14,.115,.062)*s*(1.08-u.y*.4);" +
-        "cl=mix(cl,vec3(.74,.57,.24),tw*.75*m);" +
+        // claro: seda sobre papel de galería — el mismo degradado de pagina
+        // (calcado de --grad-page para que activar efectos no "salte"), una
+        // veladura que sombrea y abrillanta como tela al moverse, y motas de
+        // oro redondas y escasas, no pixeles cuadrados
+        "float d=length(vec2((u.x-.5)/1.3,(1.-u.y+.12)/.9));" +
+        "vec3 base=mix(vec3(.988,.976,.949),vec3(.945,.929,.894),clamp(d/.48,0.,1.));" +
+        "base=mix(base,vec3(.902,.882,.831),clamp((d-.48)/.52,0.,1.));" +
+        "float shn=smoothstep(.55,1.,s);" +
+        "vec3 cl=base-vec3(.062,.053,.031)*s*(1.05-u.y*.3)+vec3(.05,.044,.026)*shn;" +
+        "vec2 f2=fract(g)-.5;float rd=smoothstep(.5,.12,length(f2));" +
+        "float tw2=step(.998,sp)*pow(.5+.5*sin(T*(1.+sp*2.)+sp*44.),6.)*rd;" +
+        "cl=mix(cl,vec3(.72,.55,.22),tw2*.5*m);" +
         "gl_FragColor=vec4(mix(cd,cl,L),1.);}";
       function sh(t, src) { var o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw 0; return o; }
       var pr = gl.createProgram();
@@ -4212,6 +4226,10 @@ window.Cloud = (function () {
         var m = document.documentElement.getAttribute("data-theme");
         return m === "dark" || (m !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
       }
+      // Primer fotograma sincrono y recién entonces al DOM: cero parpadeo
+      gl.uniform1f(uT, 0); gl.uniform1f(uL, dark() ? 0 : 1); gl.uniform2f(uG, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      document.body.insertBefore(cv, document.body.firstChild);
       function frame(ts) {
         if (!cv.isConnected) { removeEventListener("resize", size); return; } // apagado desde Ajustes
         requestAnimationFrame(frame);
@@ -4254,6 +4272,26 @@ window.Cloud = (function () {
     document.addEventListener("pointerup", function () { if (!matchMedia("(hover: hover)").matches) drop(); }, { passive: true });
     document.addEventListener("pointercancel", drop, { passive: true });
     document.addEventListener("scroll", drop, { passive: true, capture: true });
+  }
+  /* ==== Tiras horizontales: desvanecido que dice "sigue deslizando" ====
+     Si hay más contenido por un lado, ese borde se funde; al llegar al
+     final el fundido desaparece. Así un chip cortado nunca parece un bug. */
+  function updateHFades() {
+    var els = document.querySelectorAll(".chips, .stories-bar, .top-strip");
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var max = el.scrollWidth - el.clientWidth;
+      el.classList.toggle("hfade-l", el.scrollLeft > 4);
+      el.classList.toggle("hfade-r", max > 4 && el.scrollLeft < max - 4);
+    }
+  }
+  var hfR = 0;
+  function queueHFades() { if (!hfR) hfR = requestAnimationFrame(function () { hfR = 0; updateHFades(); }); }
+  function initHFades() {
+    document.addEventListener("scroll", queueHFades, { passive: true, capture: true });
+    addEventListener("resize", queueHFades);
+    if (window.MutationObserver) new MutationObserver(queueHFades).observe(view, { childList: true, subtree: true });
+    queueHFades(); // estado inicial del primer render
   }
   function loadError(msg) {
     return '<div class="empty" style="padding:40px 16px"><p>' + esc(msg || "No se pudo cargar.") + '</p>' +
@@ -5950,6 +5988,7 @@ window.Cloud = (function () {
   initFoil();
   initTilt();
   initSoundTouch();
+  initHFades();
 })();
 
 </script>

@@ -1644,6 +1644,12 @@ body { background: transparent; background-image: none; }
 .li-cover.ph .engr { animation: engrTurn 90s linear infinite; }
 @keyframes engrTurn { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
 
+/* --- Giroscopio: los títulos foil destellan al inclinar el dispositivo --- */
+.pagetitle, .pagehead h1, h1.title, .gate-hero h1 {
+  background-size: 200% 100%;
+  background-position: calc(50% + var(--gx, 0) * 55%) 0;
+}
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -3822,6 +3828,83 @@ window.Cloud = (function () {
     }
     return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
   }
+  /* ========== SONIDO DE MESA (WebAudio, sintetizado, opt-in) ========== */
+  var sndEnabled = (function () { try { return localStorage.getItem("magic_sound") === "1"; } catch (e) { return false; } })();
+  var AC = null, noiseBuf = null;
+  function audioCtx() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    if (!noiseBuf) {
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.2, AC.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return AC;
+  }
+  function snd(kind) {
+    if (!sndEnabled) return;
+    try {
+      var a = audioCtx(), t = a.currentTime;
+      var master = a.createGain(); master.gain.value = 0.14; master.connect(a.destination);
+      function noise(dur, f0, f1, vol, type) {
+        var src = a.createBufferSource(); src.buffer = noiseBuf;
+        var fl = a.createBiquadFilter(); fl.type = type || "bandpass";
+        fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
+        var g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        src.connect(fl); fl.connect(g); g.connect(master); src.start(t); src.stop(t + dur + 0.02);
+      }
+      function tone(freq, delay, dur, vol, type) {
+        var o = a.createOscillator(); o.type = type || "triangle"; o.frequency.value = freq;
+        var g = a.createGain(); g.gain.setValueAtTime(0.0001, t + delay);
+        g.gain.exponentialRampToValueAtTime(vol, t + delay + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
+        o.connect(g); g.connect(master); o.start(t + delay); o.stop(t + delay + dur + 0.05);
+      }
+      if (kind === "tap") noise(0.035, 1400, 700, 0.5, "lowpass");
+      else if (kind === "slide") noise(0.15, 950, 260, 0.32);
+      else if (kind === "pluck") tone(660, 0, 0.09, 0.5, "sine");
+      else if (kind === "chime") { tone(659.25, 0, 0.5, 0.32); tone(987.77, 0.08, 0.6, 0.26); }
+    } catch (e) {}
+  }
+  function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  function initSoundTouch() {
+    document.addEventListener("pointerdown", function (e) {
+      if (!sndEnabled || !e.target || !e.target.closest) return;
+      if (e.target.closest(".btn, .chip, .tabbar a, .iconbtn, .fab, .seg button")) snd("tap");
+    }, { passive: true });
+    addEventListener("hashchange", function () { snd("slide"); });
+  }
+
+  /* == GIROSCOPIO: el oro reacciona al inclinar el dispositivo (foil real) == */
+  function initTilt() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var gx = 0, gy = 0, tx = 0, ty = 0, running = false;
+    function loop() {
+      gx += (tx - gx) * 0.08; gy += (ty - gy) * 0.08;
+      var r = document.documentElement.style;
+      r.setProperty("--gx", gx.toFixed(3)); r.setProperty("--gy", gy.toFixed(3));
+      window.__tiltG = [gx, gy];
+      requestAnimationFrame(loop);
+    }
+    function onOri(e) {
+      if (e.gamma == null && e.beta == null) return;
+      tx = Math.max(-1, Math.min(1, (e.gamma || 0) / 28));
+      ty = Math.max(-1, Math.min(1, ((e.beta || 0) - 40) / 32));
+      if (!running) { running = true; requestAnimationFrame(loop); }
+    }
+    function bind() { addEventListener("deviceorientation", onOri, { passive: true }); }
+    var DOE = window.DeviceOrientationEvent;
+    if (!DOE) return;
+    if (typeof DOE.requestPermission === "function") {
+      var asked = false;
+      document.addEventListener("pointerdown", function req() {
+        if (asked) return; asked = true;
+        document.removeEventListener("pointerdown", req);
+        DOE.requestPermission().then(function (st) { if (st === "granted") bind(); }).catch(function () {});
+      }, { passive: true });
+    } else bind();
+  }
+
   /* ============ MATERIA VIVA: humo y polvo de oro (WebGL) ============ */
   // Un único lienzo a baja resolución detrás del contenido, solo en tema
   // oscuro y sin reduced-motion. fbm con warp de dominio + motas que titilan.
@@ -3833,11 +3916,11 @@ window.Cloud = (function () {
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
       if (!gl) { cv.remove(); return; }
       var VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
-      var FS = "precision mediump float;uniform vec2 R;uniform float T;" +
+      var FS = "precision mediump float;uniform vec2 R;uniform float T;uniform vec2 G;" +
         "float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}" +
         "float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+1.),f.x),f.y);}" +
         "float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p*=2.03;a*=.5;}return v;}" +
-        "void main(){vec2 u=gl_FragCoord.xy/R;vec2 p=u*vec2(R.x/R.y,1.)*2.4;float t=T*.03;" +
+        "void main(){vec2 u=gl_FragCoord.xy/R;vec2 p=u*vec2(R.x/R.y,1.)*2.4+G*.5;float t=T*.03;" +
         "float s=fbm(p+vec2(t*.5,-t*.2)+fbm(p*1.6-t*.25)*.85);s=smoothstep(.42,1.05,s);" +
         "vec3 gold=vec3(.84,.65,.37);vec3 c=gold*s*.14*(1.1-u.y*.55);" +
         "vec2 g=gl_FragCoord.xy/2.6;vec2 id=floor(g);float sp=h(id);" +
@@ -3851,7 +3934,7 @@ window.Cloud = (function () {
       var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       var loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      var uR = gl.getUniformLocation(pr, "R"), uT = gl.getUniformLocation(pr, "T");
+      var uR = gl.getUniformLocation(pr, "R"), uT = gl.getUniformLocation(pr, "T"), uG = gl.getUniformLocation(pr, "G");
       function size() {
         var k = Math.min(window.devicePixelRatio || 1, 2) * 0.34;
         cv.width = Math.max(2, Math.round(innerWidth * k)); cv.height = Math.max(2, Math.round(innerHeight * k));
@@ -3869,6 +3952,7 @@ window.Cloud = (function () {
         if (ts - last < 40) return; // ~25 fps: suficiente para humo
         last = ts;
         gl.uniform1f(uT, ts / 1000);
+        var tg = window.__tiltG; gl.uniform2f(uG, tg ? tg[0] : 0, tg ? tg[1] : 0);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
       requestAnimationFrame(frame);
@@ -4410,6 +4494,7 @@ window.Cloud = (function () {
     return a;
   }
   function burstSparks(el0) {
+    snd("chime"); buzz([12, 40, 18]);
     try {
       var r = el0.getBoundingClientRect();
       for (var i = 0; i < 8; i++) {
@@ -4425,6 +4510,7 @@ window.Cloud = (function () {
     } catch (e) {}
   }
   function burstHearts(el0) {
+    snd("pluck"); buzz(8);
     try {
       var r = el0.getBoundingClientRect();
       for (var i = 0; i < 6; i++) {
@@ -4972,6 +5058,7 @@ window.Cloud = (function () {
       '<div class="setrow"><span class="si">' + icon("theme") + '</span><div class="st"><div class="t">Tema</div><div class="d">Claro, oscuro o según el sistema</div></div></div>' +
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="toggle-row" id="sndToggle"><div><b>Sonido de mesa</b><p class="hint">Deslizar de cartas y tintineos sutiles al usar la app</p></div><span class="switch ' + (sndEnabled ? "on" : "") + '" id="sndSw"></span></div>' +
       '<div class="sec-label">Seguridad</div>' +
       '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
       (hasPin() ? "Activado · se pide al abrir la app" : "Protege tus secretos si alguien coge tu móvil") + "</div></div></div>" +
@@ -5001,6 +5088,13 @@ window.Cloud = (function () {
       if (next) startFeedRealtime(); else stopFeedRealtime();
       toast(next ? "Comunidad activada" : "Comunidad desactivada");
       renderSettings();
+    });
+    var sndSw = document.getElementById("sndToggle");
+    if (sndSw) sndSw.addEventListener("click", function () {
+      sndEnabled = !sndEnabled;
+      try { localStorage.setItem("magic_sound", sndEnabled ? "1" : "0"); } catch (e) {}
+      document.getElementById("sndSw").classList.toggle("on", sndEnabled);
+      if (sndEnabled) snd("chime");
     });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
       b.addEventListener("click", function (ev) {
@@ -5475,6 +5569,8 @@ window.Cloud = (function () {
   else boot();
   initAmbient();
   initFoil();
+  initTilt();
+  initSoundTouch();
 })();
 
 </script>

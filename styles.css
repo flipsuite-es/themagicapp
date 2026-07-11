@@ -1635,3 +1635,9 @@ body { background: transparent; background-image: none; }
 /* El grabado del héroe respira: giro imperceptiblemente lento */
 .li-cover.ph .engr { animation: engrTurn 90s linear infinite; }
 @keyframes engrTurn { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* --- Giroscopio: los títulos foil destellan al inclinar el dispositivo --- */
+.pagetitle, .pagehead h1, h1.title, .gate-hero h1 {
+  background-size: 200% 100%;
+  background-position: calc(50% + var(--gx, 0) * 55%) 0;
+}

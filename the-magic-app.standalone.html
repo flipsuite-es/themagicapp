@@ -2800,8 +2800,8 @@ window.Cloud = (function () {
   // Organización de la mesa: posiciones libres y cajones creados por el mago.
   // Se guarda en el dispositivo (como la disposición de un escritorio real).
   var mesaOrg = (function () {
-    try { var o = JSON.parse(localStorage.getItem("magic_mesa_org")) || {}; return { pos: o.pos || {}, drawers: o.drawers || [], items: o.items || {}, hinted: !!o.hinted }; }
-    catch (e) { return { pos: {}, drawers: [], items: {}, hinted: false }; }
+    try { var o = JSON.parse(localStorage.getItem("magic_mesa_org")) || {}; return { pos: o.pos || {}, drawers: o.drawers || [], items: o.items || {}, hinted: !!o.hinted, seq: o.seq || 0 }; }
+    catch (e) { return { pos: {}, drawers: [], items: {}, hinted: false, seq: 0 }; }
   })();
   function saveMesaOrg() { try { localStorage.setItem("magic_mesa_org", JSON.stringify(mesaOrg)); } catch (e) {} }
   var mesaDrawer = null; // null = sobre la mesa; id = dentro de un cajón
@@ -2852,8 +2852,13 @@ window.Cloud = (function () {
       if (p && typeof p.x === "number") { x = p.x; y = p.y; }
       else { var col = slot % 2, row = (slot - col) / 2; x = 38 + col * 162 + j.dx; y = 26 + row * 236 + j.dy; slot++; }
       if (y > maxY) maxY = y;
-      return { t: t, x: x, y: y, rz: j.rz, el: null, inEl: null, shade: null };
+      return { t: t, x: x, y: y, rz: j.rz, k: (p && p.k) || 0, el: null, inEl: null, shade: null };
     });
+    cardsData.sort(function (a, b) { return a.k - b.k; }); // orden de apilado persistido
+    // micro-elevación creciente: rompe el empate de profundidad para que el
+    // pintado Y el hit-test coincidan siempre con el orden del montón
+    var topZi = 2;
+    cardsData.forEach(function (c, i2) { c.zi = 2 + i2 * 0.25; topZi = c.zi; });
     var feltH = Math.max(560, maxY + 380);
     wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span>' +
       (visible.length ? "" : '<div class="mf-empty">' + (mesaDrawer ? "Caj\u00f3n vac\u00edo.<br>Mant\u00e9n pulsada una carta y su\u00e9ltala sobre \u00e9l." : "La mesa est\u00e1 despejada.") + "</div>") +
@@ -2867,7 +2872,7 @@ window.Cloud = (function () {
       paintCard(c);
     });
     function paintCard(c) {
-      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px,2px) rotateZ(" + c.rz.toFixed(2) + "deg)";
+      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px," + (c.zi || 2).toFixed(2) + "px) rotateZ(" + c.rz.toFixed(2) + "deg)";
     }
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
@@ -2959,7 +2964,7 @@ window.Cloud = (function () {
         wrap.classList.remove("arranging");
         rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.remove("hot"); });
         var rt = e ? railTarget(e) : null;
-        if (!rt) cam.appendChild(c.el); // gana los solapes al posarse
+        if (!rt) { topZi += 0.25; c.zi = topZi; paintCard(c); cam.appendChild(c.el); } // gana los solapes al posarse
         c.inEl.classList.remove("drag"); unlift();
         if (rt) {
           var target = rt.getAttribute("data-drawer") || null;
@@ -2969,7 +2974,8 @@ window.Cloud = (function () {
           toast(target ? "Guardado en el caj\u00f3n" : "Devuelto a la mesa");
           buildMesa(mesaList, false); bindCardThumbs();
         } else {
-          mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y) };
+          mesaOrg.seq = (mesaOrg.seq || 0) + 1;
+          mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y), k: mesaOrg.seq };
           saveMesaOrg(); snd("slide");
         }
         return;

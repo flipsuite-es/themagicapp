@@ -1690,3 +1690,47 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; h
 
 /* iOS no hace zoom al enfocar si el control tiene >=16px */
 #hourSel, .field select { font-size: 16px; }
+
+/* ==========================================================================
+   UX-6 — nada cortado, nada agolpado
+   ========================================================================== */
+
+/* 1) La cursiva serif "vuela" fuera de su caja (swash de la C, cola de la r)
+      y con background-clip:text + color:transparent ese vuelo se pinta
+      invisible: parece cortado aunque no haya overflow. Aire interno
+      compensado con margen negativo: la caja visual no cambia. */
+.pagetitle, .pagehead h1, h1.title, .gate-hero h1 { padding-inline: 0.18em; margin-inline: -0.18em; }
+.appbar .pagetitle { padding: 5px 0.18em; margin: -5px -0.18em; }
+
+/* 2) El selector Descubrir/Clips/… estaba a 4px de las historias */
+.seg.big { margin-bottom: 12px; }
+/* En pantallas estrechas (iPhone SE/mini) los 4 segmentos no cabían y
+   "Mercado" quedaba fuera del viewport: los botones ya no empujan
+   (min-width:0) y el texto baja un punto donde hace falta */
+.seg.big button { min-width: 0; overflow: hidden; }
+@media (max-width: 419px) { .seg.big button { font-size: 13px; padding: 11px 4px; } }
+@media (max-width: 359px) { .seg.big button { font-size: 12px; padding: 11px 2px; letter-spacing: -0.01em; } }
+/* En 320px (iPhone SE 1ª gen) los 4 botones de cabecera dejaban al título
+   en "Comu…": botones compactos y el nombre vuelve a caber entero */
+@media (max-width: 359px) {
+  .appbar { gap: 4px; }
+  .appbar .iconbtn { min-width: 36px; min-height: 36px; width: 36px; height: 36px; }
+  .appbar .pagetitle { font-size: 18px; }
+}
+
+/* 3) Filas de chips consecutivas: más ritmo vertical y sitio para la
+      sombra del chip activo (el recorte vertical del scroller la comía) */
+.chips { padding-top: 3px; padding-bottom: 9px; margin-bottom: 6px; }
+
+/* 4) Tiras horizontales a sangre completa en móvil: si un elemento queda
+      cortado lo corta el borde físico de la pantalla —se lee como "sigue
+      deslizando"—, nunca un borde invisible dentro del contenido.
+      (Solo scrollers sueltos; los chips dentro de formularios no sangran.) */
+@media (max-width: 755px) {
+  .screen > .chips, #comBody > .chips, .stories-bar, .top-strip {
+    margin-left: calc(-18px - env(safe-area-inset-left, 0px));
+    margin-right: calc(-18px - env(safe-area-inset-right, 0px));
+    padding-left: calc(18px + env(safe-area-inset-left, 0px));
+    padding-right: calc(18px + env(safe-area-inset-right, 0px));
+  }
+}

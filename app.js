@@ -464,11 +464,8 @@
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
-    } else if (mesaOn()) {
-      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
-        '<div class="mesa" id="mesaWrap"></div>';
     } else {
-      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
+      body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
     }
 
@@ -495,8 +492,6 @@
     var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
-    bindViewSwitch();
-    if (mesaOn() && filtered.length) buildMesa(filtered);
     bindCards();
     backfillPosters();
   }
@@ -511,13 +506,6 @@
       return true;
     });
     var countEl = view.querySelector(".count");
-    if (mesaOn()) {
-      var mw = document.getElementById("mesaWrap");
-      if (!mw) { renderLibrary(); return; }
-      if (countEl) countEl.textContent = filtered.length ? filtered.length + (filtered.length === 1 ? " truco" : " trucos") : "";
-      if (!filtered.length) { mw.innerHTML = '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>'; return; }
-      buildMesa(filtered); bindCardThumbs(); return;
-    }
     var holder = view.querySelector(".cards");
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
@@ -598,264 +586,6 @@
     if (media.filter(function (m) { return m.provider !== "link"; })[0]) return { kind: "videoicon" };
     if (media.length) return { kind: "linkicon" };
     return null;
-  }
-  var libView = (function () { try { return localStorage.getItem("magic_view") || "mesa"; } catch (e) { return "mesa"; } })();
-  function mesaOn() { return libView === "mesa" && fxFull(); }
-  function setLibView(v) { libView = v; try { localStorage.setItem("magic_view", v); } catch (e) {} }
-  function viewSwitchHtml() {
-    if (!fxFull()) return "";
-    return '<div class="viewsw" role="tablist">' +
-      '<button id="vwMesa" class="' + (mesaOn() ? "on" : "") + '" aria-label="Vista mesa">' + icon("cards") + "</button>" +
-      '<button id="vwGrid" class="' + (mesaOn() ? "" : "on") + '" aria-label="Vista cuadrícula">' + icon("library") + "</button></div>";
-  }
-  function bindViewSwitch() {
-    var m = document.getElementById("vwMesa"), g = document.getElementById("vwGrid");
-    if (m) m.addEventListener("click", function () { setLibView("mesa"); renderLibrary(); });
-    if (g) g.addEventListener("click", function () { setLibView("grid"); renderLibrary(); });
-  }
-  /* ============ LA MESA DEL MAGO: biblioteca como escena 3D ============ */
-  // Tapete en perspectiva (CSS 3D), cartas repartidas con jitter con semilla,
-  // cámara con arrastre + inercia y respuesta al giroscopio. Pura presentación:
-  // cada carta navega al mismo detalle de siempre.
-  function seededJitter(id) {
-    var h = 2166136261; id = String(id);
-    for (var i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
-    h ^= h >>> 15;
-    return { rz: ((h % 100) / 100 - 0.5) * 6, dx: (((h >> 7) % 100) / 100 - 0.5) * 14, dy: (((h >> 13) % 100) / 100 - 0.5) * 16 };
-  }
-  // Organización de la mesa: posiciones libres y cajones creados por el mago.
-  // Se guarda en el dispositivo (como la disposición de un escritorio real).
-  var mesaOrg = (function () {
-    try { var o = JSON.parse(localStorage.getItem("magic_mesa_org")) || {}; return { pos: o.pos || {}, drawers: o.drawers || [], items: o.items || {}, hinted: !!o.hinted, seq: o.seq || 0 }; }
-    catch (e) { return { pos: {}, drawers: [], items: {}, hinted: false, seq: 0 }; }
-  })();
-  function saveMesaOrg() { try { localStorage.setItem("magic_mesa_org", JSON.stringify(mesaOrg)); } catch (e) {} }
-  var mesaDrawer = null; // null = sobre la mesa; id = dentro de un cajón
-  var mesaDeal = true;    // solo se reparte al entrar en la vista, no al reorganizar
-  function mesaThumbHtml(t) {
-    var th = trickThumb(t);
-    if (th && th.kind === "embedimg") return '<img class="mc-img" src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">';
-    if (th && (th.kind === "img" || th.kind === "video")) return '<span class="cthumb mc-img" data-thumb="' + esc(th.path) + '"></span>';
-    return "";
-  }
-  function mesaCardHtml(c, i) {
-    var t = c.t;
-    var thumb = mesaThumbHtml(t);
-    var art = thumb
-      ? thumb + ((trickThumb(t) || {}).kind === "video" || (t.media || []).some(function (m) { return m.embed || m.path; }) ? '<span class="mc-play">' + icon("play", "i-sm") + "</span>" : "")
-      : '<span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>";
-    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '" style="--rz:' + (c.rz || seededJitter(t.id).rz).toFixed(2) + 'deg">' +
-      '<div class="mc-in' + (mesaDeal ? " deal" : "") + '" style="transition-delay:' + (mesaDeal ? Math.min(i * 55, 440) : 0) + 'ms">' +
-      '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
-      '<div class="mc-art">' + art +
-      (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
-      '<div class="mc-name">' + esc(t.title) + '</div>' +
-      '<div class="mc-meta">' + esc(t.category || "\u2014") + "</div>" +
-      '<span class="mc-shade" aria-hidden="true"></span></div></div>';
-  }
-  function railHtml() {
-    var slots = "";
-    if (mesaDrawer) slots += '<button class="rail-slot back" data-drawer=""><span class="rs-name">\u25C2 Mesa</span></button>';
-    mesaOrg.drawers.forEach(function (d) {
-      var n = 0; for (var k in mesaOrg.items) if (mesaOrg.items[k] === d.id) n++;
-      slots += '<button class="rail-slot' + (mesaDrawer === d.id ? " open" : "") + '" data-drawer="' + esc(d.id) + '"><span class="rs-handle"></span><span class="rs-name">' + esc(d.name) + '</span><span class="rs-count">' + n + "</span></button>";
-    });
-    slots += '<button class="rail-slot add" id="railAdd" aria-label="Crear cajón">+</button>';
-    if (mesaDrawer) slots += '<button class="rail-slot tool" id="railRen">Renombrar</button><button class="rail-slot tool danger" id="railDel">Eliminar</button>';
-    return '<div class="mesa-rail" id="mesaRail">' + slots + "</div>";
-  }
-  var mesaRaf = 0, mesaList = [];
-  function buildMesa(list, redeal) {
-    if (redeal === undefined) redeal = true;
-    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
-    mesaList = list;
-    mesaDeal = !!redeal;
-    cancelAnimationFrame(mesaRaf);
-    // higiene: trucos borrados no dejan posiciones ni plazas de cajón huérfanas
-    var all = {}; state.tricks.forEach(function (t0) { all[t0.id] = 1; });
-    var dirty = false, k0;
-    for (k0 in mesaOrg.pos) if (!all[k0]) { delete mesaOrg.pos[k0]; dirty = true; }
-    for (k0 in mesaOrg.items) if (!all[k0]) { delete mesaOrg.items[k0]; dirty = true; }
-    if (mesaDrawer && !mesaOrg.drawers.some(function (d) { return d.id === mesaDrawer; })) mesaDrawer = null;
-    if (dirty) saveMesaOrg();
-    var visible = list.filter(function (t) { return (mesaOrg.items[t.id] || null) === mesaDrawer; });
-    var slot = 0, maxY = 300;
-    var cardsData = visible.map(function (t) {
-      var p = mesaOrg.pos[t.id], j = seededJitter(t.id), x, y;
-      if (p && typeof p.x === "number") { x = p.x; y = p.y; }
-      else { var col = slot % 2, row = (slot - col) / 2; x = 38 + col * 162 + j.dx; y = 26 + row * 236 + j.dy; slot++; }
-      if (y > maxY) maxY = y;
-      return { t: t, x: x, y: y, rz: j.rz, k: (p && p.k) || 0, el: null, inEl: null, shade: null };
-    });
-    cardsData.sort(function (a, b) { return a.k - b.k; }); // orden de apilado persistido
-    // micro-elevación creciente: rompe el empate de profundidad para que el
-    // pintado Y el hit-test coincidan siempre con el orden del montón
-    var topZi = 2;
-    cardsData.forEach(function (c, i2) { c.zi = 2 + i2 * 0.25; topZi = c.zi; });
-    var feltH = Math.max(560, maxY + 380);
-    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span>' +
-      (visible.length ? "" : '<div class="mf-empty">' + (mesaDrawer ? "Caj\u00f3n vac\u00edo.<br>Mant\u00e9n pulsada una carta y su\u00e9ltala sobre \u00e9l." : "La mesa est\u00e1 despejada.") + "</div>") +
-      "</div>" + cardsData.map(mesaCardHtml).join("") + "</div>" +
-      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>' + railHtml() +
-      (!mesaOrg.hinted && !mesaDrawer && visible.length ? '<div class="mesa-hint" id="mesaHint">Mant\u00e9n pulsada una carta para colocarla a tu gusto o guardarla en un caj\u00f3n</div>' : "");
-    var cam = document.getElementById("mesaCam"), rail = document.getElementById("mesaRail");
-    var movingCard = null;
-    cardsData.forEach(function (c, i) {
-      c.el = wrap.querySelectorAll(".mcard")[i]; c.inEl = c.el.firstChild; c.shade = c.el.querySelector(".mc-shade");
-      paintCard(c);
-    });
-    function paintCard(c) {
-      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px," + (c.zi || 2).toFixed(2) + "px) rotateZ(" + c.rz.toFixed(2) + "deg)";
-    }
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
-      setTimeout(function () { cardsData.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
-    }); });
-    if (visible.length && mesaDeal) snd("deal");
-    var hintEl = document.getElementById("mesaHint");
-    if (hintEl) setTimeout(function () { if (hintEl.isConnected) hintEl.classList.add("bye"); }, 6000);
-    var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
-    var dragging = false, moved = 0, lastX = 0, lastY = 0, lastT = 0, lifted = null;
-    var pressT = 0;
-    var lastFog = -1e9;
-    function fog() {
-      if (Math.abs(scroll - lastFog) < 20) return;
-      lastFog = scroll;
-      for (var i = 0; i < cardsData.length; i++) {
-        var c = cardsData[i], d = c.y - scroll;
-        // culling: lo que queda muy lejos ni se maqueta ni se pinta
-        var vis = (d > -430 && d < 1250) || c === movingCard;
-        if (vis !== c.vis) { c.vis = vis; c.el.style.display = vis ? "" : "none"; }
-        if (!vis) continue;
-        var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
-        c.shade.style.opacity = o.toFixed(2);
-      }
-    }
-    function camPaint() {
-      var g = window.__tiltG || [0, 0];
-      var over = scroll < 0 ? scroll : (scroll > maxScroll ? scroll - maxScroll : 0);
-      var disp = scroll - over * 0.65;
-      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-disp).toFixed(1) + "px,0)";
-    }
-    function tick() {
-      if (!wrap.isConnected) return;
-      if (!dragging) {
-        if (scroll < 0) { vel = 0; scroll += (0 - scroll) * 0.16; if (Math.abs(scroll) < 0.4) scroll = 0; }
-        else if (scroll > maxScroll) { vel = 0; scroll += (maxScroll - scroll) * 0.16; if (Math.abs(scroll - maxScroll) < 0.4) scroll = maxScroll; }
-        else if (Math.abs(vel) > 0.15) { scroll += vel; vel *= 0.94; }
-      }
-      camPaint(); fog();
-      mesaRaf = requestAnimationFrame(tick);
-    }
-    function unlift() { if (lifted) { lifted.classList.remove("lift"); lifted = null; } }
-    function findCard(el0) {
-      var mc = el0 && el0.closest ? el0.closest(".mcard") : null; if (!mc) return null;
-      for (var i = 0; i < cardsData.length; i++) if (cardsData[i].el === mc) return cardsData[i];
-      return null;
-    }
-    function railTarget(e) {
-      var el0 = document.elementFromPoint(e.clientX, e.clientY);
-      return el0 && el0.closest ? el0.closest(".rail-slot[data-drawer]") : null;
-    }
-    wrap.addEventListener("pointerdown", function (e) {
-      if (e.target.closest && e.target.closest(".mesa-rail")) return;
-      dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
-      var c = findCard(e.target);
-      if (c) {
-        lifted = c.inEl; lifted.classList.add("lift");
-        clearTimeout(pressT);
-        pressT = setTimeout(function () {
-          if (moved < 9 && dragging) {
-            movingCard = c; c.inEl.classList.add("drag"); wrap.classList.add("arranging");
-            buzz(12); snd("tap");
-            if (!mesaOrg.hinted) { mesaOrg.hinted = true; saveMesaOrg(); var h = document.getElementById("mesaHint"); if (h) h.classList.add("bye"); }
-          }
-        }, 340);
-      }
-    });
-    wrap.addEventListener("pointermove", function (e) {
-      if (!dragging) return;
-      var dx = e.clientX - lastX, dy = e.clientY - lastY;
-      moved += Math.abs(dx) + Math.abs(dy);
-      if (movingCard) {
-        movingCard.x += dx; movingCard.y += dy * 1.22 + (0); paintCard(movingCard);
-        var rt = railTarget(e); rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.toggle("hot", r0 === rt); });
-      } else {
-        if (moved > 10) { unlift(); clearTimeout(pressT); }
-        var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
-        var next = scroll - dy;
-        if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
-      }
-      lastX = e.clientX; lastY = e.clientY;
-    }, { passive: true });
-    function endDrag(e) {
-      clearTimeout(pressT);
-      if (!dragging) return;
-      dragging = false;
-      if (movingCard) {
-        var c = movingCard; movingCard = null;
-        wrap.classList.remove("arranging");
-        rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.remove("hot"); });
-        var rt = e ? railTarget(e) : null;
-        if (!rt) { topZi += 0.25; c.zi = topZi; paintCard(c); cam.appendChild(c.el); } // gana los solapes al posarse
-        c.inEl.classList.remove("drag"); unlift();
-        if (rt) {
-          var target = rt.getAttribute("data-drawer") || null;
-          if (target) mesaOrg.items[c.t.id] = target; else delete mesaOrg.items[c.t.id];
-          delete mesaOrg.pos[c.t.id];
-          saveMesaOrg(); snd("drawer"); buzz([10, 30, 12]);
-          toast(target ? "Guardado en el caj\u00f3n" : "Devuelto a la mesa");
-          buildMesa(mesaList, false); bindCardThumbs();
-        } else {
-          mesaOrg.seq = (mesaOrg.seq || 0) + 1;
-          mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y), k: mesaOrg.seq };
-          saveMesaOrg(); snd("slide");
-        }
-        return;
-      }
-      if (moved < 10 && e && e.target && e.target.closest) {
-        var mc = e.target.closest(".mcard");
-        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); return; }
-      }
-      unlift();
-    }
-    wrap.addEventListener("pointerup", endDrag);
-    wrap.addEventListener("pointercancel", function () { clearTimeout(pressT); dragging = false; movingCard = null; wrap.classList.remove("arranging"); unlift(); });
-    wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
-    wrap.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
-    });
-    // ---- cajones: crear, abrir, renombrar, eliminar ----
-    rail.addEventListener("click", function (e) {
-      var add = e.target.closest("#railAdd");
-      if (add) {
-        var name = (prompt("Nombre del caj\u00f3n (p. ej. Bolos, En ensayo, Favoritos)") || "").trim();
-        if (!name) return;
-        mesaOrg.drawers.push({ id: uid(), name: name.slice(0, 24) });
-        saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-        return;
-      }
-      if (e.target.closest("#railRen")) {
-        var d0 = mesaOrg.drawers.filter(function (d) { return d.id === mesaDrawer; })[0];
-        var nn = (prompt("Nuevo nombre", d0 ? d0.name : "") || "").trim();
-        if (nn && d0) { d0.name = nn.slice(0, 24); saveMesaOrg(); buildMesa(mesaList, false); bindCardThumbs(); }
-        return;
-      }
-      if (e.target.closest("#railDel")) {
-        if (!confirm("\u00bfEliminar este caj\u00f3n? Sus cartas vuelven a la mesa.")) return;
-        for (var k in mesaOrg.items) if (mesaOrg.items[k] === mesaDrawer) delete mesaOrg.items[k];
-        mesaOrg.drawers = mesaOrg.drawers.filter(function (d) { return d.id !== mesaDrawer; });
-        mesaDrawer = null; saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-        return;
-      }
-      var slotEl = e.target.closest(".rail-slot[data-drawer]");
-      if (slotEl) {
-        var id = slotEl.getAttribute("data-drawer") || null;
-        mesaDrawer = (id === mesaDrawer) ? null : id;
-        snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-      }
-    });
-    tick();
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
@@ -2159,24 +1889,16 @@
         // Yema sobre fieltro: golpe sordo con cuerpo grave, casi subliminal
         noise({ type: "lowpass", f0: 420, f1: 150, dur: 0.045, vol: 0.5, q: 0.7, rev: 0.25 });
         partial(155, { dur: 0.055, vol: 0.22, glide: 0.82, wave: "sine", rev: 0.2 });
-      } else if (kind === "slide" || kind === "deal") {
+      } else if (kind === "slide") {
         // Carta real deslizándose: buffer horneado con grano de fricción,
         // velocidad ligeramente aleatoria para que nunca suene clonado.
-        var plays = kind === "deal" ? [[0, 1.18, 0.4], [0.09, 1.04, 0.36], [0.18, 0.92, 0.33]] : [[0, 0.94 + Math.random() * 0.18, 0.5]];
-        plays.forEach(function (pp) {
-          var src = a.createBufferSource(); src.buffer = makeCardBuf(a); src.playbackRate.value = pp[1];
-          var g = a.createGain(); g.gain.value = pp[2];
-          src.connect(g); g.connect(dry);
-          var rg = a.createGain(); rg.gain.value = 0.5; g.connect(rg); rg.connect(rev);
-          src.start(t + pp[0]);
-          // la carta se posa: toque sordo al final
-          partial(120, { at: pp[0] + 0.15 / pp[1], dur: 0.05, vol: 0.1, glide: 0.8, rev: 0.2 });
-        });
-      } else if (kind === "drawer") {
-        // Cajón de madera: golpe grave con cuerpo y un toque de latón
-        noise({ type: "lowpass", f0: 340, f1: 110, dur: 0.11, vol: 0.55, q: 0.8, rev: 0.5 });
-        partial(96, { dur: 0.13, vol: 0.3, glide: 0.75, rev: 0.4 });
-        partial(1180, { at: 0.02, dur: 0.05, vol: 0.05, rev: 0.6 });
+        var rate = 0.94 + Math.random() * 0.18;
+        var src = a.createBufferSource(); src.buffer = makeCardBuf(a); src.playbackRate.value = rate;
+        var g0 = a.createGain(); g0.gain.value = 0.5;
+        src.connect(g0); g0.connect(dry);
+        var rg0 = a.createGain(); rg0.gain.value = 0.5; g0.connect(rg0); rg0.connect(rev);
+        src.start(t);
+        partial(120, { at: 0.15 / rate, dur: 0.05, vol: 0.1, glide: 0.8, rev: 0.2 }); // se posa
       } else if (kind === "pluck") {
         // Me gusta: nota cálida corta con octava fantasma
         partial(523.25, { dur: 0.22, vol: 0.3, glide: 0.985, rev: 0.9 });
@@ -3385,7 +3107,7 @@
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
       '<div class="toggle-row" id="sndToggle"><div><b>Sonido de mesa</b><p class="hint">Deslizar de cartas y tintineos sutiles al usar la app</p></div><span class="switch ' + (sndEnabled ? "on" : "") + '" id="sndSw"></span></div>' +
-      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo, foil 3D y mesa. "Ligeros" si tu móvil va justo.</div></div></div>' +
+      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo dorado y foil 3D. "Ligeros" si tu móvil va justo.</div></div></div>' +
       '<div class="seg" id="fxSeg" style="margin-bottom:16px"><button data-v="full" class="' + (fxFull() ? "on" : "") + '">Completos</button><button data-v="lite" class="' + (fxFull() ? "" : "on") + '">Ligeros</button></div>' +
       '<div class="sec-label">Seguridad</div>' +
       '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
@@ -3933,6 +3655,7 @@
     if (!document.hidden && logged() && cloudReady()) { syncOnLogin(true); startRealtime(); }
   });
   window.addEventListener("online", function () { if (logged() && cloudReady()) { syncOnLogin(true); startRealtime(); } });
+  try { localStorage.removeItem("magic_mesa_org"); localStorage.removeItem("magic_view"); } catch (e) {}
   if (hasPin() && !unlocked) renderLock();
   else boot();
   initAmbient();

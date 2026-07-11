@@ -1650,127 +1650,6 @@ body { background: transparent; background-image: none; }
   background-position: calc(50% + var(--gx, 0) * 55%) 0;
 }
 
-/* ==========================================================================
-   LA MESA DEL MAGO v12.1 — escena bien ejecutada: tapete con luz y textura,
-   reparto de cartas en cascada, niebla de profundidad, cartas que se
-   levantan al tocarlas y rebote elástico en los extremos.
-   ========================================================================== */
-.countrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.countrow .count { margin: 0; }
-.viewsw { display: flex; gap: 4px; border: 1px solid var(--hairline); border-radius: 10px; padding: 3px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
-.viewsw button { border: 0; background: none; color: var(--ink-faint); border-radius: 7px; padding: 5px 9px; cursor: pointer; display: flex; }
-.viewsw button .i { width: 17px; height: 17px; }
-.viewsw button.on { background: var(--grad-brand); color: var(--on-brand); box-shadow: var(--shadow); }
-
-.mesa {
-  position: relative; height: clamp(300px, calc(100dvh - 350px), 700px);
-  margin-left: calc(-18px - env(safe-area-inset-left)); margin-right: calc(-18px - env(safe-area-inset-right));
-  overflow: hidden;
-  border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
-  background: linear-gradient(178deg, #141009, #090705 62%);
-  perspective: 1350px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
-}
-.mesa:active { cursor: grabbing; }
-/* Luz cenital: un óvalo de vela sobre el tapete */
-.mesa::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  background: radial-gradient(92% 66% at 50% 30%, transparent 42%, rgba(4,3,2,.5) 100%),
-    radial-gradient(70% 34% at 50% 12%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 62%);
-}
-.mesa-fog { position: absolute; left: 0; right: 0; height: 84px; pointer-events: none; z-index: 3; }
-.mesa-fog.top { top: 0; background: linear-gradient(180deg, var(--bg), transparent); opacity: .92; }
-.mesa-fog.bot { bottom: 0; background: linear-gradient(0deg, rgba(4,3,2,.92), transparent); }
-.mesa-cam { position: absolute; left: 50%; top: 5%; width: 372px; margin-left: -186px; transform-style: preserve-3d; transform-origin: 50% 20%; will-change: transform; }
-.mesa-felt {
-  position: absolute; left: -110px; right: -110px; top: -80px; border-radius: 30px;
-  background:
-    radial-gradient(56% 22% at 50% 5%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 58%),
-    repeating-linear-gradient(52deg, rgba(255,255,255,.012) 0 2px, transparent 2px 4px),
-    repeating-linear-gradient(-52deg, rgba(255,255,255,.010) 0 2px, transparent 2px 4px),
-    linear-gradient(180deg, #1a1209, #100b07 44%, #0a0705);
-  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 0 120px rgba(0,0,0,.6);
-}
-.mesa-felt .mf-line { position: absolute; inset: 20px; border-radius: 20px; border: 1px solid var(--hairline); opacity: .5; }
-.mesa-felt .mf-line::after { content: "\2726"; position: absolute; top: -8px; left: 50%; margin-left: -6px; font-size: 11px; color: var(--brand); opacity: .8; background: #130d08; padding: 0 5px; }
-
-/* -------- la carta: dorso de baraja de lujo -------- */
-.mcard { position: absolute; width: 158px; height: 212px; cursor: pointer; }
-.mcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 12px; }
-.mc-in {
-  position: relative; width: 100%; height: 100%; border-radius: 11px; padding: 10px 11px;
-  background:
-    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 55%),
-    linear-gradient(168deg, #201608, #140e07 58%, #181008);
-  border: 1px solid color-mix(in srgb, var(--brand) 38%, transparent);
-  box-shadow: 0 24px 34px -16px rgba(0,0,0,.9), inset 0 1px 0 color-mix(in srgb, var(--brand) 22%, transparent), inset 0 0 0 1px rgba(0,0,0,.4);
-  transition: transform .5s cubic-bezier(.22,1.2,.36,1), opacity .4s ease, box-shadow .3s ease;
-}
-.mc-in.deal { transform: translate3d(0, 430px, 90px) rotateZ(10deg); opacity: 0; }
-.mc-in.lift { transform: translate3d(0, -6px, 34px); box-shadow: 0 42px 54px -18px rgba(0,0,0,.95), inset 0 1px 0 color-mix(in srgb, var(--brand) 30%, transparent); transition-duration: .18s; }
-.mc-pip { position: absolute; width: 4px; height: 4px; transform: rotate(45deg); background: color-mix(in srgb, var(--brand) 55%, transparent); }
-.mc-pip.tl { top: 6px; left: 6px; } .mc-pip.tr { top: 6px; right: 6px; }
-.mc-pip.bl { bottom: 6px; left: 6px; } .mc-pip.br { bottom: 6px; right: 6px; }
-.mc-art { position: relative; height: 116px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--hairline); background: radial-gradient(85% 75% at 50% 32%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 72%); }
-.mc-med { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, #000 30%, transparent 78%); mask-image: radial-gradient(60% 60% at 50% 50%, #000 30%, transparent 78%); }
-.mc-med .engr { position: static; width: 128%; aspect-ratio: 1; transform: none; opacity: .8; color: var(--brand); }
-.mcard .engr path { stroke-width: .8; }
-.mc-art .mc-ic { position: relative; color: var(--brand); filter: drop-shadow(0 3px 12px color-mix(in srgb, var(--brand) 55%, transparent)); }
-.mc-art .mc-ic .i { width: 25px; height: 25px; }
-.mc-fav { position: absolute; top: 6px; right: 6px; color: var(--brand); }
-.mc-fav .i { width: 13px; height: 13px; }
-.mc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; line-height: 1.18; margin-top: 10px; color: #efe6d2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.mc-meta { margin-top: 5px; font-size: 8.5px; font-weight: 650; letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--brand) 55%, #6b6156); }
-.mc-shade { position: absolute; inset: -1px; border-radius: 11px; background: #060403; opacity: 0; pointer-events: none; transition: opacity .3s linear; }
-
-/* Con reduced-motion no hay reparto: las cartas ya están en su sitio */
-@media (prefers-reduced-motion: reduce) { .mc-in.deal { transform: none; opacity: 1; } }
-
-/* ------- Mesa v12.2: miniaturas, organización libre y cajones ------- */
-.mc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--surface-2) center/cover no-repeat; }
-.mc-img.cthumb { display: block; }
-.mc-play { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-.mc-play .i { width: 14px; height: 14px; }
-.mc-in.drag {
-  /* en la mano: sube, crece un pelo y se ENDEREZA (contrarresta el jitter) */
-  transform: translate3d(0, -14px, 70px) scale(1.05) rotateZ(calc(var(--rz, 0deg) * -0.85)) !important;
-  box-shadow: 0 60px 70px -24px rgba(0,0,0,1), 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--brand) 35%, transparent);
-  transition-duration: .22s;
-}
-.mesa.arranging { cursor: grabbing; }
-.mf-empty { position: absolute; top: 240px; left: 50%; width: 240px; margin-left: -120px; text-align: center; color: var(--ink-faint); font-size: 13.5px; line-height: 1.6; }
-
-.mesa-rail { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: stretch; padding: 12px 88px 14px 16px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(0deg, rgba(4,3,2,.94) 30%, transparent); }
-.mesa-rail::-webkit-scrollbar { display: none; }
-.rail-slot {
-  flex: 0 0 auto; position: relative; min-width: 92px; padding: 9px 12px 8px; border-radius: 8px 8px 4px 4px;
-  border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent); border-bottom-width: 3px;
-  background: linear-gradient(180deg, #241809, #170f07 70%, #12100a);
-  color: var(--ink); font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: .01em;
-  cursor: pointer; display: flex; align-items: center; gap: 7px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand) 18%, transparent), 0 8px 18px -10px rgba(0,0,0,.8);
-}
-.rail-slot .rs-handle { width: 18px; height: 5px; border-radius: 3px; background: var(--grad-brand); box-shadow: 0 1px 3px rgba(0,0,0,.6); flex: 0 0 auto; }
-.rail-slot .rs-count { font-family: var(--ui); font-size: 10px; font-weight: 700; color: var(--on-brand); background: var(--grad-brand); border-radius: 999px; padding: 1px 7px; }
-.rail-slot.add { min-width: 44px; justify-content: center; font-size: 20px; color: var(--brand); font-family: var(--ui); font-weight: 400; }
-.rail-slot.back { background: none; border-color: transparent; box-shadow: none; color: var(--brand); }
-.rail-slot.open { border-color: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent), 0 8px 18px -10px rgba(0,0,0,.8); }
-.rail-slot.hot { transform: translateY(-5px) scale(1.06); border-color: var(--brand); box-shadow: 0 0 22px color-mix(in srgb, var(--brand) 45%, transparent); }
-.rail-slot.tool { min-width: 0; font-family: var(--ui); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); background: none; border-color: var(--hairline); box-shadow: none; border-bottom-width: 1px; border-radius: 8px; }
-.rail-slot.tool.danger { color: var(--danger); }
-
-.mesa-hint {
-  position: absolute; left: 20px; right: 20px; bottom: 76px; z-index: 6; text-align: center;
-  color: var(--ink-soft); font-size: 12.5px; padding: 10px 14px; border-radius: 10px;
-  background: color-mix(in srgb, var(--ink) 85%, transparent); color: var(--bg);
-  backdrop-filter: blur(6px); transition: opacity .6s ease; pointer-events: none;
-}
-:root[data-theme="light"] .mesa-hint { color: #f5f0e4; }
-.mesa-hint.bye { opacity: 0; }
-.mesa-fog.bot { height: 110px; }
-
-/* La carta agarrada flota de verdad sobre las demás (orden 3D real) */
-.mcard { transform-style: preserve-3d; }
 
 /* Accesibilidad: los chips son <button> reales — tipografía heredada */
 .chip { font-family: inherit; }
@@ -2655,11 +2534,8 @@ window.Cloud = (function () {
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
-    } else if (mesaOn()) {
-      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
-        '<div class="mesa" id="mesaWrap"></div>';
     } else {
-      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
+      body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
     }
 
@@ -2686,8 +2562,6 @@ window.Cloud = (function () {
     var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
-    bindViewSwitch();
-    if (mesaOn() && filtered.length) buildMesa(filtered);
     bindCards();
     backfillPosters();
   }
@@ -2702,13 +2576,6 @@ window.Cloud = (function () {
       return true;
     });
     var countEl = view.querySelector(".count");
-    if (mesaOn()) {
-      var mw = document.getElementById("mesaWrap");
-      if (!mw) { renderLibrary(); return; }
-      if (countEl) countEl.textContent = filtered.length ? filtered.length + (filtered.length === 1 ? " truco" : " trucos") : "";
-      if (!filtered.length) { mw.innerHTML = '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>'; return; }
-      buildMesa(filtered); bindCardThumbs(); return;
-    }
     var holder = view.querySelector(".cards");
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
@@ -2789,264 +2656,6 @@ window.Cloud = (function () {
     if (media.filter(function (m) { return m.provider !== "link"; })[0]) return { kind: "videoicon" };
     if (media.length) return { kind: "linkicon" };
     return null;
-  }
-  var libView = (function () { try { return localStorage.getItem("magic_view") || "mesa"; } catch (e) { return "mesa"; } })();
-  function mesaOn() { return libView === "mesa" && fxFull(); }
-  function setLibView(v) { libView = v; try { localStorage.setItem("magic_view", v); } catch (e) {} }
-  function viewSwitchHtml() {
-    if (!fxFull()) return "";
-    return '<div class="viewsw" role="tablist">' +
-      '<button id="vwMesa" class="' + (mesaOn() ? "on" : "") + '" aria-label="Vista mesa">' + icon("cards") + "</button>" +
-      '<button id="vwGrid" class="' + (mesaOn() ? "" : "on") + '" aria-label="Vista cuadrícula">' + icon("library") + "</button></div>";
-  }
-  function bindViewSwitch() {
-    var m = document.getElementById("vwMesa"), g = document.getElementById("vwGrid");
-    if (m) m.addEventListener("click", function () { setLibView("mesa"); renderLibrary(); });
-    if (g) g.addEventListener("click", function () { setLibView("grid"); renderLibrary(); });
-  }
-  /* ============ LA MESA DEL MAGO: biblioteca como escena 3D ============ */
-  // Tapete en perspectiva (CSS 3D), cartas repartidas con jitter con semilla,
-  // cámara con arrastre + inercia y respuesta al giroscopio. Pura presentación:
-  // cada carta navega al mismo detalle de siempre.
-  function seededJitter(id) {
-    var h = 2166136261; id = String(id);
-    for (var i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
-    h ^= h >>> 15;
-    return { rz: ((h % 100) / 100 - 0.5) * 6, dx: (((h >> 7) % 100) / 100 - 0.5) * 14, dy: (((h >> 13) % 100) / 100 - 0.5) * 16 };
-  }
-  // Organización de la mesa: posiciones libres y cajones creados por el mago.
-  // Se guarda en el dispositivo (como la disposición de un escritorio real).
-  var mesaOrg = (function () {
-    try { var o = JSON.parse(localStorage.getItem("magic_mesa_org")) || {}; return { pos: o.pos || {}, drawers: o.drawers || [], items: o.items || {}, hinted: !!o.hinted, seq: o.seq || 0 }; }
-    catch (e) { return { pos: {}, drawers: [], items: {}, hinted: false, seq: 0 }; }
-  })();
-  function saveMesaOrg() { try { localStorage.setItem("magic_mesa_org", JSON.stringify(mesaOrg)); } catch (e) {} }
-  var mesaDrawer = null; // null = sobre la mesa; id = dentro de un cajón
-  var mesaDeal = true;    // solo se reparte al entrar en la vista, no al reorganizar
-  function mesaThumbHtml(t) {
-    var th = trickThumb(t);
-    if (th && th.kind === "embedimg") return '<img class="mc-img" src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">';
-    if (th && (th.kind === "img" || th.kind === "video")) return '<span class="cthumb mc-img" data-thumb="' + esc(th.path) + '"></span>';
-    return "";
-  }
-  function mesaCardHtml(c, i) {
-    var t = c.t;
-    var thumb = mesaThumbHtml(t);
-    var art = thumb
-      ? thumb + ((trickThumb(t) || {}).kind === "video" || (t.media || []).some(function (m) { return m.embed || m.path; }) ? '<span class="mc-play">' + icon("play", "i-sm") + "</span>" : "")
-      : '<span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>";
-    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '" style="--rz:' + (c.rz || seededJitter(t.id).rz).toFixed(2) + 'deg">' +
-      '<div class="mc-in' + (mesaDeal ? " deal" : "") + '" style="transition-delay:' + (mesaDeal ? Math.min(i * 55, 440) : 0) + 'ms">' +
-      '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
-      '<div class="mc-art">' + art +
-      (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
-      '<div class="mc-name">' + esc(t.title) + '</div>' +
-      '<div class="mc-meta">' + esc(t.category || "\u2014") + "</div>" +
-      '<span class="mc-shade" aria-hidden="true"></span></div></div>';
-  }
-  function railHtml() {
-    var slots = "";
-    if (mesaDrawer) slots += '<button class="rail-slot back" data-drawer=""><span class="rs-name">\u25C2 Mesa</span></button>';
-    mesaOrg.drawers.forEach(function (d) {
-      var n = 0; for (var k in mesaOrg.items) if (mesaOrg.items[k] === d.id) n++;
-      slots += '<button class="rail-slot' + (mesaDrawer === d.id ? " open" : "") + '" data-drawer="' + esc(d.id) + '"><span class="rs-handle"></span><span class="rs-name">' + esc(d.name) + '</span><span class="rs-count">' + n + "</span></button>";
-    });
-    slots += '<button class="rail-slot add" id="railAdd" aria-label="Crear cajón">+</button>';
-    if (mesaDrawer) slots += '<button class="rail-slot tool" id="railRen">Renombrar</button><button class="rail-slot tool danger" id="railDel">Eliminar</button>';
-    return '<div class="mesa-rail" id="mesaRail">' + slots + "</div>";
-  }
-  var mesaRaf = 0, mesaList = [];
-  function buildMesa(list, redeal) {
-    if (redeal === undefined) redeal = true;
-    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
-    mesaList = list;
-    mesaDeal = !!redeal;
-    cancelAnimationFrame(mesaRaf);
-    // higiene: trucos borrados no dejan posiciones ni plazas de cajón huérfanas
-    var all = {}; state.tricks.forEach(function (t0) { all[t0.id] = 1; });
-    var dirty = false, k0;
-    for (k0 in mesaOrg.pos) if (!all[k0]) { delete mesaOrg.pos[k0]; dirty = true; }
-    for (k0 in mesaOrg.items) if (!all[k0]) { delete mesaOrg.items[k0]; dirty = true; }
-    if (mesaDrawer && !mesaOrg.drawers.some(function (d) { return d.id === mesaDrawer; })) mesaDrawer = null;
-    if (dirty) saveMesaOrg();
-    var visible = list.filter(function (t) { return (mesaOrg.items[t.id] || null) === mesaDrawer; });
-    var slot = 0, maxY = 300;
-    var cardsData = visible.map(function (t) {
-      var p = mesaOrg.pos[t.id], j = seededJitter(t.id), x, y;
-      if (p && typeof p.x === "number") { x = p.x; y = p.y; }
-      else { var col = slot % 2, row = (slot - col) / 2; x = 38 + col * 162 + j.dx; y = 26 + row * 236 + j.dy; slot++; }
-      if (y > maxY) maxY = y;
-      return { t: t, x: x, y: y, rz: j.rz, k: (p && p.k) || 0, el: null, inEl: null, shade: null };
-    });
-    cardsData.sort(function (a, b) { return a.k - b.k; }); // orden de apilado persistido
-    // micro-elevación creciente: rompe el empate de profundidad para que el
-    // pintado Y el hit-test coincidan siempre con el orden del montón
-    var topZi = 2;
-    cardsData.forEach(function (c, i2) { c.zi = 2 + i2 * 0.25; topZi = c.zi; });
-    var feltH = Math.max(560, maxY + 380);
-    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span>' +
-      (visible.length ? "" : '<div class="mf-empty">' + (mesaDrawer ? "Caj\u00f3n vac\u00edo.<br>Mant\u00e9n pulsada una carta y su\u00e9ltala sobre \u00e9l." : "La mesa est\u00e1 despejada.") + "</div>") +
-      "</div>" + cardsData.map(mesaCardHtml).join("") + "</div>" +
-      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>' + railHtml() +
-      (!mesaOrg.hinted && !mesaDrawer && visible.length ? '<div class="mesa-hint" id="mesaHint">Mant\u00e9n pulsada una carta para colocarla a tu gusto o guardarla en un caj\u00f3n</div>' : "");
-    var cam = document.getElementById("mesaCam"), rail = document.getElementById("mesaRail");
-    var movingCard = null;
-    cardsData.forEach(function (c, i) {
-      c.el = wrap.querySelectorAll(".mcard")[i]; c.inEl = c.el.firstChild; c.shade = c.el.querySelector(".mc-shade");
-      paintCard(c);
-    });
-    function paintCard(c) {
-      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px," + (c.zi || 2).toFixed(2) + "px) rotateZ(" + c.rz.toFixed(2) + "deg)";
-    }
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
-      setTimeout(function () { cardsData.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
-    }); });
-    if (visible.length && mesaDeal) snd("deal");
-    var hintEl = document.getElementById("mesaHint");
-    if (hintEl) setTimeout(function () { if (hintEl.isConnected) hintEl.classList.add("bye"); }, 6000);
-    var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
-    var dragging = false, moved = 0, lastX = 0, lastY = 0, lastT = 0, lifted = null;
-    var pressT = 0;
-    var lastFog = -1e9;
-    function fog() {
-      if (Math.abs(scroll - lastFog) < 20) return;
-      lastFog = scroll;
-      for (var i = 0; i < cardsData.length; i++) {
-        var c = cardsData[i], d = c.y - scroll;
-        // culling: lo que queda muy lejos ni se maqueta ni se pinta
-        var vis = (d > -430 && d < 1250) || c === movingCard;
-        if (vis !== c.vis) { c.vis = vis; c.el.style.display = vis ? "" : "none"; }
-        if (!vis) continue;
-        var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
-        c.shade.style.opacity = o.toFixed(2);
-      }
-    }
-    function camPaint() {
-      var g = window.__tiltG || [0, 0];
-      var over = scroll < 0 ? scroll : (scroll > maxScroll ? scroll - maxScroll : 0);
-      var disp = scroll - over * 0.65;
-      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-disp).toFixed(1) + "px,0)";
-    }
-    function tick() {
-      if (!wrap.isConnected) return;
-      if (!dragging) {
-        if (scroll < 0) { vel = 0; scroll += (0 - scroll) * 0.16; if (Math.abs(scroll) < 0.4) scroll = 0; }
-        else if (scroll > maxScroll) { vel = 0; scroll += (maxScroll - scroll) * 0.16; if (Math.abs(scroll - maxScroll) < 0.4) scroll = maxScroll; }
-        else if (Math.abs(vel) > 0.15) { scroll += vel; vel *= 0.94; }
-      }
-      camPaint(); fog();
-      mesaRaf = requestAnimationFrame(tick);
-    }
-    function unlift() { if (lifted) { lifted.classList.remove("lift"); lifted = null; } }
-    function findCard(el0) {
-      var mc = el0 && el0.closest ? el0.closest(".mcard") : null; if (!mc) return null;
-      for (var i = 0; i < cardsData.length; i++) if (cardsData[i].el === mc) return cardsData[i];
-      return null;
-    }
-    function railTarget(e) {
-      var el0 = document.elementFromPoint(e.clientX, e.clientY);
-      return el0 && el0.closest ? el0.closest(".rail-slot[data-drawer]") : null;
-    }
-    wrap.addEventListener("pointerdown", function (e) {
-      if (e.target.closest && e.target.closest(".mesa-rail")) return;
-      dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
-      var c = findCard(e.target);
-      if (c) {
-        lifted = c.inEl; lifted.classList.add("lift");
-        clearTimeout(pressT);
-        pressT = setTimeout(function () {
-          if (moved < 9 && dragging) {
-            movingCard = c; c.inEl.classList.add("drag"); wrap.classList.add("arranging");
-            buzz(12); snd("tap");
-            if (!mesaOrg.hinted) { mesaOrg.hinted = true; saveMesaOrg(); var h = document.getElementById("mesaHint"); if (h) h.classList.add("bye"); }
-          }
-        }, 340);
-      }
-    });
-    wrap.addEventListener("pointermove", function (e) {
-      if (!dragging) return;
-      var dx = e.clientX - lastX, dy = e.clientY - lastY;
-      moved += Math.abs(dx) + Math.abs(dy);
-      if (movingCard) {
-        movingCard.x += dx; movingCard.y += dy * 1.22 + (0); paintCard(movingCard);
-        var rt = railTarget(e); rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.toggle("hot", r0 === rt); });
-      } else {
-        if (moved > 10) { unlift(); clearTimeout(pressT); }
-        var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
-        var next = scroll - dy;
-        if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
-      }
-      lastX = e.clientX; lastY = e.clientY;
-    }, { passive: true });
-    function endDrag(e) {
-      clearTimeout(pressT);
-      if (!dragging) return;
-      dragging = false;
-      if (movingCard) {
-        var c = movingCard; movingCard = null;
-        wrap.classList.remove("arranging");
-        rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.remove("hot"); });
-        var rt = e ? railTarget(e) : null;
-        if (!rt) { topZi += 0.25; c.zi = topZi; paintCard(c); cam.appendChild(c.el); } // gana los solapes al posarse
-        c.inEl.classList.remove("drag"); unlift();
-        if (rt) {
-          var target = rt.getAttribute("data-drawer") || null;
-          if (target) mesaOrg.items[c.t.id] = target; else delete mesaOrg.items[c.t.id];
-          delete mesaOrg.pos[c.t.id];
-          saveMesaOrg(); snd("drawer"); buzz([10, 30, 12]);
-          toast(target ? "Guardado en el caj\u00f3n" : "Devuelto a la mesa");
-          buildMesa(mesaList, false); bindCardThumbs();
-        } else {
-          mesaOrg.seq = (mesaOrg.seq || 0) + 1;
-          mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y), k: mesaOrg.seq };
-          saveMesaOrg(); snd("slide");
-        }
-        return;
-      }
-      if (moved < 10 && e && e.target && e.target.closest) {
-        var mc = e.target.closest(".mcard");
-        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); return; }
-      }
-      unlift();
-    }
-    wrap.addEventListener("pointerup", endDrag);
-    wrap.addEventListener("pointercancel", function () { clearTimeout(pressT); dragging = false; movingCard = null; wrap.classList.remove("arranging"); unlift(); });
-    wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
-    wrap.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
-    });
-    // ---- cajones: crear, abrir, renombrar, eliminar ----
-    rail.addEventListener("click", function (e) {
-      var add = e.target.closest("#railAdd");
-      if (add) {
-        var name = (prompt("Nombre del caj\u00f3n (p. ej. Bolos, En ensayo, Favoritos)") || "").trim();
-        if (!name) return;
-        mesaOrg.drawers.push({ id: uid(), name: name.slice(0, 24) });
-        saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-        return;
-      }
-      if (e.target.closest("#railRen")) {
-        var d0 = mesaOrg.drawers.filter(function (d) { return d.id === mesaDrawer; })[0];
-        var nn = (prompt("Nuevo nombre", d0 ? d0.name : "") || "").trim();
-        if (nn && d0) { d0.name = nn.slice(0, 24); saveMesaOrg(); buildMesa(mesaList, false); bindCardThumbs(); }
-        return;
-      }
-      if (e.target.closest("#railDel")) {
-        if (!confirm("\u00bfEliminar este caj\u00f3n? Sus cartas vuelven a la mesa.")) return;
-        for (var k in mesaOrg.items) if (mesaOrg.items[k] === mesaDrawer) delete mesaOrg.items[k];
-        mesaOrg.drawers = mesaOrg.drawers.filter(function (d) { return d.id !== mesaDrawer; });
-        mesaDrawer = null; saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-        return;
-      }
-      var slotEl = e.target.closest(".rail-slot[data-drawer]");
-      if (slotEl) {
-        var id = slotEl.getAttribute("data-drawer") || null;
-        mesaDrawer = (id === mesaDrawer) ? null : id;
-        snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
-      }
-    });
-    tick();
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
@@ -4350,24 +3959,16 @@ window.Cloud = (function () {
         // Yema sobre fieltro: golpe sordo con cuerpo grave, casi subliminal
         noise({ type: "lowpass", f0: 420, f1: 150, dur: 0.045, vol: 0.5, q: 0.7, rev: 0.25 });
         partial(155, { dur: 0.055, vol: 0.22, glide: 0.82, wave: "sine", rev: 0.2 });
-      } else if (kind === "slide" || kind === "deal") {
+      } else if (kind === "slide") {
         // Carta real deslizándose: buffer horneado con grano de fricción,
         // velocidad ligeramente aleatoria para que nunca suene clonado.
-        var plays = kind === "deal" ? [[0, 1.18, 0.4], [0.09, 1.04, 0.36], [0.18, 0.92, 0.33]] : [[0, 0.94 + Math.random() * 0.18, 0.5]];
-        plays.forEach(function (pp) {
-          var src = a.createBufferSource(); src.buffer = makeCardBuf(a); src.playbackRate.value = pp[1];
-          var g = a.createGain(); g.gain.value = pp[2];
-          src.connect(g); g.connect(dry);
-          var rg = a.createGain(); rg.gain.value = 0.5; g.connect(rg); rg.connect(rev);
-          src.start(t + pp[0]);
-          // la carta se posa: toque sordo al final
-          partial(120, { at: pp[0] + 0.15 / pp[1], dur: 0.05, vol: 0.1, glide: 0.8, rev: 0.2 });
-        });
-      } else if (kind === "drawer") {
-        // Cajón de madera: golpe grave con cuerpo y un toque de latón
-        noise({ type: "lowpass", f0: 340, f1: 110, dur: 0.11, vol: 0.55, q: 0.8, rev: 0.5 });
-        partial(96, { dur: 0.13, vol: 0.3, glide: 0.75, rev: 0.4 });
-        partial(1180, { at: 0.02, dur: 0.05, vol: 0.05, rev: 0.6 });
+        var rate = 0.94 + Math.random() * 0.18;
+        var src = a.createBufferSource(); src.buffer = makeCardBuf(a); src.playbackRate.value = rate;
+        var g0 = a.createGain(); g0.gain.value = 0.5;
+        src.connect(g0); g0.connect(dry);
+        var rg0 = a.createGain(); rg0.gain.value = 0.5; g0.connect(rg0); rg0.connect(rev);
+        src.start(t);
+        partial(120, { at: 0.15 / rate, dur: 0.05, vol: 0.1, glide: 0.8, rev: 0.2 }); // se posa
       } else if (kind === "pluck") {
         // Me gusta: nota cálida corta con octava fantasma
         partial(523.25, { dur: 0.22, vol: 0.3, glide: 0.985, rev: 0.9 });
@@ -5576,7 +5177,7 @@ window.Cloud = (function () {
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
       '<div class="toggle-row" id="sndToggle"><div><b>Sonido de mesa</b><p class="hint">Deslizar de cartas y tintineos sutiles al usar la app</p></div><span class="switch ' + (sndEnabled ? "on" : "") + '" id="sndSw"></span></div>' +
-      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo, foil 3D y mesa. "Ligeros" si tu móvil va justo.</div></div></div>' +
+      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo dorado y foil 3D. "Ligeros" si tu móvil va justo.</div></div></div>' +
       '<div class="seg" id="fxSeg" style="margin-bottom:16px"><button data-v="full" class="' + (fxFull() ? "on" : "") + '">Completos</button><button data-v="lite" class="' + (fxFull() ? "" : "on") + '">Ligeros</button></div>' +
       '<div class="sec-label">Seguridad</div>' +
       '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
@@ -6124,6 +5725,7 @@ window.Cloud = (function () {
     if (!document.hidden && logged() && cloudReady()) { syncOnLogin(true); startRealtime(); }
   });
   window.addEventListener("online", function () { if (logged() && cloudReady()) { syncOnLogin(true); startRealtime(); } });
+  try { localStorage.removeItem("magic_mesa_org"); localStorage.removeItem("magic_view"); } catch (e) {}
   if (hasPin() && !unlocked) renderLock();
   else boot();
   initAmbient();

@@ -32,13 +32,10 @@ const noHScroll = async (name) => {
 };
 
 let t0 = Date.now();
-await p.goto('http://127.0.0.1:8099/#/'); await p.waitForSelector('.mcard, .card', { timeout: 15000 });
-console.log('  biblioteca (mesa) con CPU x4:', Date.now() - t0, 'ms');
+await p.goto('http://127.0.0.1:8099/#/'); await p.waitForSelector('.card', { timeout: 15000 });
+console.log('  biblioteca con CPU x4:', Date.now() - t0, 'ms');
 await p.waitForTimeout(900);
-await noHScroll('mesa');
-// cuadrícula también
-await p.click('#vwGrid'); await p.waitForTimeout(700);
-await noHScroll('cuadrícula');
+await noHScroll('biblioteca');
 ok('título largo recortado en tarjeta', await p.evaluate(() => { const h = document.querySelector('.card .body h3'); return h && h.scrollWidth <= h.clientWidth + 2 || getComputedStyle(h).webkitLineClamp !== 'none' || h.clientHeight < 90; }));
 
 t0 = Date.now();

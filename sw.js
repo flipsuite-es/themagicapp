@@ -1,7 +1,7 @@
 /* Service worker de App del Mago.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v64";
+var CACHE = "magic-v65";
 var ASSETS = [
   "./",
   "./index.html",
@@ -74,29 +74,33 @@ self.addEventListener("fetch", function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegaciones: RED PRIMERO para no servir nunca un shell obsoleto; la copia
-  // en caché queda solo como respaldo sin conexión.
+  // Navegaciones: red primero CON PLAZO (2.5s). Si la red va lenta o no hay,
+  // se sirve el shell cacheado al instante en vez de dejar la pantalla en blanco.
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request).then(function (resp) {
-        if (resp && resp.ok) { var copy = resp.clone(); caches.open(CACHE).then(function (c) { c.put("./index.html", copy); }).catch(function () {}); }
-        return resp;
-      }).catch(function () {
+      Promise.race([
+        fetch(e.request).then(function (resp) {
+          if (resp && resp.ok) { var copy = resp.clone(); caches.open(CACHE).then(function (c) { c.put("./index.html", copy); }).catch(function () {}); }
+          return resp;
+        }),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error("slow")); }, 2500); })
+      ]).catch(function () {
         return caches.match("./index.html").then(function (c) { return c || caches.match("./"); });
       })
     );
     return;
   }
 
-  // Recursos estáticos: caché primero; si falta, red, guardando solo respuestas
-  // propias correctas (nunca errores/opacas/redirecciones).
+  // Recursos estáticos: stale-while-revalidate — se sirve la caché al instante
+  // y se refresca en segundo plano (solo respuestas propias correctas). Así una
+  // nueva versión desplegada llega sola en la siguiente visita.
   e.respondWith(
     caches.match(e.request).then(function (cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function (resp) {
+      var refresh = fetch(e.request).then(function (resp) {
         if (resp && resp.ok && resp.type === "basic") { var copy = resp.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }).catch(function () {}); }
         return resp;
-      });
+      }).catch(function () { return cached; });
+      return cached || refresh;
     })
   );
 });

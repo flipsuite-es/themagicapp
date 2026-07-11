@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+const errs = [];
+p.on('pageerror', e => errs.push(e.message));
+await p.goto('http://127.0.0.1:8099/the-magic-app.standalone.html'); await p.waitForTimeout(1400);
+const body = (await p.locator('body').innerText()).slice(0, 60).replace(/\n+/g, ' ');
+console.log('STANDALONE', JSON.stringify({ hasView: await p.locator('#view').count() > 0, body }), 'errors:', errs.length ? errs.join(' | ') : 'NONE');
+await b.close();
+process.exit(errs.length ? 1 : 0);

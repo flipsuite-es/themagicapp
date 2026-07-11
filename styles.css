@@ -1655,7 +1655,7 @@ body { background: transparent; background-image: none; }
 .viewsw button.on { background: var(--grad-brand); color: var(--on-brand); box-shadow: var(--shadow); }
 
 .mesa {
-  position: relative; height: clamp(440px, calc(100dvh - 350px), 700px);
+  position: relative; height: clamp(300px, calc(100dvh - 350px), 700px);
   margin: 0 -20px; overflow: hidden;
   border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
   background: linear-gradient(178deg, #141009, #090705 62%);

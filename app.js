@@ -90,6 +90,12 @@
       : SPADE + SPARK;
     return '<svg class="mk ' + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">' + body + "</svg>";
   }
+  // URL saneada para usar dentro de url(...) en estilos inline: codifica lo
+  // que podría romper la declaración CSS (paréntesis, comillas, espacios).
+  function cssUrl(u) {
+    try { return encodeURI(String(u == null ? "" : u)).replace(/[()'"]/g, function (c) { return "%" + c.charCodeAt(0).toString(16); }); }
+    catch (e) { return ""; }
+  }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function rnd(n) { return Math.floor(Math.random() * n); }
   var toastTimer = null;
@@ -536,7 +542,7 @@
     if (!cloudReady()) return;
     view.querySelectorAll(".cthumb[data-thumb]").forEach(function (sp) {
       var path = sp.getAttribute("data-thumb"); if (!path) return;
-      Cloud.signedUrl(path, "photos").then(function (url) { if (url) { sp.style.backgroundImage = "url(" + url + ")"; sp.classList.add("loaded"); } });
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) { sp.style.backgroundImage = "url(" + cssUrl(url) + ")"; sp.classList.add("loaded"); } });
     });
   }
   // Genera pósters que faltan para vídeos propios ya subidos (trucos creados
@@ -577,7 +583,7 @@
     Cloud.signedUrl(item.poster, "photos").then(function (url) {
       if (!url) return;
       var fav = t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "";
-      thumb.innerHTML = '<span class="cthumb loaded" style="background-image:url(' + url + ')"></span><span class="play">' + icon("play", "i-sm") + "</span>" + fav;
+      thumb.innerHTML = '<span class="cthumb loaded" style="background-image:url(' + cssUrl(url) + ')"></span><span class="play">' + icon("play", "i-sm") + "</span>" + fav;
     });
   }
   // Decide la miniatura del truco: foto → póster de vídeo → carátula de embed →
@@ -956,7 +962,7 @@
     // Cargar fotos con URL firmada (bucket photos)
     view.querySelectorAll(".ph-img[data-load]").forEach(function (sp) {
       var path = sp.getAttribute("data-load"); if (!path || !cloudReady()) return;
-      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + url + ")"; });
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + cssUrl(url) + ")"; });
     });
   }
 
@@ -1135,7 +1141,7 @@
     });
     list.querySelectorAll(".ph-img[data-load]").forEach(function (sp) {
       var path = sp.getAttribute("data-load"); if (!path || !cloudReady()) return;
-      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + url + ")"; });
+      Cloud.signedUrl(path, "photos").then(function (url) { if (url) sp.style.backgroundImage = "url(" + cssUrl(url) + ")"; });
     });
   }
   function saveForm(id) {
@@ -1550,7 +1556,7 @@
   }
   function sharedPhotos(photos) {
     var got = (photos || []).filter(function (p) { return p.shareUrl; });
-    return got.length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + got.map(function (p) { return '<div class="photocell view"><span class="ph-img" style="background-image:url(' + esc(p.shareUrl) + ')"></span></div>'; }).join("") + "</div>" : "";
+    return got.length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + got.map(function (p) { return '<div class="photocell view"><span class="ph-img" style="background-image:url(' + cssUrl(p.shareUrl) + ')"></span></div>'; }).join("") + "</div>" : "";
   }
   function sharedNotesTags(p) {
     return (p.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(p.notes) + "</div>" : "") +
@@ -1644,7 +1650,7 @@
   }
   function avatarHtml(url, name, cls) {
     var lab = name ? ' role="img" aria-label="' + esc(name) + '"' : ' aria-hidden="true"';
-    if (url) return '<span class="avatar ' + (cls || "") + '"' + lab + ' style="background-image:url(' + esc(url) + ')"></span>';
+    if (url) return '<span class="avatar ' + (cls || "") + '"' + lab + ' style="background-image:url(' + cssUrl(url) + ')"></span>';
     var ini = (name || "?").trim().charAt(0).toUpperCase();
     return '<span class="avatar ' + (cls || "") + ' ini"' + lab + ">" + esc(ini) + "</span>";
   }
@@ -1756,7 +1762,7 @@
     return '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(tc.title || "Truco") + '</div><div class="d">' + esc(tc.category || "") + (tc.difficulty ? " · " + (DIFF[tc.difficulty] || "") : "") + "</div></div></div>";
   }
   function listingInlineHtml(l) {
-    return '<div class="listing-inline">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
+    return '<div class="listing-inline">' + (l.cover ? '<div class="lc-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="lc-cover ph">' + mark() + "</div>") +
       '<div class="lc-info"><div class="n">' + esc(l.title || "Truco") + '</div><div class="price">' + money(l.price, l.currency) + "</div></div><span class=\"go\">" + icon("chev") + "</span></div>";
   }
   function mediaHtml(media) {
@@ -1766,7 +1772,7 @@
       else if (m.kind === "video" && m.url) out += '<div class="player native"><video src="' + esc(m.url) + '" controls playsinline preload="' + (m.poster ? "none" : "metadata") + '"' + (m.poster ? ' poster="' + esc(m.poster) + '"' : "") + "></video></div>";
     });
     var imgs = (media || []).filter(function (m) { return m.kind !== "video" && m.url; });
-    if (imgs.length) out += '<div class="pc-imgs' + (imgs.length > 1 ? " multi" : "") + '">' + imgs.map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("") + "</div>";
+    if (imgs.length) out += '<div class="pc-imgs' + (imgs.length > 1 ? " multi" : "") + '">' + imgs.map(function (m) { return '<div class="post-img" style="background-image:url(' + cssUrl(m.url) + ')"></div>'; }).join("") + "</div>";
     return out;
   }
   // Sube un vídeo propio al bucket público y captura su miniatura.
@@ -1973,7 +1979,7 @@
       var s = st[si], m = s.media || {};
       var mediaHtml = (m.kind === "video" && m.embed) ? '<div class="sv-media"><iframe src="' + esc(m.embed) + '" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>'
         : (m.kind === "video" && m.url) ? '<div class="sv-media"><video src="' + esc(m.url) + '" autoplay playsinline loop controls></video></div>'
-        : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + esc(m.url || "") + ')"></div></div>';
+        : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + cssUrl(m.url || "") + ')"></div></div>';
       ov.innerHTML = '<div class="sv-top"><div class="sv-bars">' + st.map(function (_, k) { return '<i class="' + (k < si ? "done" : k === si ? "cur" : "") + '"></i>'; }).join("") + "</div>" +
         '<div class="sv-head">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "sm") + "<span>" + esc(g.name || g.handle || "Mago") + '</span><span class="sv-t">' + timeAgo(s.created_at) + '</span><button class="sv-x">✕</button></div></div>' +
         mediaHtml + (s.caption ? '<div class="sv-cap">' + esc(s.caption) + "</div>" : "") +
@@ -1988,7 +1994,7 @@
         Cloud.getStoryViewers(s.id).then(function (list) {
           var m = el('<div class="modal-ov"><div class="modal"><h3>Vistas · ' + list.length + '</h3><div class="mago-list" id="svwl"></div><button class="btn ghost" id="svwClose">Cerrar</button></div></div>');
           document.body.appendChild(m);
-          document.getElementById("svwl").innerHTML = list.length ? list.map(function (u) { return '<div class="mago-row"><span class="avatar sm ' + (u.avatar ? "" : "ini") + '"' + (u.avatar ? ' style="background-image:url(' + esc(Cloud.publicUrl(u.avatar)) + ')"' : "") + ">" + (u.avatar ? "" : esc((u.name || u.handle || "?").charAt(0))) + '</span><div class="mr-b"><div class="n">' + esc(u.name || u.handle || "Mago") + "</div></div></div>"; }).join("") : '<p class="hint">Nadie todavía.</p>';
+          document.getElementById("svwl").innerHTML = list.length ? list.map(function (u) { return '<div class="mago-row"><span class="avatar sm ' + (u.avatar ? "" : "ini") + '"' + (u.avatar ? ' style="background-image:url(' + cssUrl(Cloud.publicUrl(u.avatar)) + ')"' : "") + ">" + (u.avatar ? "" : esc((u.name || u.handle || "?").charAt(0))) + '</span><div class="mr-b"><div class="n">' + esc(u.name || u.handle || "Mago") + "</div></div></div>"; }).join("") : '<p class="hint">Nadie todavía.</p>';
           m.addEventListener("click", function (ev) { if (ev.target === m) m.remove(); });
           document.getElementById("svwClose").addEventListener("click", function () { m.remove(); });
         }).catch(function () { toast("No se pudo cargar"); });
@@ -2011,7 +2017,7 @@
     var close = function () { ov.remove(); };
     ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
     document.getElementById("scCancel").addEventListener("click", close);
-    var prev = function () { document.getElementById("scPrev").innerHTML = media ? (media.kind === "video" ? '<div class="sc-vid">' + icon("play") + " Vídeo añadido</div>" : '<div class="sv-img sc-img" style="background-image:url(' + esc(media.url) + ')"></div>') : ""; };
+    var prev = function () { document.getElementById("scPrev").innerHTML = media ? (media.kind === "video" ? '<div class="sc-vid">' + icon("play") + " Vídeo añadido</div>" : '<div class="sv-img sc-img" style="background-image:url(' + cssUrl(media.url) + ')"></div>') : ""; };
     document.getElementById("scPhoto").addEventListener("click", function () { document.getElementById("scFile").click(); });
     document.getElementById("scFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo…"); Cloud.uploadSocial(fl).then(function (r) { media = { kind: "image", url: r.url, path: r.path }; prev(); }).catch(function () { toast("No se pudo subir"); }); });
     document.getElementById("scVidFile").addEventListener("change", function () { var fl = this.files && this.files[0]; this.value = ""; if (!fl) return; uploadOwnVideo(fl, function (m) { media = m; prev(); }); });
@@ -2392,7 +2398,7 @@
   function clipHtml(p, i) {
     var effect = p.effect ? '<span class="cm-effect">' + icon("wand", "i-sm") + esc(p.effect) + "</span>" : "";
     return '<section class="clip" data-clip="' + esc(p.id) + '" data-idx="' + i + '">' +
-      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p.poster) || "") + ')"></div></div>' +
+      '<div class="clip-video"><div class="clip-poster" style="background-image:url(' + cssUrl(Cloud.publicUrl(p.poster) || "") + ')"></div></div>' +
       '<div class="clip-prog"><i></i></div>' +
       '<div class="clip-tap" data-tap></div>' +
       '<div class="clip-rail">' +
@@ -2409,7 +2415,7 @@
   function clipDeactivate(list, idx) {
     var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
     var p = clipsState.rows[idx];
-    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p && p.poster) || "") + ')"></div>';
+    node.querySelector(".clip-video").innerHTML = '<div class="clip-poster" style="background-image:url(' + cssUrl(Cloud.publicUrl(p && p.poster) || "") + ')"></div>';
     var pr = node.querySelector(".clip-prog i"); if (pr) pr.style.width = "0%";
   }
   function clipActivate(list, idx) {
@@ -2419,7 +2425,7 @@
     var node = list.querySelector('.clip[data-idx="' + idx + '"]'); if (!node) return;
     var p = clipsState.rows[idx]; if (!p) return;
     var vd = node.querySelector(".clip-video");
-    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + esc(Cloud.publicUrl(p.poster) || "") + ')"></div>';
+    vd.innerHTML = '<div class="clip-poster" style="background-image:url(' + cssUrl(Cloud.publicUrl(p.poster) || "") + ')"></div>';
     var v = document.createElement("video");
     v.src = Cloud.publicUrl(p.video) || ""; v.loop = true; v.muted = clipsState.muted; v.playsInline = true;
     v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.preload = "auto";
@@ -2949,7 +2955,7 @@
       if (links.web) linkHtml += '<a class="p-link" href="' + esc(links.web) + '" target="_blank" rel="noopener">' + icon("globe", "i-sm") + "Web</a>";
       if (links.instagram) linkHtml += '<a class="p-link" href="https://instagram.com/' + esc(links.instagram.replace(/^@/, "")) + '" target="_blank" rel="noopener">Instagram</a>';
       if (links.youtube) linkHtml += '<a class="p-link" href="' + esc(links.youtube) + '" target="_blank" rel="noopener">YouTube</a>';
-      b.innerHTML = (p.cover ? '<div class="p-cover" style="background-image:url(' + esc(Cloud.publicUrl(p.cover) || p.cover) + ')"></div>' : '<div class="p-cover empty"></div>') +
+      b.innerHTML = (p.cover ? '<div class="p-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(p.cover) || p.cover) + ')"></div>' : '<div class="p-cover empty"></div>') +
         '<div class="profile-head">' + avatarHtml(Cloud.publicUrl(p.avatar), p.name || p.handle, "xl") +
         '<h2 class="title" style="margin:10px 0 0">' + esc(p.name || "Mago") + "</h2>" +
         '<div class="p-handle">' + (p.handle ? "@" + esc(p.handle) : "") + (p.city ? " · " + esc(p.city) : "") + "</div>" +
@@ -2988,10 +2994,10 @@
       '<div class="field"><label>YouTube</label><input id="epYt" placeholder="https://youtube.com/@…" value="' + esc((myProfile && myProfile.links && myProfile.links.youtube) || "") + '"></div>' +
       '<button class="btn" id="epSave">Guardar</button></div>';
     var epCover = (myProfile && myProfile.cover_path) || null;
-    if (epCover) document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + esc(Cloud.publicUrl(epCover)) + ')"></div>';
+    if (epCover) document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(epCover)) + ')"></div>';
     view.querySelectorAll("#epSpec .tchip").forEach(function (b) { b.addEventListener("click", function () { var s = b.getAttribute("data-s"); var i = onb.spec.indexOf(s); if (i >= 0) onb.spec.splice(i, 1); else onb.spec.push(s); b.classList.toggle("on"); }); });
     document.getElementById("epCoverBtn").addEventListener("click", function () { document.getElementById("epCoverFile").click(); });
-    document.getElementById("epCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { epCover = r.path; document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("epCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { epCover = r.path; document.getElementById("epCoverPrev").innerHTML = '<div class="p-cover" style="background-image:url(' + cssUrl(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
     document.getElementById("epSave").addEventListener("click", function () {
       var name = (document.getElementById("epName").value || "").trim(), handle = (document.getElementById("epHandle").value || "").trim().replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 24);
       if (!name || handle.length < 3) { toast("Nombre y usuario (mín. 3)"); return; }
@@ -3014,7 +3020,7 @@
   function listingCard(l) {
     var phys = isPhysical(l), out = soldOut(l);
     var cover = l.cover
-      ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')">'
+      ? '<div class="lc-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(l.cover) || l.cover) + ')">'
       : '<div class="lc-cover ph">' + engraving(l.id) + mark();
     var tag = phys ? '<span class="lc-tag' + (out ? " out" : "") + '">' + (out ? "Agotado" : "Físico") + "</span>" : "";
     var by = esc(l.name || l.handle || "Mago") + (l.discipline ? " · " + discLabel(l.discipline) : "");
@@ -3046,7 +3052,7 @@
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + engraving(l.id) + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + cssUrl(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + engraving(l.id) + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
@@ -3132,7 +3138,7 @@
       '<div class="field"><label>Precio</label><div class="seg" id="slPrice"><button data-v="0" class="' + (prefCents ? "" : "on") + (sellType === "physical" ? '" style="display:none' : "") + '" type="button">Gratis</button><button data-v="paid" class="' + (prefCents || sellType === "physical" ? "on" : "") + '" type="button">De pago</button></div>' +
       '<input id="slAmount" inputmode="decimal" placeholder="9,99 €" style="' + (prefCents || sellType === "physical" ? "" : "display:none;") + 'margin-top:8px" value="' + (prefCents ? (prefCents / 100).toFixed(2).replace(".", ",") : "") + '"></div>' +
       '<button class="btn ghost" id="slCoverBtn">' + icon("plus", "i-sm") + ' Portada (opcional)</button><input type="file" id="slCoverFile" accept="image/*" style="display:none"><div id="slCoverPrev">' +
-      (sellCover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(sellCover) || sellCover) + ')"></div>' : "") + "</div>" +
+      (sellCover ? '<div class="li-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(sellCover) || sellCover) + ')"></div>' : "") + "</div>" +
       '<button class="btn" id="slPublish">' + (editId ? "Guardar cambios" : "Publicar en el mercado") + "</button>";
     if (editId) host.innerHTML = html; else view.innerHTML = '<div class="screen">' + html + "</div>";
     document.getElementById("slPick").addEventListener("click", function () { pickTrick(function (t) { sellTrick = t; document.getElementById("slTitle").value = document.getElementById("slTitle").value || t.title; document.getElementById("slPrev").innerHTML = '<div class="trick-card"><span class="tc-ic">' + mark() + '</span><div><div class="n">' + esc(t.title) + '</div><div class="d">' + esc(t.category || "") + "</div></div></div>"; }); });
@@ -3162,7 +3168,7 @@
     view.querySelectorAll("#slShipSeg button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slShipSeg", b); shipPaid = b.getAttribute("data-v") === "paid"; document.getElementById("slShip").style.display = shipPaid ? "" : "none"; }); });
     view.querySelectorAll("#slPrice button").forEach(function (b) { b.addEventListener("click", function () { setSeg("#slPrice", b); paid = b.getAttribute("data-v") === "paid"; document.getElementById("slAmount").style.display = paid ? "" : "none"; }); });
     document.getElementById("slCoverBtn").addEventListener("click", function () { document.getElementById("slCoverFile").click(); });
-    document.getElementById("slCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { sellCover = r.path; document.getElementById("slCoverPrev").innerHTML = '<div class="li-cover" style="background-image:url(' + esc(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
+    document.getElementById("slCoverFile").addEventListener("change", function () { var fl = this.files[0]; if (!fl) return; toast("Subiendo portada…"); Cloud.uploadSocial(fl).then(function (r) { sellCover = r.path; document.getElementById("slCoverPrev").innerHTML = '<div class="li-cover" style="background-image:url(' + cssUrl(r.url) + ')"></div>'; }).catch(function () { toast("No se pudo subir"); }); });
     document.getElementById("slPublish").addEventListener("click", function () {
       var phys = sellType === "physical";
       var title = (document.getElementById("slTitle").value || "").trim();
@@ -3881,6 +3887,10 @@
   function scheduleA11y() { if (a11yScheduled) return; a11yScheduled = true; setTimeout(function () { a11yScheduled = false; a11yPass(); }, 60); }
   try { new MutationObserver(scheduleA11y).observe(view, { childList: true, subtree: true }); } catch (e) {}
   // Transiciones suaves entre pantallas (View Transitions, mejora progresiva)
+  window.addEventListener("unhandledrejection", function (ev) {
+    ev.preventDefault();
+    try { console.warn("[segundo plano]", (ev.reason && ev.reason.message) || ev.reason); } catch (e) {}
+  });
   window.addEventListener("hashchange", function () {
     if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
       try { document.startViewTransition(function () { route(); }); return; } catch (e) {}

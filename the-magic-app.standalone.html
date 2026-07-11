@@ -1516,6 +1516,109 @@ html.vt-theme::view-transition-new(root) { animation: themeReveal .5s ease-out; 
 /* --- Segmentos: el activo con relieve --- */
 .seg button.on { box-shadow: var(--shadow); }
 
+/* ==========================================================================
+   ATELIER v10 — lujo silencioso para magos de verdad: filigrana fina, oro
+   contenido, tipografía editorial y grabado guilloché. Simple a primera
+   vista, detallado al mirar de cerca. Sin clichés.
+   ========================================================================== */
+
+/* --- Materia y luz: vela cálida arriba, penumbra abajo, grano de papel --- */
+body { position: relative; }
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(120% 85% at 50% -14%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 52%),
+    radial-gradient(150% 100% at 50% 118%, rgba(0,0,0,.34), transparent 58%);
+}
+:root[data-theme="light"] body::before,
+html:not([data-theme="dark"]) body::before { opacity: .55; }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) body::before { opacity: 1; } }
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+
+/* --- Hairlines doradas: la línea gris pasa a filigrana cálida --- */
+:root {
+  --hairline: color-mix(in srgb, var(--brand) 20%, transparent);
+  --hairline-2: color-mix(in srgb, var(--brand) 32%, transparent);
+  --foil: linear-gradient(105deg, color-mix(in srgb, var(--brand) 78%, #6b5426) 12%, color-mix(in srgb, var(--brand) 60%, #fff) 36%, var(--brand) 54%, color-mix(in srgb, var(--brand) 66%, #fff) 72%, color-mix(in srgb, var(--brand) 80%, #6b5426) 90%);
+}
+
+/* --- Tipografía editorial: títulos en cursiva serif con oro foil --- */
+.pagetitle, .pagehead h1, h1.title, .gate-hero h1 {
+  font-style: italic; font-weight: 600; letter-spacing: -0.01em;
+  background: var(--foil); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.appbar .wm { font-style: italic; }
+.sec-label { letter-spacing: .22em; font-size: 10.5px; }
+
+/* --- Chips: versalitas con filete, activo en oro foil --- */
+.chip {
+  border-radius: 4px; text-transform: uppercase; font-size: 10.5px; font-weight: 650;
+  letter-spacing: .16em; padding: 8px 13px; border-color: var(--hairline);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.chip.active { background: var(--grad-brand); color: var(--on-brand); border-color: transparent; box-shadow: var(--shadow-brand); }
+
+/* --- Tarjetas: marco de filigrana, luz de canto, título serif --- */
+.card, .listcard {
+  border-radius: 12px; border-color: var(--hairline);
+  background: linear-gradient(172deg, color-mix(in srgb, var(--brand) 5%, var(--surface)), var(--surface) 55%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand) 14%, transparent), 0 14px 34px -16px rgba(0,0,0,.5);
+}
+.card:hover, .listcard:hover { border-color: var(--hairline-2); }
+.card .body h3, .listcard .n { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; }
+.card .meta, .listcard .by {
+  text-transform: uppercase; letter-spacing: .17em; font-size: 9.5px; font-weight: 600; color: var(--ink-faint);
+}
+.pill { text-transform: uppercase; letter-spacing: .14em; font-size: 9px; font-weight: 700; border-radius: 3px; padding: 4px 8px; }
+
+/* --- Grabado guilloché generativo en portadas sin imagen --- */
+.card .thumb:has(.engr)::before { display: none; }
+.card .thumb:has(.engr) .ph { display: flex; opacity: 1; }
+.card .thumb .ph .i { color: var(--brand); opacity: .9; }
+.thumb .ph, .lc-cover.ph, .li-cover.ph { position: relative; overflow: hidden; }
+.engr {
+  position: absolute; left: 50%; top: 50%; width: 165%; aspect-ratio: 1;
+  transform: translate(-50%, -50%); color: var(--brand); opacity: .5; pointer-events: none;
+}
+.li-cover.ph .engr { width: 120%; }
+.thumb .ph .i, .lc-cover.ph .mk, .li-cover.ph .mk { position: relative; filter: drop-shadow(0 4px 16px color-mix(in srgb, var(--brand) 45%, transparent)); }
+.thumb .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+
+/* --- Campos y botones: rectitud serena --- */
+.search, .field input, .field textarea, .field select { border-radius: 10px; border-color: var(--hairline); }
+.btn { border-radius: 12px; letter-spacing: .02em; }
+.btn.ghost { border-color: var(--hairline-2); }
+.iconbtn, .pagehead .back { border-radius: 11px; border-color: var(--hairline); }
+.seg, .seg button, .gate-tabs button { border-radius: 10px; }
+.seg { border-color: var(--hairline); }
+
+/* --- Superficies de lista: filete cálido --- */
+.setrow, .rrow, .postcard, .panel, .toggle-row, .stat, .notes, .specs, .conv, .notif, .modal, .sheet-box {
+  border-color: var(--hairline);
+}
+
+/* --- Tabbar: filo de luz dorada y píldora más serena --- */
+@media (max-width: 999px) {
+  .tabbar { border-radius: 18px; border-color: var(--hairline); }
+  .tabbar::before {
+    content: ""; position: absolute; left: 22px; right: 22px; top: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--hairline-2) 30%, var(--brand) 50%, var(--hairline-2) 70%, transparent);
+  }
+  .tabbar a .tb-ind { border-radius: 12px; }
+}
+.fab { border-radius: 16px; }
+
+/* --- Precio y números: siempre serif tabular --- */
+.price, .price.big { font-family: var(--display); }
+
+/* --- Modales y hojas --- */
+.modal, .sheet-box { border-radius: 16px; }
+.li-meta span { border-radius: 3px; text-transform: uppercase; letter-spacing: .13em; font-size: 9.5px; font-weight: 650; border-color: var(--hairline); }
+.lc-tag { border-radius: 3px; letter-spacing: .12em; text-transform: uppercase; font-size: 9.5px; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -2507,12 +2610,12 @@ window.Cloud = (function () {
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
-    if (!th) inner = '<span class="ph">' + icon("cards") + "</span>";
+    if (!th) inner = '<span class="ph">' + engraving(t.id) + icon("cards") + "</span>";
     else if (th.kind === "embedimg") { inner = '<img src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
     else if (th.kind === "img") inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>';
     else if (th.kind === "video") { inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
-    else if (th.kind === "videoicon") { inner = '<span class="ph">' + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
-    else inner = '<span class="ph">' + icon("link") + "</span>";
+    else if (th.kind === "videoicon") { inner = '<span class="ph">' + engraving(t.id) + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else inner = '<span class="ph">' + engraving(t.id) + icon("link") + "</span>";
     return (
       '<div class="card" data-id="' + t.id + '">' +
       '<div class="thumb">' + inner + play + (t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
@@ -3679,6 +3782,21 @@ window.Cloud = (function () {
   }
 
   /* ---------- Estados de carga (esqueletos) y vacíos ilustrados ---------- */
+  function engraving(seed, cls) {
+    var h = 2166136261, s = String(seed || "x"), i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    function rnd() { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; }
+    var paths = "", rings = 3 + Math.floor(rnd() * 2), r0;
+    for (r0 = 0; r0 < rings; r0++) {
+      var R = 15 + r0 * (11 + rnd() * 6), k = 5 + Math.floor(rnd() * 8), amp = 2 + rnd() * 5, ph = rnd() * 6.283, d = "", a;
+      for (a = 0; a <= 132; a++) {
+        var t = a / 132 * 6.283, rr = R + amp * Math.sin(k * t + ph);
+        d += (a ? "L" : "M") + (60 + rr * Math.cos(t)).toFixed(1) + " " + (60 + rr * Math.sin(t)).toFixed(1);
+      }
+      paths += '<path d="' + d + 'Z" opacity="' + (0.55 - r0 * 0.09).toFixed(2) + '"/>';
+    }
+    return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
+  }
   function emptyArt() { return '<div class="empty-art"><span class="ea-glow"></span>' + mark("", true) + "</div>"; }
   function skLine(w, h) { return '<div class="skeleton sk-line" style="width:' + w + (h ? ";height:" + h : "") + '"></div>'; }
   function skelFeed(n) {
@@ -4386,7 +4504,7 @@ window.Cloud = (function () {
     var phys = isPhysical(l), out = soldOut(l);
     var cover = l.cover
       ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')">'
-      : '<div class="lc-cover ph">' + mark();
+      : '<div class="lc-cover ph">' + engraving(l.id) + mark();
     var tag = phys ? '<span class="lc-tag' + (out ? " out" : "") + '">' + (out ? "Agotado" : "Físico") + "</span>" : "";
     var by = esc(l.name || l.handle || "Mago") + (l.discipline ? " · " + discLabel(l.discipline) : "");
     return '<div class="listcard' + (out ? " sold" : "") + '" data-l="' + esc(l.id) + '">' + cover + tag + "</div>" +
@@ -4417,7 +4535,7 @@ window.Cloud = (function () {
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + engraving(l.id) + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +

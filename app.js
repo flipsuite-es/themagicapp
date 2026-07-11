@@ -582,12 +582,12 @@
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
-    if (!th) inner = '<span class="ph">' + icon("cards") + "</span>";
+    if (!th) inner = '<span class="ph">' + engraving(t.id) + icon("cards") + "</span>";
     else if (th.kind === "embedimg") { inner = '<img src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
     else if (th.kind === "img") inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>';
     else if (th.kind === "video") { inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
-    else if (th.kind === "videoicon") { inner = '<span class="ph">' + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
-    else inner = '<span class="ph">' + icon("link") + "</span>";
+    else if (th.kind === "videoicon") { inner = '<span class="ph">' + engraving(t.id) + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else inner = '<span class="ph">' + engraving(t.id) + icon("link") + "</span>";
     return (
       '<div class="card" data-id="' + t.id + '">' +
       '<div class="thumb">' + inner + play + (t.favorite ? '<span class="fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
@@ -1754,6 +1754,21 @@
   }
 
   /* ---------- Estados de carga (esqueletos) y vacíos ilustrados ---------- */
+  function engraving(seed, cls) {
+    var h = 2166136261, s = String(seed || "x"), i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    function rnd() { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; }
+    var paths = "", rings = 3 + Math.floor(rnd() * 2), r0;
+    for (r0 = 0; r0 < rings; r0++) {
+      var R = 15 + r0 * (11 + rnd() * 6), k = 5 + Math.floor(rnd() * 8), amp = 2 + rnd() * 5, ph = rnd() * 6.283, d = "", a;
+      for (a = 0; a <= 132; a++) {
+        var t = a / 132 * 6.283, rr = R + amp * Math.sin(k * t + ph);
+        d += (a ? "L" : "M") + (60 + rr * Math.cos(t)).toFixed(1) + " " + (60 + rr * Math.sin(t)).toFixed(1);
+      }
+      paths += '<path d="' + d + 'Z" opacity="' + (0.55 - r0 * 0.09).toFixed(2) + '"/>';
+    }
+    return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
+  }
   function emptyArt() { return '<div class="empty-art"><span class="ea-glow"></span>' + mark("", true) + "</div>"; }
   function skLine(w, h) { return '<div class="skeleton sk-line" style="width:' + w + (h ? ";height:" + h : "") + '"></div>'; }
   function skelFeed(n) {
@@ -2461,7 +2476,7 @@
     var phys = isPhysical(l), out = soldOut(l);
     var cover = l.cover
       ? '<div class="lc-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')">'
-      : '<div class="lc-cover ph">' + mark();
+      : '<div class="lc-cover ph">' + engraving(l.id) + mark();
     var tag = phys ? '<span class="lc-tag' + (out ? " out" : "") + '">' + (out ? "Agotado" : "Físico") + "</span>" : "";
     var by = esc(l.name || l.handle || "Mago") + (l.discipline ? " · " + discLabel(l.discipline) : "");
     return '<div class="listcard' + (out ? " sold" : "") + '" data-l="' + esc(l.id) + '">' + cover + tag + "</div>" +
@@ -2492,7 +2507,7 @@
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + engraving(l.id) + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +

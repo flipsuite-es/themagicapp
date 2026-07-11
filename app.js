@@ -1995,8 +1995,9 @@
   }
 
   /* ============ MATERIA VIVA: humo y polvo de oro (WebGL) ============ */
-  // Un único lienzo a baja resolución detrás del contenido, solo en tema
-  // oscuro y sin reduced-motion. fbm con warp de dominio + motas que titilan.
+  // Un único lienzo a baja resolución detrás del contenido, sin reduced-motion.
+  // fbm con warp de dominio + motas que titilan; en oscuro humo dorado sobre
+  // negro, en claro velos cálidos y polvo de oro sobre papel de galería.
   function initAmbient() {
     try {
       if (!fxFull() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -2006,16 +2007,24 @@
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
       if (!gl) { cv.remove(); return; }
       var VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
-      var FS = "precision mediump float;uniform vec2 R;uniform float T;uniform vec2 G;" +
+      var FS = "precision mediump float;uniform vec2 R;uniform float T;uniform vec2 G;uniform float L;" +
         "float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}" +
         "float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+1.),f.x),f.y);}" +
         "float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p*=2.03;a*=.5;}return v;}" +
         "void main(){vec2 u=gl_FragCoord.xy/R;vec2 p=u*vec2(R.x/R.y,1.)*2.4+G*.5;float t=T*.03;" +
         "float s=fbm(p+vec2(t*.5,-t*.2)+fbm(p*1.6-t*.25)*.85);s=smoothstep(.42,1.05,s);" +
-        "vec3 gold=vec3(.84,.65,.37);vec3 c=gold*s*.14*(1.1-u.y*.55);" +
+        "vec3 gold=vec3(.84,.65,.37);" +
         "vec2 g=gl_FragCoord.xy/2.6;vec2 id=floor(g);float sp=h(id);" +
-        "float tw=step(.9975,sp)*pow(.5+.5*sin(T*(1.2+sp*2.5)+sp*44.),8.);" +
-        "c+=gold*tw*.6*smoothstep(.15,.5,s);gl_FragColor=vec4(c,1.);}";
+        "float tw=step(.9975,sp)*pow(.5+.5*sin(T*(1.2+sp*2.5)+sp*44.),8.);float m=smoothstep(.15,.5,s);" +
+        // oscuro: humo dorado aditivo sobre negro
+        "vec3 cd=gold*s*.14*(1.1-u.y*.55)+gold*tw*.6*m;" +
+        // claro: papel de galería (reproduce --grad-page) con velos calidos y polvo de oro
+        "float d=length(vec2((u.x-.5)*1.15,(1.-u.y)*.82));" +
+        "vec3 base=mix(vec3(.988,.976,.949),vec3(.945,.929,.894),smoothstep(0.,.5,d));" +
+        "base=mix(base,vec3(.902,.882,.831),smoothstep(.5,1.05,d));" +
+        "vec3 cl=base-vec3(.14,.115,.062)*s*(1.08-u.y*.4);" +
+        "cl=mix(cl,vec3(.74,.57,.24),tw*.75*m);" +
+        "gl_FragColor=vec4(mix(cd,cl,L),1.);}";
       function sh(t, src) { var o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw 0; return o; }
       var pr = gl.createProgram();
       gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
@@ -2024,7 +2033,7 @@
       var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       var loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      var uR = gl.getUniformLocation(pr, "R"), uT = gl.getUniformLocation(pr, "T"), uG = gl.getUniformLocation(pr, "G");
+      var uR = gl.getUniformLocation(pr, "R"), uT = gl.getUniformLocation(pr, "T"), uG = gl.getUniformLocation(pr, "G"), uL = gl.getUniformLocation(pr, "L");
       function size() {
         var k = Math.min(window.devicePixelRatio || 1, 2) * 0.34;
         cv.width = Math.max(2, Math.round(innerWidth * k)); cv.height = Math.max(2, Math.round(innerHeight * k));
@@ -2039,10 +2048,11 @@
       function frame(ts) {
         if (!cv.isConnected) { removeEventListener("resize", size); return; } // apagado desde Ajustes
         requestAnimationFrame(frame);
-        if (document.hidden || !dark()) return;
+        if (document.hidden) return;
         if (ts - last < 40) return; // ~25 fps: suficiente para humo
         last = ts;
         gl.uniform1f(uT, ts / 1000);
+        gl.uniform1f(uL, dark() ? 0 : 1);
         var tg = window.__tiltG; gl.uniform2f(uG, tg ? tg[0] : 0, tg ? tg[1] : 0);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }

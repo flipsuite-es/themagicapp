@@ -1624,8 +1624,7 @@ body::after {
 html { background: var(--bg); background-image: var(--grad-page); background-attachment: fixed; }
 body { background: transparent; background-image: none; }
 #fx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
-:root[data-theme="light"] #fx { display: none; }
-@media (prefers-color-scheme: light) { html:not([data-theme="dark"]) #fx { display: none; } }
+/* El lienzo pinta ambos temas: humo dorado en oscuro, velos sobre papel en claro */
 
 /* Foil 3D: destello especular que sigue al puntero sobre la tarjeta */
 .card.foil, .listcard.foil { transition: transform .08s linear; will-change: transform; z-index: 2; }
@@ -1634,6 +1633,12 @@ body { background: transparent; background-image: none; }
   background: radial-gradient(430px circle at var(--mx, 50%) var(--my, 50%),
     color-mix(in srgb, var(--brand) 24%, transparent), transparent 58%);
   mix-blend-mode: screen;
+}
+/* En claro, "screen" sobre tarjeta casi blanca es invisible: baño de latón
+   en multiply para que el destello se vea también sobre papel */
+:root[data-theme="light"] .card.foil::after, :root[data-theme="light"] .listcard.foil::after { mix-blend-mode: multiply; background: radial-gradient(430px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--brand) 13%, transparent), transparent 58%); }
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) .card.foil::after, html:not([data-theme="dark"]) .listcard.foil::after { mix-blend-mode: multiply; background: radial-gradient(430px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--brand) 13%, transparent), transparent 58%); }
 }
 
 /* El grabado del héroe respira: giro imperceptiblemente lento */
@@ -1699,7 +1704,11 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; h
       y con background-clip:text + color:transparent ese vuelo se pinta
       invisible: parece cortado aunque no haya overflow. Aire interno
       compensado con margen negativo: la caja visual no cambia. */
-.pagetitle, .pagehead h1, h1.title, .gate-hero h1 { padding-inline: 0.18em; margin-inline: -0.18em; }
+.pagetitle, .pagehead h1, h1.title, .gate-hero h1 { padding: 0.15em 0.18em; margin-inline: -0.18em; }
+/* margen vertical compensado por selector (cada título tenía el suyo) */
+.pagetitle, .pagehead h1 { margin-block: -0.15em; }
+h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
+.gate-hero h1 { margin-block: calc(14px - 0.15em) calc(8px - 0.15em); }
 .appbar .pagetitle { padding: 5px 0.18em; margin: -5px -0.18em; }
 
 /* 2) El selector Descubrir/Clips/… estaba a 4px de las historias */

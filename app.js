@@ -479,7 +479,7 @@
       "</div>";
 
     var q = document.getElementById("q");
-    q.addEventListener("input", function () { filter.q = q.value; refreshCards(); });
+    var qT; q.addEventListener("input", function () { filter.q = q.value; clearTimeout(qT); qT = setTimeout(refreshCards, 120); });
     document.getElementById("favToggle").addEventListener("click", function () { filter.fav = !filter.fav; renderLibrary(); });
     var pb = document.getElementById("pracBanner"); if (pb) pb.addEventListener("click", function () { location.hash = "#/practica"; });
     document.getElementById("acctBtn").addEventListener("click", function () { location.hash = "#/cuenta"; });
@@ -583,7 +583,7 @@
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
     if (!th) inner = '<span class="ph">' + icon("cards") + "</span>";
-    else if (th.kind === "embedimg") { inner = '<img src="' + esc(th.url) + '" loading="lazy" alt="">'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
+    else if (th.kind === "embedimg") { inner = '<img src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
     else if (th.kind === "img") inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>';
     else if (th.kind === "video") { inner = '<span class="cthumb" data-thumb="' + esc(th.path) + '"></span>'; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
     else if (th.kind === "videoicon") { inner = '<span class="ph">' + icon("film") + "</span>"; play = '<span class="play">' + icon("play", "i-sm") + "</span>"; }
@@ -842,7 +842,7 @@
     var list = document.getElementById("vidList");
     if (!list) return;
     list.innerHTML = draftMedia.map(function (m, i) {
-      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" alt="">' : icon(m.provider === "upload" ? "film" : m.provider === "link" ? "link" : "play", "i-sm");
+      var thumb = m.thumb ? '<img src="' + esc(m.thumb) + '" loading="lazy" decoding="async" alt="">' : icon(m.provider === "upload" ? "film" : m.provider === "link" ? "link" : "play", "i-sm");
       var sub = m.uploading ? "subiendo…" : (m.provider === "upload" ? "vídeo propio" : m.provider);
       return '<div class="vidrow"><div class="vt">' + thumb + "</div>" +
         '<div class="vi"><div class="n">' + esc(m.title || m.url || "vídeo") + '</div><div class="p">' + esc(sub) + "</div></div>" +
@@ -1492,7 +1492,7 @@
     var out = "";
     (media || []).forEach(function (m) {
       if (m.kind === "video" && m.embed) out += '<div class="player"><iframe src="' + esc(m.embed) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
-      else if (m.kind === "video" && m.url) out += '<div class="player native"><video src="' + esc(m.url) + '" controls playsinline preload="metadata"' + (m.poster ? ' poster="' + esc(m.poster) + '"' : "") + "></video></div>";
+      else if (m.kind === "video" && m.url) out += '<div class="player native"><video src="' + esc(m.url) + '" controls playsinline preload="' + (m.poster ? "none" : "metadata") + '"' + (m.poster ? ' poster="' + esc(m.poster) + '"' : "") + "></video></div>";
     });
     var imgs = (media || []).filter(function (m) { return m.kind !== "video" && m.url; });
     if (imgs.length) out += '<div class="pc-imgs' + (imgs.length > 1 ? " multi" : "") + '">' + imgs.map(function (m) { return '<div class="post-img" style="background-image:url(' + esc(m.url) + ')"></div>'; }).join("") + "</div>";

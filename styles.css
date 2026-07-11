@@ -1610,3 +1610,28 @@ body::after {
 .modal, .sheet-box { border-radius: 16px; }
 .li-meta span { border-radius: 3px; text-transform: uppercase; letter-spacing: .13em; font-size: 9.5px; font-weight: 650; border-color: var(--hairline); }
 .lc-tag { border-radius: 3px; letter-spacing: .12em; text-transform: uppercase; font-size: 9.5px; }
+
+/* ==========================================================================
+   MATERIA VIVA v10.5 — humo y polvo de oro al fondo (WebGL) y foil 3D
+   en las tarjetas. La página deja de ser un decorado: reacciona.
+   ========================================================================== */
+
+/* El fondo pasa a html para que el lienzo quede entre fondo y contenido */
+html { background: var(--bg); background-image: var(--grad-page); background-attachment: fixed; }
+body { background: transparent; background-image: none; }
+#fx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+:root[data-theme="light"] #fx { display: none; }
+@media (prefers-color-scheme: light) { html:not([data-theme="dark"]) #fx { display: none; } }
+
+/* Foil 3D: destello especular que sigue al puntero sobre la tarjeta */
+.card.foil, .listcard.foil { transition: transform .08s linear; will-change: transform; z-index: 2; }
+.card.foil::after, .listcard.foil::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
+  background: radial-gradient(430px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--brand) 24%, transparent), transparent 58%);
+  mix-blend-mode: screen;
+}
+
+/* El grabado del héroe respira: giro imperceptiblemente lento */
+.li-cover.ph .engr { animation: engrTurn 90s linear infinite; }
+@keyframes engrTurn { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }

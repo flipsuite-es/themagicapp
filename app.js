@@ -1769,6 +1769,86 @@
     }
     return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
   }
+  /* ============ MATERIA VIVA: humo y polvo de oro (WebGL) ============ */
+  // Un único lienzo a baja resolución detrás del contenido, solo en tema
+  // oscuro y sin reduced-motion. fbm con warp de dominio + motas que titilan.
+  function initAmbient() {
+    try {
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var cv = document.createElement("canvas"); cv.id = "fx"; cv.setAttribute("aria-hidden", "true");
+      document.body.insertBefore(cv, document.body.firstChild);
+      var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
+      if (!gl) { cv.remove(); return; }
+      var VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
+      var FS = "precision mediump float;uniform vec2 R;uniform float T;" +
+        "float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}" +
+        "float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+1.),f.x),f.y);}" +
+        "float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p*=2.03;a*=.5;}return v;}" +
+        "void main(){vec2 u=gl_FragCoord.xy/R;vec2 p=u*vec2(R.x/R.y,1.)*2.4;float t=T*.03;" +
+        "float s=fbm(p+vec2(t*.5,-t*.2)+fbm(p*1.6-t*.25)*.85);s=smoothstep(.42,1.05,s);" +
+        "vec3 gold=vec3(.84,.65,.37);vec3 c=gold*s*.14*(1.1-u.y*.55);" +
+        "vec2 g=gl_FragCoord.xy/2.6;vec2 id=floor(g);float sp=h(id);" +
+        "float tw=step(.9975,sp)*pow(.5+.5*sin(T*(1.2+sp*2.5)+sp*44.),8.);" +
+        "c+=gold*tw*.6*smoothstep(.15,.5,s);gl_FragColor=vec4(c,1.);}";
+      function sh(t, src) { var o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw 0; return o; }
+      var pr = gl.createProgram();
+      gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw 0;
+      gl.useProgram(pr);
+      var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      var loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      var uR = gl.getUniformLocation(pr, "R"), uT = gl.getUniformLocation(pr, "T");
+      function size() {
+        var k = Math.min(window.devicePixelRatio || 1, 2) * 0.34;
+        cv.width = Math.max(2, Math.round(innerWidth * k)); cv.height = Math.max(2, Math.round(innerHeight * k));
+        gl.viewport(0, 0, cv.width, cv.height); gl.uniform2f(uR, cv.width, cv.height);
+      }
+      size(); addEventListener("resize", size);
+      var last = 0;
+      function dark() {
+        var m = document.documentElement.getAttribute("data-theme");
+        return m === "dark" || (m !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+      }
+      function frame(ts) {
+        requestAnimationFrame(frame);
+        if (document.hidden || !dark()) return;
+        if (ts - last < 40) return; // ~25 fps: suficiente para humo
+        last = ts;
+        gl.uniform1f(uT, ts / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      requestAnimationFrame(frame);
+    } catch (e) { var c0 = document.getElementById("fx"); if (c0) c0.remove(); }
+  }
+
+  /* ====== FOIL 3D: las tarjetas se inclinan y destellan bajo el dedo ====== */
+  function initFoil() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var cur = null, raf = 0, px = 0, py = 0;
+    function apply() {
+      raf = 0; if (!cur) return;
+      var r = cur.getBoundingClientRect(); if (!r.width) return;
+      var x = Math.min(1, Math.max(0, (px - r.left) / r.width)), y = Math.min(1, Math.max(0, (py - r.top) / r.height));
+      cur.style.transform = "perspective(720px) rotateX(" + ((0.5 - y) * 6).toFixed(2) + "deg) rotateY(" + ((x - 0.5) * 8).toFixed(2) + "deg) translateY(-2px)";
+      cur.style.setProperty("--mx", (x * 100).toFixed(1) + "%");
+      cur.style.setProperty("--my", (y * 100).toFixed(1) + "%");
+    }
+    function reset(el0) { el0.classList.remove("foil"); el0.style.transform = ""; el0.style.removeProperty("--mx"); el0.style.removeProperty("--my"); }
+    function move(e) {
+      var t = e.target && e.target.closest ? e.target.closest(".card, .listcard") : null;
+      if (t !== cur) { if (cur) reset(cur); cur = t; if (cur) cur.classList.add("foil"); }
+      if (!cur) return;
+      px = e.clientX; py = e.clientY;
+      if (!raf) raf = requestAnimationFrame(apply);
+    }
+    function drop() { if (cur) { reset(cur); cur = null; } }
+    document.addEventListener("pointermove", move, { passive: true });
+    document.addEventListener("pointerdown", move, { passive: true });
+    document.addEventListener("pointerup", function () { if (!matchMedia("(hover: hover)").matches) drop(); }, { passive: true });
+    document.addEventListener("pointercancel", drop, { passive: true });
+    document.addEventListener("scroll", drop, { passive: true, capture: true });
+  }
   function emptyArt() { return '<div class="empty-art"><span class="ea-glow"></span>' + mark("", true) + "</div>"; }
   function skLine(w, h) { return '<div class="skeleton sk-line" style="width:' + w + (h ? ";height:" + h : "") + '"></div>'; }
   function skelFeed(n) {
@@ -3340,4 +3420,6 @@
   window.addEventListener("online", function () { if (logged() && cloudReady()) { syncOnLogin(true); startRealtime(); } });
   if (hasPin() && !unlocked) renderLock();
   else boot();
+  initAmbient();
+  initFoil();
 })();

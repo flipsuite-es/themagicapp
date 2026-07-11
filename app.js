@@ -681,11 +681,15 @@
       '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>' + railHtml() +
       (!mesaOrg.hinted && !mesaDrawer && visible.length ? '<div class="mesa-hint" id="mesaHint">Mant\u00e9n pulsada una carta para colocarla a tu gusto o guardarla en un caj\u00f3n</div>' : "");
     var cam = document.getElementById("mesaCam"), rail = document.getElementById("mesaRail");
+    var movingCard = null;
     cardsData.forEach(function (c, i) {
       c.el = wrap.querySelectorAll(".mcard")[i]; c.inEl = c.el.firstChild; c.shade = c.el.querySelector(".mc-shade");
       paintCard(c);
     });
-    function paintCard(c) { c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px,2px) rotateZ(" + c.rz.toFixed(2) + "deg)"; }
+    function paintCard(c) {
+      var z = movingCard === c ? 90 : 2; // en la mano: flota sobre el resto
+      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px," + z + "px) rotateZ(" + c.rz.toFixed(2) + "deg)";
+    }
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
       setTimeout(function () { cardsData.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
@@ -695,15 +699,19 @@
     if (hintEl) setTimeout(function () { if (hintEl.isConnected) hintEl.classList.add("bye"); }, 6000);
     var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
     var dragging = false, moved = 0, lastX = 0, lastY = 0, lastT = 0, lifted = null;
-    var pressT = 0, movingCard = null;
+    var pressT = 0;
     var lastFog = -1e9;
     function fog() {
       if (Math.abs(scroll - lastFog) < 20) return;
       lastFog = scroll;
       for (var i = 0; i < cardsData.length; i++) {
-        var d = cardsData[i].y - scroll;
+        var c = cardsData[i], d = c.y - scroll;
+        // culling: lo que queda muy lejos ni se maqueta ni se pinta
+        var vis = (d > -430 && d < 1250) || c === movingCard;
+        if (vis !== c.vis) { c.vis = vis; c.el.style.display = vis ? "" : "none"; }
+        if (!vis) continue;
         var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
-        cardsData[i].shade.style.opacity = o.toFixed(2);
+        c.shade.style.opacity = o.toFixed(2);
       }
     }
     function camPaint() {
@@ -742,6 +750,7 @@
         pressT = setTimeout(function () {
           if (moved < 9 && dragging) {
             movingCard = c; c.inEl.classList.add("drag"); wrap.classList.add("arranging");
+            paintCard(c); cam.appendChild(c.el);
             buzz(12); snd("tap");
             if (!mesaOrg.hinted) { mesaOrg.hinted = true; saveMesaOrg(); var h = document.getElementById("mesaHint"); if (h) h.classList.add("bye"); }
           }
@@ -782,6 +791,7 @@
         } else {
           mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y) };
           saveMesaOrg(); snd("slide");
+          paintCard(c); // vuelve a posarse (z de mesa), ya al final del DOM
         }
         return;
       }

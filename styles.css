@@ -1754,3 +1754,6 @@ body { background: transparent; background-image: none; }
 :root[data-theme="light"] .mesa-hint { color: #f5f0e4; }
 .mesa-hint.bye { opacity: 0; }
 .mesa-fog.bot { height: 110px; }
+
+/* La carta agarrada flota de verdad sobre las demás (orden 3D real) */
+.mcard { transform-style: preserve-3d; }

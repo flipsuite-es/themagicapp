@@ -1656,7 +1656,8 @@ body { background: transparent; background-image: none; }
 
 .mesa {
   position: relative; height: clamp(300px, calc(100dvh - 350px), 700px);
-  margin: 0 -20px; overflow: hidden;
+  margin-left: calc(-18px - env(safe-area-inset-left)); margin-right: calc(-18px - env(safe-area-inset-right));
+  overflow: hidden;
   border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
   background: linear-gradient(178deg, #141009, #090705 62%);
   perspective: 1350px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
@@ -1762,3 +1763,13 @@ body { background: transparent; background-image: none; }
 
 /* La carta agarrada flota de verdad sobre las demás (orden 3D real) */
 .mcard { transform-style: preserve-3d; }
+
+/* Accesibilidad: los chips son <button> reales — tipografía heredada */
+.chip { font-family: inherit; }
+
+/* ------- Cabecera: el título cede espacio y nunca desborda ------- */
+.appbar { flex-wrap: nowrap; }
+.appbar .pagetitle { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(21px, 6.6vw, 27px); }
+.appbar .spacer { min-width: 6px; }
+/* Cinturón de seguridad del shell: jamás scroll horizontal */
+.app { overflow-x: hidden; }

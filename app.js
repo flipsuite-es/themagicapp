@@ -438,13 +438,13 @@
     var tricks = state.tricks.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
     var dueCount = dueTricks().length;
 
-    var catChips = ['<div class="chip ' + (filter.cat === "all" ? "active" : "") + '" data-cat="all">Todas</div>']
+    var catChips = ['<button type="button" class="chip ' + (filter.cat === "all" ? "active" : "") + '" data-cat="all">Todas</button>']
       .concat(state.categories.map(function (c) {
-        return '<div class="chip ' + (filter.cat === c ? "active" : "") + '" data-cat="' + esc(c) + '">' + esc(c) + "</div>";
+        return '<button type="button" class="chip ' + (filter.cat === c ? "active" : "") + '" data-cat="' + esc(c) + '">' + esc(c) + "</button>";
       })).join("");
 
     var statusChips = [["all", "Estado"], ["poraprender", STATUS.poraprender], ["aprendiendo", STATUS.aprendiendo], ["dominado", STATUS.dominado]]
-      .map(function (s) { return '<div class="chip ' + (filter.status === s[0] ? "active" : "") + '" data-st="' + s[0] + '">' + s[1] + "</div>"; }).join("");
+      .map(function (s) { return '<button type="button" class="chip ' + (filter.status === s[0] ? "active" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
 
     var filtered = tricks.filter(function (t) {
       if (filter.cat !== "all" && t.category !== filter.cat) return false;
@@ -2361,7 +2361,7 @@
         var recap = (rec && (rec.likes + rec.followers + rec.posts) > 0) ? '<div class="recap"><div class="rc-t">Tu semana</div><div class="rc-stats"><span><b>' + rec.likes + '</b> me gusta</span><span><b>' + rec.followers + '</b> seguidores</span>' + (rec.streak >= 2 ? '<span class="rc-fire">' + icon("flame", "i-sm") + "<b>" + rec.streak + "</b> días</span>" : "") + "</div></div>" : "";
         var banner = chal ? '<div class="chal-banner" id="chalBanner"><span class="cb-ic">' + icon("flame") + '</span><div class="cb-b"><div class="cb-t">' + esc(chal.title) + '</div><div class="cb-p">' + esc(chal.prompt || "") + '</div><div class="cb-m">' + chal.participants + " participando · toca para ver</div></div>" + icon("chev") + "</div>" : "";
         var top = lead.length ? '<div class="sec-label sec-row">Top magos de la semana <a class="seeall" id="seeTop">Ver ranking</a></div><div class="top-strip">' + lead.map(function (m) { return '<div class="top-m" data-mago="' + esc(m.user_id) + '">' + avatarHtml(Cloud.publicUrl(m.avatar), m.name || m.handle, "big") + '<div class="tm-n">' + esc(m.name || m.handle || "Mago") + "</div></div>"; }).join("") + "</div>" : "";
-        var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<div class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</div>"; }).join("") + "</div>" : "";
+        var strip = tt.length ? '<div class="chips trending">' + tt.map(function (t) { return '<button type="button" class="chip" data-tag="' + esc(t.tag) + '">#' + esc(t.tag) + "</button>"; }).join("") + "</div>" : "";
         bodyEl.innerHTML = bar + recap + banner + top + strip + (rows.length ? '<div class="sec-label">Populares</div><div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Aún no hay publicaciones</h3><p>Sé el primero: comparte algo con la comunidad.</p><button class="btn" onclick="location.hash=\'#/publicar\'">Crear publicación</button></div>');
         bindPostCards(bodyEl); bindStories(bodyEl, stories);
         var cbn = document.getElementById("chalBanner"); if (cbn) cbn.addEventListener("click", function () { location.hash = "#/reto"; });
@@ -2702,7 +2702,7 @@
     clearTabbar();
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/comunidad\'">' + icon("back") + '</button><h1>Descubrir magos</h1></div>' +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="dscQ" placeholder="Buscar por nombre o @usuario…"></div>' +
-      '<div class="chips" id="dscSpec"><div class="chip ' + (!discoverSpec ? "active" : "") + '" data-s="">Todas</div>' + SPECIALTIES.map(function (s) { return '<div class="chip ' + (discoverSpec === s ? "active" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</div>"; }).join("") + "</div>" +
+      '<div class="chips" id="dscSpec"><button type="button" class="chip ' + (!discoverSpec ? "active" : "") + '" data-s="">Todas</button>' + SPECIALTIES.map(function (s) { return '<button type="button" class="chip ' + (discoverSpec === s ? "active" : "") + '" data-s="' + esc(s) + '">' + esc(s) + "</button>"; }).join("") + "</div>" +
       '<div id="dscBody">' + skelRows(6) + '</div></div>';
     var bodyEl = document.getElementById("dscBody"), q = document.getElementById("dscQ");
     var run = function () {
@@ -3887,6 +3887,36 @@
   function scheduleA11y() { if (a11yScheduled) return; a11yScheduled = true; setTimeout(function () { a11yScheduled = false; a11yPass(); }, 60); }
   try { new MutationObserver(scheduleA11y).observe(view, { childList: true, subtree: true }); } catch (e) {}
   // Transiciones suaves entre pantallas (View Transitions, mejora progresiva)
+  (function initDialogA11y() {
+    var lastFocus = null;
+    function enhance(ov) {
+      lastFocus = document.activeElement;
+      var box = ov.querySelector(".modal, .sheet-box, .cc-box");
+      if (box) { box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); }
+      var f = ov.querySelector("input, textarea, select, button");
+      if (f) setTimeout(function () { try { f.focus(); } catch (e) {} }, 60);
+    }
+    function restore() {
+      if (lastFocus && lastFocus.isConnected) { try { lastFocus.focus(); } catch (e) {} }
+      lastFocus = null;
+    }
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        [].forEach.call(m.addedNodes, function (n) { if (n.nodeType === 1 && n.classList && n.classList.contains("modal-ov")) enhance(n); });
+        [].forEach.call(m.removedNodes, function (n) { if (n.nodeType === 1 && n.classList && n.classList.contains("modal-ov")) restore(); });
+      });
+    }).observe(document.body, { childList: true });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      var ovs = document.querySelectorAll(".modal-ov");
+      var ov = ovs[ovs.length - 1]; if (!ov) return;
+      var btns = ov.querySelectorAll("button");
+      for (var i = 0; i < btns.length; i++) {
+        if (/cancelar|cerrar/i.test(btns[i].textContent || "")) { btns[i].click(); return; }
+      }
+      ov.remove();
+    });
+  })();
   window.addEventListener("unhandledrejection", function (ev) {
     ev.preventDefault();
     try { console.warn("[segundo plano]", (ev.reason && ev.reason.message) || ev.reason); } catch (e) {}

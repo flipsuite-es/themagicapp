@@ -122,7 +122,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; -webkit-
 .gate-hero .tagline { font-family: var(--display); font-style: italic; font-weight: 500; color: var(--brand); font-size: 15.5px; margin: 4px 0 6px; letter-spacing: .01em; }
 
 /* ---------- App bar ---------- */
-.appbar { display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; min-height: 40px; }
+.appbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 18px; min-height: 40px; }
 .appbar .brandmark { display: flex; align-items: center; gap: 9px; }
 .appbar .brandmark .i { width: 26px; height: 26px; color: var(--brand); stroke-width: 1.6; }
 .appbar .wm { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
@@ -1678,3 +1678,8 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; h
 /* Punto de avisos en la pestaña Comunidad */
 .tabbar a { position: relative; }
 .tb-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; letter-spacing: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 80%, transparent); }
+
+/* En anchos estrechos la racha del header cede el sitio al título
+   (la racha ya vive en el recap "Tu semana" del feed) */
+@media (max-width: 479px) { .appbar .streak { display: none; } }
+@media (max-width: 374px) { .appbar .pagetitle { font-size: 20px; } }

@@ -1431,6 +1431,16 @@
     clearTabbar();
     if (myProfile) { onb.handle = onb.handle || myProfile.handle || ""; onb.name = onb.name || myProfile.display_name || (session && session.email ? session.email.split("@")[0] : ""); }
     var step = onb.step;
+    // El código ya validado en el registro se canjea sin repetir el paso
+    if (step === 0 && getPendingInvite() && !onb.autoTried) {
+      onb.autoTried = true;
+      view.innerHTML = '<div class="screen splash"><div class="logo">' + mark("", true) + '</div><div class="wm">Validando tu invitación…</div><div class="spin"></div></div>';
+      Cloud.redeemInvite(getPendingInvite().toUpperCase()).then(function (ok) {
+        if (ok) { setPendingInvite(null); onb.step = 1; }
+        renderOnboarding();
+      }).catch(function () { renderOnboarding(); });
+      return;
+    }
     var body;
     if (step === 0) {
       body = '<div class="onb-hero">' + mark("", true) + '<h1 class="wm">Bienvenido al círculo</h1>' +
@@ -2068,6 +2078,11 @@
     document.addEventListener("pointercancel", drop, { passive: true });
     document.addEventListener("scroll", drop, { passive: true, capture: true });
   }
+  function loadError(msg) {
+    return '<div class="empty" style="padding:40px 16px"><p>' + esc(msg || "No se pudo cargar.") + '</p>' +
+      '<button class="btn ghost" style="margin-top:14px" onclick="window.__retry && window.__retry()">' + icon("refresh", "i-sm") + ' Reintentar</button></div>';
+  }
+  window.__retry = function () { route(); };
   function emptyArt() { return '<div class="empty-art"><span class="ea-glow"></span>' + mark("", true) + "</div>"; }
   function skLine(w, h) { return '<div class="skeleton sk-line" style="width:' + w + (h ? ";height:" + h : "") + '"></div>'; }
   function skelFeed(n) {
@@ -2109,7 +2124,7 @@
         }
         draw();
         bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (ch) { ch.addEventListener("click", function () { marketFilter = ch.getAttribute("data-f"); bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (x) { x.classList.toggle("active", x === ch); }); draw(); }); });
-      }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el mercado.</p></div>'; });
+      }).catch(function () { bodyEl.innerHTML = loadError("No se pudo cargar el mercado."); });
     } else if (mode === "discover") {
       Promise.all([Cloud.getFeed(null, "trending"), Cloud.trendingTags().catch(function () { return []; }), Cloud.getActiveChallenge().catch(function () { return null; }), Cloud.getLeaderboard().catch(function () { return []; }), Cloud.getWeekRecap().catch(function () { return null; }), Cloud.getStories().catch(function () { return []; })]).then(function (res) {
         var rows = res[0], tt = res[1] || [], chal = res[2], lead = (res[3] || []).slice(0, 6), rec = res[4], stories = res[5] || [];
@@ -2124,7 +2139,7 @@
         var st = document.getElementById("seeTop"); if (st) st.addEventListener("click", function () { location.hash = "#/top"; });
         bodyEl.querySelectorAll(".top-m[data-mago]").forEach(function (m) { m.addEventListener("click", function () { location.hash = "#/mago/" + m.getAttribute("data-mago"); }); });
         bodyEl.querySelectorAll(".chip[data-tag]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/tag/" + c.getAttribute("data-tag"); }); });
-      }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+      }).catch(function () { bodyEl.innerHTML = loadError(); });
     } else {
       Promise.all([Cloud.getFeed(null, "following"), Cloud.getStories().catch(function () { return []; })]).then(function (res) {
         var rows = res[0], stories = res[1] || [];
@@ -2138,7 +2153,7 @@
         bodyEl.innerHTML = bar + '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>";
         bindPostCards(bodyEl); bindStories(bodyEl, stories);
         appendMore(bodyEl, bodyEl.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "following", null, null, before); });
-      }).catch(function () { bodyEl.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el feed.</p></div>'; });
+      }).catch(function () { bodyEl.innerHTML = loadError("No se pudo cargar el feed."); });
     }
   }
 
@@ -2486,8 +2501,8 @@
           '<div class="sec-label">Participaciones</div>' + (rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<p class="hint">Nadie ha participado todavía. ¡Sé el primero!</p>');
         bindPostCards(b);
         document.getElementById("rtJoin").addEventListener("click", function () { composeChallenge = chal; location.hash = "#/publicar"; });
-      }).catch(function () { b.innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
-    }).catch(function () { document.getElementById("rtBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+      }).catch(function () { b.innerHTML = loadError(); });
+    }).catch(function () { document.getElementById("rtBody").innerHTML = loadError(); });
   }
   function renderLeaderboard() {
     clearTabbar();
@@ -2501,7 +2516,7 @@
       }).join("") + "</div>" : '<div class="empty" style="padding:46px"><div class="big">' + icon("trophy") + "</div><p>Aún no hay ranking. ¡Empieza a publicar!</p></div>";
       b.querySelectorAll(".lb-row[data-mago]").forEach(function (r) { r.addEventListener("click", function (e) { if (e.target.closest("[data-follow]")) return; location.hash = "#/mago/" + r.getAttribute("data-mago"); }); });
       bindMagicianRows(b);
-    }).catch(function () { document.getElementById("lbBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("lbBody").innerHTML = loadError(); });
   }
   function renderTagFeed(tag) {
     clearTabbar();
@@ -2511,7 +2526,7 @@
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:46px 12px"><div class="big">' + icon("search") + "</div><p>Nada con #" + esc(tag) + " todavía.</p></div>";
       bindPostCards(b);
       appendMore(b, b.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "discover", tag, null, before); });
-    }).catch(function () { document.getElementById("tBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("tBody").innerHTML = loadError(); });
   }
   function renderMagicianList(uid, which) {
     clearTabbar();
@@ -2520,7 +2535,7 @@
       var b = document.getElementById("mlBody");
       b.innerHTML = rows.length ? '<div class="mago-list">' + rows.map(magicianRow).join("") + "</div>" : '<p class="hint" style="padding:24px 2px">' + (which === "followers" ? "Nadie todavía." : "No sigue a nadie todavía.") + "</p>";
       bindMagicianRows(b);
-    }).catch(function () { document.getElementById("mlBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("mlBody").innerHTML = loadError(); });
   }
   function renderSaved() {
     clearTabbar();
@@ -2530,7 +2545,7 @@
       b.innerHTML = rows.length ? '<div class="feed">' + rows.map(postCardHtml).join("") + "</div>" : '<div class="empty" style="padding:52px 12px">' + emptyArt() + "<h3>Sin guardados</h3><p>Guarda publicaciones para verlas luego.</p></div>";
       bindPostCards(b);
       appendMore(b, b.querySelector(".feed"), rows, function (before) { return Cloud.getFeed(null, "saved", null, null, before); });
-    }).catch(function () { document.getElementById("svBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("svBody").innerHTML = loadError(); });
   }
 
   /* --------------------------- Mensajes ----------------------------- */
@@ -2549,7 +2564,7 @@
           (c.unread ? '<span class="cv-unread">' + c.unread + "</span>" : '<span class="cv-t">' + timeAgo(c.last_at) + "</span>") + "</div>";
       }).join("") + "</div>" : '<div class="empty" style="padding:52px 12px">' + emptyArt() + "<h3>Sin mensajes</h3><p>Escribe a cualquier mago desde su perfil.</p></div>";
       b.querySelectorAll(".conv[data-cid]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/chat/" + c.getAttribute("data-cid"); }); });
-    }).catch(function () { document.getElementById("msBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("msBody").innerHTML = loadError(); });
   }
   var chatCh = null;
   function renderChat(cid) {
@@ -2695,7 +2710,7 @@
       b.querySelectorAll("[data-editc]").forEach(function (x) { x.addEventListener("click", function () { var cid = x.getAttribute("data-editc"); var cur = ""; comments.forEach(function (c) { if (c.id === cid) cur = c.body; }); editTextModal("Editar comentario", cur, function (v, close) { Cloud.updateComment(cid, v).then(function () { close(); toast("Editado"); renderPostDetail(id); }).catch(function () { toast("No se pudo"); }); }); }); });
       b.querySelectorAll("[data-clike]").forEach(function (bt) { bt.addEventListener("click", function () { var cid = bt.getAttribute("data-clike"); var on = bt.classList.contains("on"); var sp = bt.querySelector("span"); var n = parseInt(sp.textContent, 10) || 0; bt.classList.toggle("on"); sp.textContent = on ? Math.max(0, n - 1) : n + 1; bt.innerHTML = icon(on ? "heart" : "heartfill", "i-sm") + "<span>" + sp.textContent + "</span>"; (on ? Cloud.unlikeComment(cid) : Cloud.likeComment(cid)).catch(function () {}); }); });
       b.querySelectorAll("[data-reply]").forEach(function (bt) { bt.addEventListener("click", function () { replyTo = bt.getAttribute("data-reply"); var h = bt.getAttribute("data-h"); var old = document.getElementById("replyChip"); if (old) old.remove(); var chip = el('<div class="reply-chip" id="replyChip">Respondiendo a @' + esc(h || "comentario") + ' <button>✕</button></div>'); bar.parentNode.insertBefore(chip, bar); chip.querySelector("button").addEventListener("click", function () { replyTo = null; chip.remove(); }); input.focus(); }); });
-    }).catch(function () { document.getElementById("pdBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("pdBody").innerHTML = loadError(); });
   }
 
   /* ---------------------------- Perfil ------------------------------ */
@@ -2733,7 +2748,7 @@
       var sv = document.getElementById("prSaved"); if (sv) sv.addEventListener("click", function () { location.hash = "#/guardados"; });
       var pm = document.getElementById("prMsg"); if (pm) pm.addEventListener("click", function () { pm.disabled = true; Cloud.openConversation(uid).then(function (cid) { location.hash = "#/chat/" + cid; }).catch(function () { pm.disabled = false; toast("No se pudo abrir el chat"); }); });
       var pmo = document.getElementById("prMore"); if (pmo) pmo.addEventListener("click", function () { actionSheet([{ label: "Reportar", fn: function () { Cloud.report("user", uid, null).then(function () { toast("Gracias, lo revisaremos"); }).catch(function () {}); } }, { label: "Bloquear a @" + (p.handle || "este mago"), danger: true, fn: function () { if (!confirm("¿Bloquear? Dejaréis de ver vuestro contenido.")) return; Cloud.block(uid).then(function () { toast("Bloqueado"); location.hash = "#/comunidad"; }).catch(function () {}); } }]); });
-    }).catch(function () { document.getElementById("prBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar el perfil.</p></div>'; });
+    }).catch(function () { document.getElementById("prBody").innerHTML = loadError("No se pudo cargar el perfil."); });
   }
   function renderEditProfile() {
     clearTabbar();
@@ -2848,7 +2863,7 @@
           Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { burstSparks(btn); toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
         });
       }
-    }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
+    }).catch(function () { document.getElementById("liBody").innerHTML = loadError(); });
   }
   var sellTrick = null, sellCover = null, marketFilter = "all";
   function renderSellForm(editId) {

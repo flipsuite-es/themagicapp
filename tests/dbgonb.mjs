@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+import { STUB } from './stub.mjs';
+import fs from 'fs';
+let APP = fs.readFileSync('/home/user/themagicapp/app.js', 'utf8');
+APP = APP.replace('needsOnboarding = !p || !p.onboarded;', 'needsOnboarding = !p || !p.onboarded; window.__dbg = { p: p, needs: needsOnboarding };');
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' })).newPage();
+await p.addInitScript(() => { localStorage.setItem('magic_theme', 'dark'); localStorage.setItem('magic_social', '1'); });
+await p.route('**/cloud.js', r => r.fulfill({ contentType: 'application/javascript', body: STUB.replace('onboarded: true', 'onboarded: false') }));
+await p.route('**/app.js', r => r.fulfill({ contentType: 'application/javascript', body: APP }));
+await p.goto('http://127.0.0.1:8099/#/comunidad'); await p.waitForTimeout(1400);
+console.log('dbg:', JSON.stringify(await p.evaluate(() => window.__dbg)));
+console.log('vista:', await p.evaluate(() => (document.querySelector('#view h1') || {}).textContent));
+await b.close();

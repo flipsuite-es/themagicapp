@@ -458,8 +458,11 @@
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+    } else if (mesaOn()) {
+      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
+        '<div class="mesa" id="mesaWrap"></div>';
     } else {
-      body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
+      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
     }
 
@@ -486,6 +489,8 @@
     var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
+    bindViewSwitch();
+    if (mesaOn() && filtered.length) buildMesa(filtered);
     bindCards();
     backfillPosters();
   }
@@ -499,7 +504,15 @@
       if (q && searchText(t).indexOf(q) < 0) return false;
       return true;
     });
-    var holder = view.querySelector(".cards"); var countEl = view.querySelector(".count");
+    var countEl = view.querySelector(".count");
+    if (mesaOn()) {
+      var mw = document.getElementById("mesaWrap");
+      if (!mw) { renderLibrary(); return; }
+      if (countEl) countEl.textContent = filtered.length ? filtered.length + (filtered.length === 1 ? " truco" : " trucos") : "";
+      if (!filtered.length) { mw.innerHTML = '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>'; return; }
+      buildMesa(filtered); return;
+    }
+    var holder = view.querySelector(".cards");
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
       holder.className = "";
@@ -579,6 +592,90 @@
     if (media.filter(function (m) { return m.provider !== "link"; })[0]) return { kind: "videoicon" };
     if (media.length) return { kind: "linkicon" };
     return null;
+  }
+  var libView = (function () { try { return localStorage.getItem("magic_view") || "mesa"; } catch (e) { return "mesa"; } })();
+  function mesaOn() { return libView === "mesa" && fxFull(); }
+  function setLibView(v) { libView = v; try { localStorage.setItem("magic_view", v); } catch (e) {} }
+  function viewSwitchHtml() {
+    if (!fxFull()) return "";
+    return '<div class="viewsw" role="tablist">' +
+      '<button id="vwMesa" class="' + (mesaOn() ? "on" : "") + '" aria-label="Vista mesa">' + icon("cards") + "</button>" +
+      '<button id="vwGrid" class="' + (mesaOn() ? "" : "on") + '" aria-label="Vista cuadrícula">' + icon("library") + "</button></div>";
+  }
+  function bindViewSwitch() {
+    var m = document.getElementById("vwMesa"), g = document.getElementById("vwGrid");
+    if (m) m.addEventListener("click", function () { setLibView("mesa"); renderLibrary(); });
+    if (g) g.addEventListener("click", function () { setLibView("grid"); renderLibrary(); });
+  }
+  /* ============ LA MESA DEL MAGO: biblioteca como escena 3D ============ */
+  // Tapete en perspectiva (CSS 3D), cartas repartidas con jitter con semilla,
+  // cámara con arrastre + inercia y respuesta al giroscopio. Pura presentación:
+  // cada carta navega al mismo detalle de siempre.
+  function seededJitter(id) {
+    var h = 2166136261; id = String(id);
+    for (var i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15;
+    return { rz: ((h % 100) / 100 - 0.5) * 6, dx: (((h >> 7) % 100) / 100 - 0.5) * 14, dy: (((h >> 13) % 100) / 100 - 0.5) * 16 };
+  }
+  function mesaCardHtml(t, i) {
+    var j = seededJitter(t.id);
+    var col = i % 2, row = (i - col) / 2;
+    var x = 38 + col * 162 + j.dx, y = 26 + row * 236 + j.dy;
+    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
+      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
+      '<div class="mc-art">' + engraving(t.id) + '<span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
+      (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
+      '<div class="mc-name">' + esc(t.title) + '</div>' +
+      '<div class="mc-meta">' + esc(t.category || "—") + "</div></div>";
+  }
+  var mesaRaf = 0;
+  function buildMesa(list) {
+    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
+    cancelAnimationFrame(mesaRaf);
+    var rows = Math.ceil(list.length / 2);
+    var feltH = Math.max(560, 60 + rows * 236 + 160);
+    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"></div>' +
+      list.map(mesaCardHtml).join("") + "</div>" + '<div class="mesa-glow" aria-hidden="true"></div>';
+    var cam = document.getElementById("mesaCam");
+    var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
+    var dragging = false, moved = 0, py0 = 0, lastY = 0, lastT = 0;
+    function camPaint() {
+      var g = window.__tiltG || [0, 0];
+      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-scroll).toFixed(1) + "px,0)";
+    }
+    function tick() {
+      if (!wrap.isConnected) return;
+      if (!dragging && Math.abs(vel) > 0.15) {
+        scroll = Math.min(maxScroll, Math.max(0, scroll + vel)); vel *= 0.94;
+      }
+      camPaint();
+      mesaRaf = requestAnimationFrame(tick);
+    }
+    wrap.addEventListener("pointerdown", function (e) {
+      dragging = true; moved = 0; py0 = e.clientY; lastY = e.clientY; lastT = performance.now(); vel = 0;
+    });
+    wrap.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dy = e.clientY - lastY; moved += Math.abs(dy);
+      var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
+      lastY = e.clientY;
+      scroll = Math.min(maxScroll, Math.max(0, scroll - dy));
+    }, { passive: true });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      if (moved < 10 && e && e.target && e.target.closest) {
+        var mc = e.target.closest(".mcard");
+        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); }
+      }
+    }
+    wrap.addEventListener("pointerup", endDrag);
+    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
+    wrap.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
+    });
+    tick();
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
@@ -1769,6 +1866,24 @@
     }
     return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
   }
+  /* ==== EFECTOS VISUALES: completos o ligeros (móviles modestos) ==== */
+  var fxMode = (function () {
+    try {
+      var saved = localStorage.getItem("magic_fx");
+      if (saved === "full" || saved === "lite") return saved;
+    } catch (e) {}
+    var weak = (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 3);
+    return weak ? "lite" : "full";
+  })();
+  function fxFull() { return fxMode === "full"; }
+  function setFxMode(m) {
+    fxMode = m;
+    try { localStorage.setItem("magic_fx", m); } catch (e) {}
+    var c = document.getElementById("fx");
+    if (m === "lite") { if (c) c.remove(); }
+    else if (!c) initAmbient();
+  }
+
   /* ========== SONIDO DE MESA (WebAudio, sintetizado, opt-in) ========== */
   var sndEnabled = (function () { try { return localStorage.getItem("magic_sound") === "1"; } catch (e) { return false; } })();
   var AC = null, noiseBuf = null;
@@ -1828,6 +1943,7 @@
       requestAnimationFrame(loop);
     }
     function onOri(e) {
+      if (!fxFull()) return;
       if (e.gamma == null && e.beta == null) return;
       tx = Math.max(-1, Math.min(1, (e.gamma || 0) / 28));
       ty = Math.max(-1, Math.min(1, ((e.beta || 0) - 40) / 32));
@@ -1851,7 +1967,7 @@
   // oscuro y sin reduced-motion. fbm con warp de dominio + motas que titilan.
   function initAmbient() {
     try {
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (!fxFull() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       var cv = document.createElement("canvas"); cv.id = "fx"; cv.setAttribute("aria-hidden", "true");
       document.body.insertBefore(cv, document.body.firstChild);
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
@@ -1914,6 +2030,7 @@
     }
     function reset(el0) { el0.classList.remove("foil"); el0.style.transform = ""; el0.style.removeProperty("--mx"); el0.style.removeProperty("--my"); }
     function move(e) {
+      if (!fxFull()) return;
       var t = e.target && e.target.closest ? e.target.closest(".card, .listcard") : null;
       if (t !== cur) { if (cur) reset(cur); cur = t; if (cur) cur.classList.add("foil"); }
       if (!cur) return;
@@ -3000,6 +3117,8 @@
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
       '<div class="toggle-row" id="sndToggle"><div><b>Sonido de mesa</b><p class="hint">Deslizar de cartas y tintineos sutiles al usar la app</p></div><span class="switch ' + (sndEnabled ? "on" : "") + '" id="sndSw"></span></div>' +
+      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo, foil 3D y mesa. "Ligeros" si tu móvil va justo.</div></div></div>' +
+      '<div class="seg" id="fxSeg" style="margin-bottom:16px"><button data-v="full" class="' + (fxFull() ? "on" : "") + '">Completos</button><button data-v="lite" class="' + (fxFull() ? "" : "on") + '">Ligeros</button></div>' +
       '<div class="sec-label">Seguridad</div>' +
       '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
       (hasPin() ? "Activado · se pide al abrir la app" : "Protege tus secretos si alguien coge tu móvil") + "</div></div></div>" +
@@ -3029,6 +3148,12 @@
       if (next) startFeedRealtime(); else stopFeedRealtime();
       toast(next ? "Comunidad activada" : "Comunidad desactivada");
       renderSettings();
+    });
+    view.querySelectorAll("#fxSeg button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSeg("#fxSeg", b); setFxMode(b.getAttribute("data-v"));
+        toast(fxFull() ? "Efectos completos" : "Modo ligero: efectos apagados");
+      });
     });
     var sndSw = document.getElementById("sndToggle");
     if (sndSw) sndSw.addEventListener("click", function () {

@@ -1650,6 +1650,58 @@ body { background: transparent; background-image: none; }
   background-position: calc(50% + var(--gx, 0) * 55%) 0;
 }
 
+/* ==========================================================================
+   LA MESA DEL MAGO v12 — la biblioteca como escena 3D: tapete en
+   perspectiva, cartas repartidas, cámara con inercia y giroscopio.
+   Se apaga entera con "Efectos ligeros" (Ajustes) o reduced-motion.
+   ========================================================================== */
+.countrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.countrow .count { margin: 0; }
+.viewsw { display: flex; gap: 4px; border: 1px solid var(--hairline); border-radius: 10px; padding: 3px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.viewsw button { border: 0; background: none; color: var(--ink-faint); border-radius: 7px; padding: 5px 9px; cursor: pointer; display: flex; }
+.viewsw button .i { width: 17px; height: 17px; }
+.viewsw button.on { background: var(--grad-brand); color: var(--on-brand); box-shadow: var(--shadow); }
+
+.mesa {
+  position: relative; height: min(66vh, 620px); border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--hairline);
+  background:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 55%),
+    linear-gradient(178deg, #17110b, #0b0806 70%);
+  perspective: 1350px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.mesa:active { cursor: grabbing; }
+.mesa-cam { position: absolute; left: 50%; top: 5%; width: 372px; margin-left: -186px; transform-style: preserve-3d; transform-origin: 50% 20%; will-change: transform; }
+.mesa-felt {
+  position: absolute; left: -70px; right: -70px; top: -60px; border-radius: 26px;
+  background:
+    radial-gradient(60% 26% at 50% 6%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, #1d150c, #120d08 45%, #0c0906);
+  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 0 90px rgba(0,0,0,.55);
+}
+.mesa-felt::before { content: ""; position: absolute; inset: 16px; border-radius: 18px; border: 1px solid var(--hairline); opacity: .6; }
+.mcard {
+  position: absolute; width: 158px; height: 212px; border-radius: 10px; padding: 8px 9px;
+  background: linear-gradient(168deg, #1c1409, #130e08 60%, #171009);
+  border: 1px solid var(--hairline-2);
+  box-shadow: 0 22px 30px -14px rgba(0,0,0,.85), inset 0 1px 0 color-mix(in srgb, var(--brand) 18%, transparent);
+  cursor: pointer; transition: box-shadow .2s ease;
+}
+.mcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.mc-art { position: relative; height: 118px; border-radius: 7px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--hairline); background: radial-gradient(80% 70% at 50% 30%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%); }
+.mc-art .engr { width: 210%; opacity: .55; }
+.mc-art .mc-ic { position: relative; color: var(--brand); filter: drop-shadow(0 3px 12px color-mix(in srgb, var(--brand) 50%, transparent)); }
+.mc-art .mc-ic .i { width: 26px; height: 26px; }
+.mc-fav { position: absolute; top: 6px; right: 6px; color: var(--brand); }
+.mc-fav .i { width: 13px; height: 13px; }
+.mc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; line-height: 1.18; margin-top: 9px; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mc-meta { margin-top: 5px; font-size: 8.5px; font-weight: 650; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
+.mesa-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(90% 55% at 50% 108%, rgba(0,0,0,.6), transparent 55%); }
+
+/* En claro, la mesa mantiene su penumbra propia (es una escena) */
+:root[data-theme="light"] .mesa .mc-name { color: #efe6d2; }
+@media (prefers-color-scheme: light) { html:not([data-theme="dark"]) .mesa .mc-name { color: #efe6d2; } }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -2517,8 +2569,11 @@ window.Cloud = (function () {
         '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
     } else if (filtered.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
+    } else if (mesaOn()) {
+      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
+        '<div class="mesa" id="mesaWrap"></div>';
     } else {
-      body = '<div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" +
+      body = '<div class="countrow"><div class="count">' + filtered.length + (filtered.length === 1 ? " truco" : " trucos") + "</div>" + viewSwitchHtml() + "</div>" +
         '<div class="cards">' + filtered.map(trickCard).join("") + "</div>";
     }
 
@@ -2545,6 +2600,8 @@ window.Cloud = (function () {
     var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
     view.querySelectorAll(".chip[data-st]").forEach(function (c) { c.addEventListener("click", function () { filter.status = c.getAttribute("data-st"); renderLibrary(); }); });
+    bindViewSwitch();
+    if (mesaOn() && filtered.length) buildMesa(filtered);
     bindCards();
     backfillPosters();
   }
@@ -2558,7 +2615,15 @@ window.Cloud = (function () {
       if (q && searchText(t).indexOf(q) < 0) return false;
       return true;
     });
-    var holder = view.querySelector(".cards"); var countEl = view.querySelector(".count");
+    var countEl = view.querySelector(".count");
+    if (mesaOn()) {
+      var mw = document.getElementById("mesaWrap");
+      if (!mw) { renderLibrary(); return; }
+      if (countEl) countEl.textContent = filtered.length ? filtered.length + (filtered.length === 1 ? " truco" : " trucos") : "";
+      if (!filtered.length) { mw.innerHTML = '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>'; return; }
+      buildMesa(filtered); return;
+    }
+    var holder = view.querySelector(".cards");
     if (!holder) { renderLibrary(); return; }
     if (filtered.length === 0) {
       holder.className = "";
@@ -2638,6 +2703,90 @@ window.Cloud = (function () {
     if (media.filter(function (m) { return m.provider !== "link"; })[0]) return { kind: "videoicon" };
     if (media.length) return { kind: "linkicon" };
     return null;
+  }
+  var libView = (function () { try { return localStorage.getItem("magic_view") || "mesa"; } catch (e) { return "mesa"; } })();
+  function mesaOn() { return libView === "mesa" && fxFull(); }
+  function setLibView(v) { libView = v; try { localStorage.setItem("magic_view", v); } catch (e) {} }
+  function viewSwitchHtml() {
+    if (!fxFull()) return "";
+    return '<div class="viewsw" role="tablist">' +
+      '<button id="vwMesa" class="' + (mesaOn() ? "on" : "") + '" aria-label="Vista mesa">' + icon("cards") + "</button>" +
+      '<button id="vwGrid" class="' + (mesaOn() ? "" : "on") + '" aria-label="Vista cuadrícula">' + icon("library") + "</button></div>";
+  }
+  function bindViewSwitch() {
+    var m = document.getElementById("vwMesa"), g = document.getElementById("vwGrid");
+    if (m) m.addEventListener("click", function () { setLibView("mesa"); renderLibrary(); });
+    if (g) g.addEventListener("click", function () { setLibView("grid"); renderLibrary(); });
+  }
+  /* ============ LA MESA DEL MAGO: biblioteca como escena 3D ============ */
+  // Tapete en perspectiva (CSS 3D), cartas repartidas con jitter con semilla,
+  // cámara con arrastre + inercia y respuesta al giroscopio. Pura presentación:
+  // cada carta navega al mismo detalle de siempre.
+  function seededJitter(id) {
+    var h = 2166136261; id = String(id);
+    for (var i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15;
+    return { rz: ((h % 100) / 100 - 0.5) * 6, dx: (((h >> 7) % 100) / 100 - 0.5) * 14, dy: (((h >> 13) % 100) / 100 - 0.5) * 16 };
+  }
+  function mesaCardHtml(t, i) {
+    var j = seededJitter(t.id);
+    var col = i % 2, row = (i - col) / 2;
+    var x = 38 + col * 162 + j.dx, y = 26 + row * 236 + j.dy;
+    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
+      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
+      '<div class="mc-art">' + engraving(t.id) + '<span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
+      (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
+      '<div class="mc-name">' + esc(t.title) + '</div>' +
+      '<div class="mc-meta">' + esc(t.category || "—") + "</div></div>";
+  }
+  var mesaRaf = 0;
+  function buildMesa(list) {
+    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
+    cancelAnimationFrame(mesaRaf);
+    var rows = Math.ceil(list.length / 2);
+    var feltH = Math.max(560, 60 + rows * 236 + 160);
+    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"></div>' +
+      list.map(mesaCardHtml).join("") + "</div>" + '<div class="mesa-glow" aria-hidden="true"></div>';
+    var cam = document.getElementById("mesaCam");
+    var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
+    var dragging = false, moved = 0, py0 = 0, lastY = 0, lastT = 0;
+    function camPaint() {
+      var g = window.__tiltG || [0, 0];
+      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-scroll).toFixed(1) + "px,0)";
+    }
+    function tick() {
+      if (!wrap.isConnected) return;
+      if (!dragging && Math.abs(vel) > 0.15) {
+        scroll = Math.min(maxScroll, Math.max(0, scroll + vel)); vel *= 0.94;
+      }
+      camPaint();
+      mesaRaf = requestAnimationFrame(tick);
+    }
+    wrap.addEventListener("pointerdown", function (e) {
+      dragging = true; moved = 0; py0 = e.clientY; lastY = e.clientY; lastT = performance.now(); vel = 0;
+    });
+    wrap.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dy = e.clientY - lastY; moved += Math.abs(dy);
+      var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
+      lastY = e.clientY;
+      scroll = Math.min(maxScroll, Math.max(0, scroll - dy));
+    }, { passive: true });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      if (moved < 10 && e && e.target && e.target.closest) {
+        var mc = e.target.closest(".mcard");
+        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); }
+      }
+    }
+    wrap.addEventListener("pointerup", endDrag);
+    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
+    wrap.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
+    });
+    tick();
   }
   function trickCard(t) {
     var th = trickThumb(t), inner, play = "";
@@ -3828,6 +3977,24 @@ window.Cloud = (function () {
     }
     return '<svg class="engr ' + (cls || "") + '" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="0.55" aria-hidden="true">' + paths + "</svg>";
   }
+  /* ==== EFECTOS VISUALES: completos o ligeros (móviles modestos) ==== */
+  var fxMode = (function () {
+    try {
+      var saved = localStorage.getItem("magic_fx");
+      if (saved === "full" || saved === "lite") return saved;
+    } catch (e) {}
+    var weak = (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 3);
+    return weak ? "lite" : "full";
+  })();
+  function fxFull() { return fxMode === "full"; }
+  function setFxMode(m) {
+    fxMode = m;
+    try { localStorage.setItem("magic_fx", m); } catch (e) {}
+    var c = document.getElementById("fx");
+    if (m === "lite") { if (c) c.remove(); }
+    else if (!c) initAmbient();
+  }
+
   /* ========== SONIDO DE MESA (WebAudio, sintetizado, opt-in) ========== */
   var sndEnabled = (function () { try { return localStorage.getItem("magic_sound") === "1"; } catch (e) { return false; } })();
   var AC = null, noiseBuf = null;
@@ -3887,6 +4054,7 @@ window.Cloud = (function () {
       requestAnimationFrame(loop);
     }
     function onOri(e) {
+      if (!fxFull()) return;
       if (e.gamma == null && e.beta == null) return;
       tx = Math.max(-1, Math.min(1, (e.gamma || 0) / 28));
       ty = Math.max(-1, Math.min(1, ((e.beta || 0) - 40) / 32));
@@ -3910,7 +4078,7 @@ window.Cloud = (function () {
   // oscuro y sin reduced-motion. fbm con warp de dominio + motas que titilan.
   function initAmbient() {
     try {
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (!fxFull() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       var cv = document.createElement("canvas"); cv.id = "fx"; cv.setAttribute("aria-hidden", "true");
       document.body.insertBefore(cv, document.body.firstChild);
       var gl = cv.getContext("webgl", { alpha: false, antialias: false, powerPreference: "low-power" });
@@ -3973,6 +4141,7 @@ window.Cloud = (function () {
     }
     function reset(el0) { el0.classList.remove("foil"); el0.style.transform = ""; el0.style.removeProperty("--mx"); el0.style.removeProperty("--my"); }
     function move(e) {
+      if (!fxFull()) return;
       var t = e.target && e.target.closest ? e.target.closest(".card, .listcard") : null;
       if (t !== cur) { if (cur) reset(cur); cur = t; if (cur) cur.classList.add("foil"); }
       if (!cur) return;
@@ -5059,6 +5228,8 @@ window.Cloud = (function () {
       '<div class="seg" id="themeSeg" style="margin-bottom:16px">' +
       [["auto", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(function (x) { return '<button data-v="' + x[0] + '" class="' + (theme === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div>" +
       '<div class="toggle-row" id="sndToggle"><div><b>Sonido de mesa</b><p class="hint">Deslizar de cartas y tintineos sutiles al usar la app</p></div><span class="switch ' + (sndEnabled ? "on" : "") + '" id="sndSw"></span></div>' +
+      '<div class="setrow"><span class="si">' + icon("wand") + '</span><div class="st"><div class="t">Efectos visuales</div><div class="d">Humo, foil 3D y mesa. "Ligeros" si tu móvil va justo.</div></div></div>' +
+      '<div class="seg" id="fxSeg" style="margin-bottom:16px"><button data-v="full" class="' + (fxFull() ? "on" : "") + '">Completos</button><button data-v="lite" class="' + (fxFull() ? "" : "on") + '">Ligeros</button></div>' +
       '<div class="sec-label">Seguridad</div>' +
       '<div class="setrow"><span class="si">' + icon("hat") + '</span><div class="st"><div class="t">Bloqueo con PIN</div><div class="d">' +
       (hasPin() ? "Activado · se pide al abrir la app" : "Protege tus secretos si alguien coge tu móvil") + "</div></div></div>" +
@@ -5088,6 +5259,12 @@ window.Cloud = (function () {
       if (next) startFeedRealtime(); else stopFeedRealtime();
       toast(next ? "Comunidad activada" : "Comunidad desactivada");
       renderSettings();
+    });
+    view.querySelectorAll("#fxSeg button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        setSeg("#fxSeg", b); setFxMode(b.getAttribute("data-v"));
+        toast(fxFull() ? "Efectos completos" : "Modo ligero: efectos apagados");
+      });
     });
     var sndSw = document.getElementById("sndToggle");
     if (sndSw) sndSw.addEventListener("click", function () {

@@ -56,5 +56,11 @@ ok('index viewport-fit=cover', html.includes('viewport-fit=cover'));
 ok('index theme-color dual', (html.match(/name="theme-color"/g) || []).length >= 2);
 ok('index apple-touch-icon', html.includes('apple-touch-icon'));
 
+// 8) Lecciones de la ronda 3
+const cloud = readFileSync(join(ROOT, 'cloud.js'), 'utf8');
+ok('sin autoplay sin muted (política universal)', ![...app.matchAll(/<video[^>]*autoplay[^>]*>/g)].some(m => !m[0].includes('muted')));
+ok('cloud.js no usa URL global ensombrecida', !/[^.\w]URL\.createObjectURL|[^.\w]URL\.revokeObjectURL/.test(cloud));
+ok('pushSupported con triple guard', /"serviceWorker" in navigator && "PushManager" in window && "Notification" in window/.test(app));
+
 console.log('PASS', pass, 'FAIL', fail);
 process.exit(fail ? 1 : 0);

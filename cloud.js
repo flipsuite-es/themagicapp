@@ -122,17 +122,17 @@ window.Cloud = (function () {
     return new Promise(function (resolve) {
       if (!file || !/^image\//.test(file.type || "") || file.size < 220 * 1024) { resolve(file); return; }
       try {
-        var url = URL.createObjectURL(file), img = new Image();
+        var url = window.URL.createObjectURL(file), img = new Image();
         img.onload = function () {
           try {
             var max = 1600, w = img.width, h = img.height, scale = Math.min(1, max / Math.max(w, h));
             var c = document.createElement("canvas"); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
             c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-            try { URL.revokeObjectURL(url); } catch (e) {}
+            try { window.URL.revokeObjectURL(url); } catch (e) {}
             c.toBlob(function (blob) { resolve(blob && blob.size < file.size ? new File([blob], (file.name || "img").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }) : file); }, "image/jpeg", 0.82);
           } catch (e) { resolve(file); }
         };
-        img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} resolve(file); };
+        img.onerror = function () { try { window.URL.revokeObjectURL(url); } catch (e) {} resolve(file); };
         img.src = url;
       } catch (e) { resolve(file); }
     });

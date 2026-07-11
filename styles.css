@@ -1687,3 +1687,6 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; h
    (la racha ya vive en el recap "Tu semana" del feed) */
 @media (max-width: 479px) { .appbar .streak { display: none; } }
 @media (max-width: 374px) { .appbar .pagetitle { font-size: 20px; } }
+
+/* iOS no hace zoom al enfocar si el control tiene >=16px */
+#hourSel, .field select { font-size: 16px; }

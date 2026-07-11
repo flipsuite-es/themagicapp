@@ -1752,7 +1752,7 @@
       if (si < 0) { gi--; if (gi < 0) { close(); return; } si = (groups[gi].stories || []).length - 1; return render(); }
       var s = st[si], m = s.media || {};
       var mediaHtml = (m.kind === "video" && m.embed) ? '<div class="sv-media"><iframe src="' + esc(m.embed) + '" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>'
-        : (m.kind === "video" && m.url) ? '<div class="sv-media"><video src="' + esc(m.url) + '" autoplay playsinline loop controls></video></div>'
+        : (m.kind === "video" && m.url) ? '<div class="sv-media"><video src="' + esc(m.url) + '" autoplay muted playsinline loop controls></video></div>'
         : '<div class="sv-media"><div class="sv-img" style="background-image:url(' + cssUrl(m.url || "") + ')"></div></div>';
       ov.innerHTML = '<div class="sv-top"><div class="sv-bars">' + st.map(function (_, k) { return '<i class="' + (k < si ? "done" : k === si ? "cur" : "") + '"></i>'; }).join("") + "</div>" +
         '<div class="sv-head">' + avatarHtml(Cloud.publicUrl(g.avatar), g.name || g.handle, "sm") + "<span>" + esc(g.name || g.handle || "Mago") + '</span><span class="sv-t">' + timeAgo(s.created_at) + '</span><button class="sv-x">✕</button></div></div>' +

@@ -1123,9 +1123,6 @@ a { color: var(--brand); text-underline-offset: 3px; }
 .empty-art { position: relative; width: 106px; height: 106px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--brand) 15%, var(--surface)), var(--surface)); border: 1px solid var(--hair); box-shadow: var(--shadow); }
 .empty-art .mk { width: 44px; height: 44px; color: var(--brand); position: relative; z-index: 1; filter: drop-shadow(0 5px 14px color-mix(in srgb, var(--brand) 38%, transparent)); }
 .empty-art .ea-glow { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent); }
-.empty-art::before, .empty-art::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid var(--hair); }
-.empty-art::before { inset: -11px; opacity: .5; }
-.empty-art::after { inset: -22px; opacity: .22; }
 .clips-empty .empty-art { background: radial-gradient(circle at 50% 38%, rgba(216,182,103,.18), rgba(255,255,255,.03)); }
 
 /* ============ Cámara embebida de Clips (estilo TikTok) ============ */

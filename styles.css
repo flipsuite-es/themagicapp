@@ -1407,3 +1407,104 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 .feed .postcard { content-visibility: auto; contain-intrinsic-size: auto 380px; }
 .cards .card { content-visibility: auto; contain-intrinsic-size: auto 230px; }
 .market .listcard { content-visibility: auto; contain-intrinsic-size: auto 250px; }
+
+/* ==========================================================================
+   ESTÉTICA v9 — coreografía: transiciones con propósito, morphs entre
+   pantallas y momentos de celebración. Movimiento respetuoso (la regla
+   global de prefers-reduced-motion lo apaga todo).
+   ========================================================================== */
+
+/* --- Tabbar: la píldora activa se DESLIZA entre pestañas (VT morph) --- */
+.tabbar a { position: relative; }
+.tabbar a .tb-ind { position: absolute; z-index: -1; pointer-events: none; view-transition-name: tabpill; }
+@media (max-width: 999px) {
+  .tabbar a.on::before { content: none; }
+  .tabbar a .tb-ind { inset: 0; border-radius: 16px; background: var(--grad-brand); box-shadow: var(--shadow-brand); }
+}
+@media (min-width: 1000px) {
+  .tabbar a.on::before { content: none; }
+  .tabbar a .tb-ind { left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
+}
+::view-transition-group(tabpill) { animation-duration: .3s; animation-timing-function: cubic-bezier(.3,.9,.3,1); }
+::view-transition-old(tabpill) { display: none; }
+::view-transition-new(tabpill) { animation: none; height: 100%; }
+
+/* --- Morph de portada: de la tarjeta del mercado al héroe de la ficha --- */
+::view-transition-group(hero) { animation-duration: .32s; animation-timing-function: cubic-bezier(.25,.85,.3,1); }
+::view-transition-old(hero), ::view-transition-new(hero) { height: 100%; overflow: hidden; object-fit: cover; }
+
+/* --- Navegación: el contenido asciende; el cromo fijo (tabbar, FAB,
+   toast) se promociona a grupos propios para que siga pintándose encima --- */
+#view { view-transition-name: view; }
+.tabbar { view-transition-name: tabbar; }
+.fab { view-transition-name: fab; }
+.toast { view-transition-name: toast; }
+::view-transition-group(view) { animation-duration: .2s; }
+::view-transition-new(view) { animation: vtRise .2s ease; }
+::view-transition-group(tabbar), ::view-transition-group(fab), ::view-transition-group(toast) { animation-duration: .15s; }
+@keyframes vtRise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* --- Cambio de tema: revelado circular desde el botón pulsado --- */
+html.vt-theme #view, html.vt-theme .tb-ind, html.vt-theme .tabbar, html.vt-theme .fab, html.vt-theme .toast { view-transition-name: none; }
+html.vt-theme::view-transition-old(root) { animation: none; }
+html.vt-theme::view-transition-new(root) { animation: themeReveal .5s ease-out; transform: none; }
+@keyframes themeReveal {
+  from { clip-path: circle(0 at var(--vtx, 50%) var(--vty, 40%)); }
+  to { clip-path: circle(142% at var(--vtx, 50%) var(--vty, 40%)); }
+}
+
+/* --- Destellos dorados en momentos de éxito --- */
+.spark-burst {
+  position: fixed; z-index: 300; color: var(--brand); pointer-events: none;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--brand) 70%, transparent);
+  animation: sparkUp 1s cubic-bezier(.2,.7,.4,1) forwards;
+}
+@keyframes sparkUp {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4) rotate(0deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 0), -90px) scale(1.1) rotate(var(--rot, 40deg)); }
+}
+
+/* --- Portadas que respiran al pasar el puntero (solo dispositivos con hover) --- */
+@media (hover: hover) {
+  .listcard .lc-cover, .card .thumb .cthumb, .card .thumb img { transition: transform .4s cubic-bezier(.2,.7,.3,1); }
+  .listcard:hover .lc-cover { transform: scale(1.045); }
+  .card:hover .thumb .cthumb, .card:hover .thumb img { transform: scale(1.05); }
+  .listcard, .card { overflow: hidden; }
+}
+
+/* --- El precio grande brilla como latón pulido --- */
+.price.big {
+  background: linear-gradient(100deg, var(--brand) 20%, color-mix(in srgb, var(--brand) 55%, #fff) 42%, var(--brand) 62%);
+  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: goldsheen 5.5s ease-in-out infinite;
+}
+@keyframes goldsheen { 0%, 55%, 100% { background-position: 110% 0; } 25% { background-position: -20% 0; } }
+
+/* --- La llama de la racha late --- */
+.streak .i { animation: flamebeat 2.6s ease-in-out infinite; transform-origin: 50% 88%; }
+@keyframes flamebeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* --- Vacíos con vida: el emblema flota y titilan destellos --- */
+.empty-art { position: relative; animation: bob 5.5s ease-in-out infinite; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.empty-art::before, .empty-art::after {
+  content: "✦"; position: absolute; color: var(--brand); pointer-events: none;
+  animation: twinkle 3s ease-in-out infinite;
+}
+.empty-art::before { font-size: 12px; top: 4px; right: -14px; }
+.empty-art::after { font-size: 8px; bottom: 8px; left: -12px; animation-delay: 1.4s; }
+
+/* --- Toast con entrada elástica --- */
+.toast { transition: opacity .22s ease, transform .32s cubic-bezier(.2,.9,.3,1.25); transform: translateX(-50%) translateY(16px) scale(.95); }
+.toast.show { transform: translateX(-50%) translateY(0) scale(1); }
+
+/* --- Botones y FAB con más tacto --- */
+.btn { transition: transform .13s ease, box-shadow .18s ease, filter .18s ease; }
+.btn:active { transform: scale(.975); }
+.btn:not(.ghost):not(.danger):hover { filter: brightness(1.05); }
+.fab { animation: fabin .34s cubic-bezier(.2,.8,.3,1.25); }
+@keyframes fabin { from { opacity: 0; transform: scale(.5) rotate(-40deg); } to { opacity: 1; transform: none; } }
+
+/* --- Segmentos: el activo con relieve --- */
+.seg button.on { box-shadow: var(--shadow); }

@@ -1416,6 +1416,107 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 .cards .card { content-visibility: auto; contain-intrinsic-size: auto 230px; }
 .market .listcard { content-visibility: auto; contain-intrinsic-size: auto 250px; }
 
+/* ==========================================================================
+   ESTÉTICA v9 — coreografía: transiciones con propósito, morphs entre
+   pantallas y momentos de celebración. Movimiento respetuoso (la regla
+   global de prefers-reduced-motion lo apaga todo).
+   ========================================================================== */
+
+/* --- Tabbar: la píldora activa se DESLIZA entre pestañas (VT morph) --- */
+.tabbar a { position: relative; }
+.tabbar a .tb-ind { position: absolute; z-index: -1; pointer-events: none; view-transition-name: tabpill; }
+@media (max-width: 999px) {
+  .tabbar a.on::before { content: none; }
+  .tabbar a .tb-ind { inset: 0; border-radius: 16px; background: var(--grad-brand); box-shadow: var(--shadow-brand); }
+}
+@media (min-width: 1000px) {
+  .tabbar a.on::before { content: none; }
+  .tabbar a .tb-ind { left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand); }
+}
+::view-transition-group(tabpill) { animation-duration: .3s; animation-timing-function: cubic-bezier(.3,.9,.3,1); }
+::view-transition-old(tabpill) { display: none; }
+::view-transition-new(tabpill) { animation: none; height: 100%; }
+
+/* --- Morph de portada: de la tarjeta del mercado al héroe de la ficha --- */
+::view-transition-group(hero) { animation-duration: .32s; animation-timing-function: cubic-bezier(.25,.85,.3,1); }
+::view-transition-old(hero), ::view-transition-new(hero) { height: 100%; overflow: hidden; object-fit: cover; }
+
+/* --- Navegación: el contenido asciende; el cromo fijo (tabbar, FAB,
+   toast) se promociona a grupos propios para que siga pintándose encima --- */
+#view { view-transition-name: view; }
+.tabbar { view-transition-name: tabbar; }
+.fab { view-transition-name: fab; }
+.toast { view-transition-name: toast; }
+::view-transition-group(view) { animation-duration: .2s; }
+::view-transition-new(view) { animation: vtRise .2s ease; }
+::view-transition-group(tabbar), ::view-transition-group(fab), ::view-transition-group(toast) { animation-duration: .15s; }
+@keyframes vtRise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* --- Cambio de tema: revelado circular desde el botón pulsado --- */
+html.vt-theme #view, html.vt-theme .tb-ind, html.vt-theme .tabbar, html.vt-theme .fab, html.vt-theme .toast { view-transition-name: none; }
+html.vt-theme::view-transition-old(root) { animation: none; }
+html.vt-theme::view-transition-new(root) { animation: themeReveal .5s ease-out; transform: none; }
+@keyframes themeReveal {
+  from { clip-path: circle(0 at var(--vtx, 50%) var(--vty, 40%)); }
+  to { clip-path: circle(142% at var(--vtx, 50%) var(--vty, 40%)); }
+}
+
+/* --- Destellos dorados en momentos de éxito --- */
+.spark-burst {
+  position: fixed; z-index: 300; color: var(--brand); pointer-events: none;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--brand) 70%, transparent);
+  animation: sparkUp 1s cubic-bezier(.2,.7,.4,1) forwards;
+}
+@keyframes sparkUp {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4) rotate(0deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 0), -90px) scale(1.1) rotate(var(--rot, 40deg)); }
+}
+
+/* --- Portadas que respiran al pasar el puntero (solo dispositivos con hover) --- */
+@media (hover: hover) {
+  .listcard .lc-cover, .card .thumb .cthumb, .card .thumb img { transition: transform .4s cubic-bezier(.2,.7,.3,1); }
+  .listcard:hover .lc-cover { transform: scale(1.045); }
+  .card:hover .thumb .cthumb, .card:hover .thumb img { transform: scale(1.05); }
+  .listcard, .card { overflow: hidden; }
+}
+
+/* --- El precio grande brilla como latón pulido --- */
+.price.big {
+  background: linear-gradient(100deg, var(--brand) 20%, color-mix(in srgb, var(--brand) 55%, #fff) 42%, var(--brand) 62%);
+  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: goldsheen 5.5s ease-in-out infinite;
+}
+@keyframes goldsheen { 0%, 55%, 100% { background-position: 110% 0; } 25% { background-position: -20% 0; } }
+
+/* --- La llama de la racha late --- */
+.streak .i { animation: flamebeat 2.6s ease-in-out infinite; transform-origin: 50% 88%; }
+@keyframes flamebeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* --- Vacíos con vida: el emblema flota y titilan destellos --- */
+.empty-art { position: relative; animation: bob 5.5s ease-in-out infinite; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.empty-art::before, .empty-art::after {
+  content: "✦"; position: absolute; color: var(--brand); pointer-events: none;
+  animation: twinkle 3s ease-in-out infinite;
+}
+.empty-art::before { font-size: 12px; top: 4px; right: -14px; }
+.empty-art::after { font-size: 8px; bottom: 8px; left: -12px; animation-delay: 1.4s; }
+
+/* --- Toast con entrada elástica --- */
+.toast { transition: opacity .22s ease, transform .32s cubic-bezier(.2,.9,.3,1.25); transform: translateX(-50%) translateY(16px) scale(.95); }
+.toast.show { transform: translateX(-50%) translateY(0) scale(1); }
+
+/* --- Botones y FAB con más tacto --- */
+.btn { transition: transform .13s ease, box-shadow .18s ease, filter .18s ease; }
+.btn:active { transform: scale(.975); }
+.btn:not(.ghost):not(.danger):hover { filter: brightness(1.05); }
+.fab { animation: fabin .34s cubic-bezier(.2,.8,.3,1.25); }
+@keyframes fabin { from { opacity: 0; transform: scale(.5) rotate(-40deg); } to { opacity: 1; transform: none; } }
+
+/* --- Segmentos: el activo con relieve --- */
+.seg button.on { box-shadow: var(--shadow); }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -2234,7 +2335,7 @@ window.Cloud = (function () {
     else tabs.push({ h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" });
     tabs.push({ h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" });
     return '<nav class="tabbar"><div class="tbbrand">' + mark() + "<span>App del Mago</span></div>" + tabs.map(function (x) {
-      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
+      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + (active === x.k ? '<span class="tb-ind" aria-hidden="true"></span>' : "") + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
   function mountTabbar(active) {
@@ -3616,7 +3717,7 @@ window.Cloud = (function () {
           var vis = rows.filter(function (l) { return marketFilter === "all" || (marketFilter === "physical") === isPhysical(l); });
           var grid = document.getElementById("mkGrid");
           grid.innerHTML = vis.length ? vis.map(listingCard).join("") : '<div class="empty" style="grid-column:1/-1;padding:30px 12px"><p>Nada por aquí todavía.</p></div>';
-          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
         }
         draw();
         bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (ch) { ch.addEventListener("click", function () { marketFilter = ch.getAttribute("data-f"); bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (x) { x.classList.toggle("active", x === ch); }); draw(); }); });
@@ -4086,6 +4187,21 @@ window.Cloud = (function () {
     if (isMe && myStreak >= 3) a.push({ i: "flame", t: "Racha " + myStreak });
     return a;
   }
+  function burstSparks(el0) {
+    try {
+      var r = el0.getBoundingClientRect();
+      for (var i = 0; i < 8; i++) {
+        var sp = document.createElement("span"); sp.className = "spark-burst"; sp.textContent = "\u2726";
+        sp.style.left = (r.left + r.width / 2) + "px"; sp.style.top = (r.top + r.height / 2) + "px";
+        sp.style.setProperty("--dx", (Math.random() * 110 - 55) + "px");
+        sp.style.setProperty("--rot", (Math.random() * 140 - 70) + "deg");
+        sp.style.fontSize = (10 + Math.random() * 8) + "px";
+        sp.style.animationDelay = (i * 24) + "ms";
+        document.body.appendChild(sp);
+        (function (n) { setTimeout(function () { n.remove(); }, 1000); })(sp);
+      }
+    } catch (e) {}
+  }
   function burstHearts(el0) {
     try {
       var r = el0.getBoundingClientRect();
@@ -4140,7 +4256,7 @@ window.Cloud = (function () {
       if (!body && !media.length && !composeTrick) { toast("Escribe algo o adjunta"); return; }
       var btn = document.getElementById("cpPost"); btn.disabled = true; btn.textContent = "Publicando…";
       var row = { kind: "post", body: body, media: media, trick_card: composeTrick ? { title: composeTrick.title, category: composeTrick.category, difficulty: composeTrick.difficulty } : null, challenge_id: chal ? chal.id : null };
-      Cloud.createPost(row).then(function () { toast(chal ? "¡Participación publicada!" : "Publicado"); composeChallenge = null; location.hash = chal ? "#/reto" : "#/comunidad"; }).catch(function () { btn.disabled = false; btn.textContent = "Publicar"; toast("No se pudo publicar"); });
+      Cloud.createPost(row).then(function () { burstSparks(btn); toast(chal ? "¡Participación publicada!" : "Publicado"); composeChallenge = null; location.hash = chal ? "#/reto" : "#/comunidad"; }).catch(function () { btn.disabled = false; btn.textContent = "Publicar"; toast("No se pudo publicar"); });
     });
   }
   function pickTrick(cb) {
@@ -4218,7 +4334,7 @@ window.Cloud = (function () {
         (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(listingCard).join("") + "</div>" : "") +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
-      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       appendMore(b, b.querySelector(".feed"), posts, function (before) { return Cloud.getFeed(uid, "discover", null, null, before); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
@@ -4302,7 +4418,7 @@ window.Cloud = (function () {
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
@@ -4327,7 +4443,7 @@ window.Cloud = (function () {
       var buy = document.getElementById("liBuy"); if (buy) buy.addEventListener("click", function () { toast("Pago con tarjeta muy pronto (Stripe)"); });
       var fr = document.getElementById("liFree"); if (fr) fr.addEventListener("click", function () {
         fr.disabled = true; fr.textContent = "Añadiendo…";
-        Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
+        Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); burstSparks(fr); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
           .catch(function () { fr.disabled = false; fr.textContent = "Obtener gratis"; toast("No se pudo obtener"); });
       });
       var eb = document.getElementById("liEdit"); if (eb) eb.addEventListener("click", function () { location.hash = "#/vender/" + id; });
@@ -4339,7 +4455,7 @@ window.Cloud = (function () {
         document.getElementById("revSend").addEventListener("click", function () {
           if (!picked) { toast("Elige de 1 a 5 estrellas"); return; }
           var btn = document.getElementById("revSend"); btn.disabled = true; btn.textContent = "Enviando…";
-          Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
+          Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { burstSparks(btn); toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
         });
       }
     }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
@@ -4446,7 +4562,7 @@ window.Cloud = (function () {
       } else {
         Cloud.createListing(listing, phys ? null : buildSellPayload(sellTrick)).then(function (l) {
           return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
-        }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
+        }).then(function () { burstSparks(btn); toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
           .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });
       }
     });
@@ -4665,7 +4781,18 @@ window.Cloud = (function () {
       renderSettings();
     });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
-      b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
+      b.addEventListener("click", function (ev) {
+        var v = b.getAttribute("data-v");
+        if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          var root = document.documentElement;
+          root.style.setProperty("--vtx", ev.clientX + "px"); root.style.setProperty("--vty", ev.clientY + "px");
+          root.classList.add("vt-theme");
+          try {
+            var vt = document.startViewTransition(function () { setTheme(v); renderSettings(); });
+            vt.finished.finally(function () { root.classList.remove("vt-theme"); });
+          } catch (e) { root.classList.remove("vt-theme"); setTheme(v); renderSettings(); }
+        } else { setTheme(v); renderSettings(); }
+      });
     });
     var byId = function (id) { return document.getElementById(id); };
     if (byId("setPin")) byId("setPin").addEventListener("click", function () { location.hash = "#/pin"; });

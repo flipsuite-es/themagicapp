@@ -409,7 +409,7 @@
     else tabs.push({ h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" });
     tabs.push({ h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" });
     return '<nav class="tabbar"><div class="tbbrand">' + mark() + "<span>App del Mago</span></div>" + tabs.map(function (x) {
-      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + icon(x.ic) + "<span>" + x.t + "</span></a>";
+      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + (active === x.k ? '<span class="tb-ind" aria-hidden="true"></span>' : "") + icon(x.ic) + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
   function mountTabbar(active) {
@@ -1791,7 +1791,7 @@
           var vis = rows.filter(function (l) { return marketFilter === "all" || (marketFilter === "physical") === isPhysical(l); });
           var grid = document.getElementById("mkGrid");
           grid.innerHTML = vis.length ? vis.map(listingCard).join("") : '<div class="empty" style="grid-column:1/-1;padding:30px 12px"><p>Nada por aquí todavía.</p></div>';
-          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
         }
         draw();
         bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (ch) { ch.addEventListener("click", function () { marketFilter = ch.getAttribute("data-f"); bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (x) { x.classList.toggle("active", x === ch); }); draw(); }); });
@@ -2261,6 +2261,21 @@
     if (isMe && myStreak >= 3) a.push({ i: "flame", t: "Racha " + myStreak });
     return a;
   }
+  function burstSparks(el0) {
+    try {
+      var r = el0.getBoundingClientRect();
+      for (var i = 0; i < 8; i++) {
+        var sp = document.createElement("span"); sp.className = "spark-burst"; sp.textContent = "\u2726";
+        sp.style.left = (r.left + r.width / 2) + "px"; sp.style.top = (r.top + r.height / 2) + "px";
+        sp.style.setProperty("--dx", (Math.random() * 110 - 55) + "px");
+        sp.style.setProperty("--rot", (Math.random() * 140 - 70) + "deg");
+        sp.style.fontSize = (10 + Math.random() * 8) + "px";
+        sp.style.animationDelay = (i * 24) + "ms";
+        document.body.appendChild(sp);
+        (function (n) { setTimeout(function () { n.remove(); }, 1000); })(sp);
+      }
+    } catch (e) {}
+  }
   function burstHearts(el0) {
     try {
       var r = el0.getBoundingClientRect();
@@ -2315,7 +2330,7 @@
       if (!body && !media.length && !composeTrick) { toast("Escribe algo o adjunta"); return; }
       var btn = document.getElementById("cpPost"); btn.disabled = true; btn.textContent = "Publicando…";
       var row = { kind: "post", body: body, media: media, trick_card: composeTrick ? { title: composeTrick.title, category: composeTrick.category, difficulty: composeTrick.difficulty } : null, challenge_id: chal ? chal.id : null };
-      Cloud.createPost(row).then(function () { toast(chal ? "¡Participación publicada!" : "Publicado"); composeChallenge = null; location.hash = chal ? "#/reto" : "#/comunidad"; }).catch(function () { btn.disabled = false; btn.textContent = "Publicar"; toast("No se pudo publicar"); });
+      Cloud.createPost(row).then(function () { burstSparks(btn); toast(chal ? "¡Participación publicada!" : "Publicado"); composeChallenge = null; location.hash = chal ? "#/reto" : "#/comunidad"; }).catch(function () { btn.disabled = false; btn.textContent = "Publicar"; toast("No se pudo publicar"); });
     });
   }
   function pickTrick(cb) {
@@ -2393,7 +2408,7 @@
         (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(listingCard).join("") + "</div>" : "") +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
-      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       appendMore(b, b.querySelector(".feed"), posts, function (before) { return Cloud.getFeed(uid, "discover", null, null, before); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
@@ -2477,7 +2492,7 @@
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + esc(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +
@@ -2502,7 +2517,7 @@
       var buy = document.getElementById("liBuy"); if (buy) buy.addEventListener("click", function () { toast("Pago con tarjeta muy pronto (Stripe)"); });
       var fr = document.getElementById("liFree"); if (fr) fr.addEventListener("click", function () {
         fr.disabled = true; fr.textContent = "Añadiendo…";
-        Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
+        Cloud.claimFree(id).then(function (payload) { if (payload) { addDeliveredTrick(payload); burstSparks(fr); toast("¡Añadido a tu biblioteca!"); location.hash = "#/"; } else { toast("Contenido no disponible"); fr.disabled = false; fr.textContent = "Obtener gratis"; } })
           .catch(function () { fr.disabled = false; fr.textContent = "Obtener gratis"; toast("No se pudo obtener"); });
       });
       var eb = document.getElementById("liEdit"); if (eb) eb.addEventListener("click", function () { location.hash = "#/vender/" + id; });
@@ -2514,7 +2529,7 @@
         document.getElementById("revSend").addEventListener("click", function () {
           if (!picked) { toast("Elige de 1 a 5 estrellas"); return; }
           var btn = document.getElementById("revSend"); btn.disabled = true; btn.textContent = "Enviando…";
-          Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
+          Cloud.addReview(id, picked, (document.getElementById("revBody").value || "").trim()).then(function () { burstSparks(btn); toast("¡Gracias por tu reseña!"); renderListing(id); }).catch(function () { btn.disabled = false; btn.textContent = "Enviar valoración"; toast("No se pudo enviar"); });
         });
       }
     }).catch(function () { document.getElementById("liBody").innerHTML = '<div class="empty" style="padding:40px"><p>No se pudo cargar.</p></div>'; });
@@ -2621,7 +2636,7 @@
       } else {
         Cloud.createListing(listing, phys ? null : buildSellPayload(sellTrick)).then(function (l) {
           return Cloud.createPost({ kind: "listing", body: listing.description, listing_id: l.id, media: [] });
-        }).then(function () { toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
+        }).then(function () { burstSparks(btn); toast("¡Publicado en el mercado!"); location.hash = "#/mercado"; })
           .catch(function () { btn.disabled = false; btn.textContent = "Publicar en el mercado"; toast("No se pudo publicar"); });
       }
     });
@@ -2840,7 +2855,18 @@
       renderSettings();
     });
     view.querySelectorAll("#themeSeg button").forEach(function (b) {
-      b.addEventListener("click", function () { setTheme(b.getAttribute("data-v")); renderSettings(); });
+      b.addEventListener("click", function (ev) {
+        var v = b.getAttribute("data-v");
+        if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          var root = document.documentElement;
+          root.style.setProperty("--vtx", ev.clientX + "px"); root.style.setProperty("--vty", ev.clientY + "px");
+          root.classList.add("vt-theme");
+          try {
+            var vt = document.startViewTransition(function () { setTheme(v); renderSettings(); });
+            vt.finished.finally(function () { root.classList.remove("vt-theme"); });
+          } catch (e) { root.classList.remove("vt-theme"); setTheme(v); renderSettings(); }
+        } else { setTheme(v); renderSettings(); }
+      });
     });
     var byId = function (id) { return document.getElementById(id); };
     if (byId("setPin")) byId("setPin").addEventListener("click", function () { location.hash = "#/pin"; });

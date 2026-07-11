@@ -1722,7 +1722,12 @@ body { background: transparent; background-image: none; }
 .mc-img.cthumb { display: block; }
 .mc-play { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
 .mc-play .i { width: 14px; height: 14px; }
-.mc-in.drag { transform: translate3d(0, -14px, 70px) scale(1.05) !important; box-shadow: 0 60px 70px -24px rgba(0,0,0,1), 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--brand) 35%, transparent); transition-duration: .16s; }
+.mc-in.drag {
+  /* en la mano: sube, crece un pelo y se ENDEREZA (contrarresta el jitter) */
+  transform: translate3d(0, -14px, 70px) scale(1.05) rotateZ(calc(var(--rz, 0deg) * -0.85)) !important;
+  box-shadow: 0 60px 70px -24px rgba(0,0,0,1), 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--brand) 35%, transparent);
+  transition-duration: .22s;
+}
 .mesa.arranging { cursor: grabbing; }
 .mf-empty { position: absolute; top: 240px; left: 50%; width: 240px; margin-left: -120px; text-align: center; color: var(--ink-faint); font-size: 13.5px; line-height: 1.6; }
 

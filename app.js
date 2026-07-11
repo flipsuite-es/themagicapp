@@ -638,7 +638,7 @@
     var art = thumb
       ? thumb + ((trickThumb(t) || {}).kind === "video" || (t.media || []).some(function (m) { return m.embed || m.path; }) ? '<span class="mc-play">' + icon("play", "i-sm") + "</span>" : "")
       : '<span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>";
-    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '">' +
+    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '" style="--rz:' + (c.rz || seededJitter(t.id).rz).toFixed(2) + 'deg">' +
       '<div class="mc-in' + (mesaDeal ? " deal" : "") + '" style="transition-delay:' + (mesaDeal ? Math.min(i * 55, 440) : 0) + 'ms">' +
       '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
       '<div class="mc-art">' + art +
@@ -687,8 +687,7 @@
       paintCard(c);
     });
     function paintCard(c) {
-      var z = movingCard === c ? 90 : 2; // en la mano: flota sobre el resto
-      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px," + z + "px) rotateZ(" + c.rz.toFixed(2) + "deg)";
+      c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px,2px) rotateZ(" + c.rz.toFixed(2) + "deg)";
     }
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
@@ -750,7 +749,6 @@
         pressT = setTimeout(function () {
           if (moved < 9 && dragging) {
             movingCard = c; c.inEl.classList.add("drag"); wrap.classList.add("arranging");
-            paintCard(c); cam.appendChild(c.el);
             buzz(12); snd("tap");
             if (!mesaOrg.hinted) { mesaOrg.hinted = true; saveMesaOrg(); var h = document.getElementById("mesaHint"); if (h) h.classList.add("bye"); }
           }
@@ -778,9 +776,11 @@
       dragging = false;
       if (movingCard) {
         var c = movingCard; movingCard = null;
-        wrap.classList.remove("arranging"); c.inEl.classList.remove("drag"); unlift();
+        wrap.classList.remove("arranging");
         rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.remove("hot"); });
         var rt = e ? railTarget(e) : null;
+        if (!rt) cam.appendChild(c.el); // gana los solapes al posarse
+        c.inEl.classList.remove("drag"); unlift();
         if (rt) {
           var target = rt.getAttribute("data-drawer") || null;
           if (target) mesaOrg.items[c.t.id] = target; else delete mesaOrg.items[c.t.id];
@@ -791,7 +791,6 @@
         } else {
           mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y) };
           saveMesaOrg(); snd("slide");
-          paintCard(c); // vuelve a posarse (z de mesa), ya al final del DOM
         }
         return;
       }

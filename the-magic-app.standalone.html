@@ -2711,7 +2711,11 @@ window.Cloud = (function () {
   }
   function bindCards() {
     view.querySelectorAll(".card[data-id]").forEach(function (c) {
-      c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-id"); });
+      c.addEventListener("click", function () {
+        // La TARJETA ENTERA se convierte en la ficha (no solo la miniatura)
+        c.style.viewTransitionName = "hero";
+        location.hash = "#/truco/" + c.getAttribute("data-id");
+      });
     });
     bindCardThumbs();
   }
@@ -2835,7 +2839,7 @@ window.Cloud = (function () {
       '<button class="btn danger" id="delBtn">Eliminar</button>';
 
     view.innerHTML =
-      '<div class="screen detail">' +
+      '<div class="screen detail" style="view-transition-name:hero">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Truco</h1>' +
       '<span style="flex:1"></span>' +
       '<button class="iconbtn ' + (t.favorite ? "on" : "") + '" id="favBtn">' + icon(t.favorite ? "starfill" : "star") + "</button>" +
@@ -4357,7 +4361,7 @@ window.Cloud = (function () {
           var vis = rows.filter(function (l) { return marketFilter === "all" || (marketFilter === "physical") === isPhysical(l); });
           var grid = document.getElementById("mkGrid");
           grid.innerHTML = vis.length ? vis.map(listingCard).join("") : '<div class="empty" style="grid-column:1/-1;padding:30px 12px"><p>Nada por aquí todavía.</p></div>';
-          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+          grid.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { c.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
         }
         draw();
         bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (ch) { ch.addEventListener("click", function () { marketFilter = ch.getAttribute("data-f"); bodyEl.querySelectorAll("#mkFilter .chip").forEach(function (x) { x.classList.toggle("active", x === ch); }); draw(); }); });
@@ -4976,7 +4980,7 @@ window.Cloud = (function () {
         (listings.length ? '<div class="sec-label">En venta</div><div class="market">' + listings.map(listingCard).join("") + "</div>" : "") +
         '<div class="sec-label">Publicaciones</div>' + (posts.length ? '<div class="feed">' + posts.map(postCardHtml).join("") + "</div>" : '<p class="hint">Todavía no ha publicado nada.</p>');
       bindPostCards(b);
-      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { var cv = c.querySelector(".lc-cover"); if (cv) cv.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
+      b.querySelectorAll(".listcard[data-l]").forEach(function (c) { c.addEventListener("click", function () { c.style.viewTransitionName = "hero"; location.hash = "#/mercado/" + c.getAttribute("data-l"); }); });
       appendMore(b, b.querySelector(".feed"), posts, function (before) { return Cloud.getFeed(uid, "discover", null, null, before); });
       b.querySelectorAll(".p-stats [data-go]").forEach(function (d) { d.addEventListener("click", function () { location.hash = d.getAttribute("data-go"); }); });
       var fb = document.getElementById("prFollow");
@@ -5040,7 +5044,7 @@ window.Cloud = (function () {
   function starsHtml(n, cls) { var o = ""; for (var i = 1; i <= 5; i++) o += '<span class="star ' + (i <= Math.round(n) ? "on" : "") + '" ' + (cls ? 'data-r="' + i + '"' : "") + ">★</span>"; return '<span class="stars ' + (cls || "") + '">' + o + "</span>"; }
   function renderListing(id) {
     clearTabbar();
-    view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody">' + skelDetail() + '</div></div>';
+    view.innerHTML = '<div class="screen" style="view-transition-name:hero"><div class="pagehead"><button class="back" aria-label="Volver" onclick="history.back()">' + icon("back") + '</button><h1>Truco</h1></div><div id="liBody">' + skelDetail() + '</div></div>';
     Promise.all([Cloud.getListing(id), Cloud.getReviews(id)]).then(function (res) {
       var l = res[0], reviews = res[1] || [];
       var b = document.getElementById("liBody"); if (!l) { b.innerHTML = '<div class="empty" style="padding:40px"><p>No disponible.</p></div>'; return; }
@@ -5060,7 +5064,7 @@ window.Cloud = (function () {
         metaBits.push("Digital · entrega instantánea");
       }
       var metaLine = '<div class="li-meta">' + metaBits.map(function (t) { return '<span' + (t === "AGOTADO" ? ' class="out"' : "") + ">" + esc(t === "AGOTADO" ? "Agotado" : t) + "</span>"; }).join("") + "</div>";
-      b.innerHTML = (l.cover ? '<div class="li-cover" style="view-transition-name:hero;background-image:url(' + cssUrl(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph" style="view-transition-name:hero">' + engraving(l.id) + mark("", true) + "</div>") +
+      b.innerHTML = (l.cover ? '<div class="li-cover" style="background-image:url(' + cssUrl(Cloud.publicUrl(l.cover) || l.cover) + ')"></div>' : '<div class="li-cover ph">' + engraving(l.id) + mark("", true) + "</div>") +
         '<div class="li-top"><h1 class="title" style="margin-top:14px">' + esc(l.title) + (isSeller && paused ? ' <span class="badge-paused">Pausado</span>' : "") + '</h1><button class="iconbtn ' + (l.wished ? "on" : "") + '" id="liWish" aria-label="Añadir a deseos">' + icon(l.wished ? "bookmarkfill" : "bookmark") + "</button></div>" +
         ratingLine +
         '<div class="li-seller" data-mago="' + esc(l.seller) + '">' + avatarHtml(Cloud.publicUrl(l.avatar), l.name || l.handle, "sm") + "<span>" + esc(l.name || l.handle || "Mago") + "</span></div>" +

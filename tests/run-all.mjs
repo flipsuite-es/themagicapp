@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import { readFile } from 'fs/promises';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { mkdirSync } from 'fs';
 import { dirname, join, extname, normalize } from 'path';
 
 const ROOT = normalize(join(dirname(fileURLToPath(import.meta.url)), '..'));
@@ -30,7 +31,9 @@ let failed = 0;
 for (const suite of SUITES) {
   process.stdout.write(`\n▶ ${suite}\n`);
   const code = await new Promise(res => {
-    const child = spawn(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), suite)], { stdio: 'inherit' });
+    const shots = join(dirname(fileURLToPath(import.meta.url)), '.shots');
+    try { mkdirSync(shots, { recursive: true }); } catch (e) {}
+    const child = spawn(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), suite)], { stdio: 'inherit', cwd: shots });
     child.on('close', res);
   });
   if (code !== 0) { failed++; console.log(`✗ ${suite} (exit ${code})`); }

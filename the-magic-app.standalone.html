@@ -1651,9 +1651,9 @@ body { background: transparent; background-image: none; }
 }
 
 /* ==========================================================================
-   LA MESA DEL MAGO v12 — la biblioteca como escena 3D: tapete en
-   perspectiva, cartas repartidas, cámara con inercia y giroscopio.
-   Se apaga entera con "Efectos ligeros" (Ajustes) o reduced-motion.
+   LA MESA DEL MAGO v12.1 — escena bien ejecutada: tapete con luz y textura,
+   reparto de cartas en cascada, niebla de profundidad, cartas que se
+   levantan al tocarlas y rebote elástico en los extremos.
    ========================================================================== */
 .countrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .countrow .count { margin: 0; }
@@ -1663,44 +1663,67 @@ body { background: transparent; background-image: none; }
 .viewsw button.on { background: var(--grad-brand); color: var(--on-brand); box-shadow: var(--shadow); }
 
 .mesa {
-  position: relative; height: min(66vh, 620px); border-radius: 16px; overflow: hidden;
-  border: 1px solid var(--hairline);
-  background:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 55%),
-    linear-gradient(178deg, #17110b, #0b0806 70%);
+  position: relative; height: clamp(440px, calc(100dvh - 350px), 700px);
+  margin: 0 -20px; overflow: hidden;
+  border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(178deg, #141009, #090705 62%);
   perspective: 1350px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
 }
 .mesa:active { cursor: grabbing; }
+/* Luz cenital: un óvalo de vela sobre el tapete */
+.mesa::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(92% 66% at 50% 30%, transparent 42%, rgba(4,3,2,.5) 100%),
+    radial-gradient(70% 34% at 50% 12%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 62%);
+}
+.mesa-fog { position: absolute; left: 0; right: 0; height: 84px; pointer-events: none; z-index: 3; }
+.mesa-fog.top { top: 0; background: linear-gradient(180deg, var(--bg), transparent); opacity: .92; }
+.mesa-fog.bot { bottom: 0; background: linear-gradient(0deg, rgba(4,3,2,.92), transparent); }
 .mesa-cam { position: absolute; left: 50%; top: 5%; width: 372px; margin-left: -186px; transform-style: preserve-3d; transform-origin: 50% 20%; will-change: transform; }
 .mesa-felt {
-  position: absolute; left: -70px; right: -70px; top: -60px; border-radius: 26px;
+  position: absolute; left: -110px; right: -110px; top: -80px; border-radius: 30px;
   background:
-    radial-gradient(60% 26% at 50% 6%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%),
-    linear-gradient(180deg, #1d150c, #120d08 45%, #0c0906);
-  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 0 90px rgba(0,0,0,.55);
+    radial-gradient(56% 22% at 50% 5%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 58%),
+    repeating-linear-gradient(52deg, rgba(255,255,255,.012) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-52deg, rgba(255,255,255,.010) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, #1a1209, #100b07 44%, #0a0705);
+  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 0 120px rgba(0,0,0,.6);
 }
-.mesa-felt::before { content: ""; position: absolute; inset: 16px; border-radius: 18px; border: 1px solid var(--hairline); opacity: .6; }
-.mcard {
-  position: absolute; width: 158px; height: 212px; border-radius: 10px; padding: 8px 9px;
-  background: linear-gradient(168deg, #1c1409, #130e08 60%, #171009);
-  border: 1px solid var(--hairline-2);
-  box-shadow: 0 22px 30px -14px rgba(0,0,0,.85), inset 0 1px 0 color-mix(in srgb, var(--brand) 18%, transparent);
-  cursor: pointer; transition: box-shadow .2s ease;
+.mesa-felt .mf-line { position: absolute; inset: 20px; border-radius: 20px; border: 1px solid var(--hairline); opacity: .5; }
+.mesa-felt .mf-line::after { content: "\2726"; position: absolute; top: -8px; left: 50%; margin-left: -6px; font-size: 11px; color: var(--brand); opacity: .8; background: #130d08; padding: 0 5px; }
+
+/* -------- la carta: dorso de baraja de lujo -------- */
+.mcard { position: absolute; width: 158px; height: 212px; cursor: pointer; }
+.mcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 12px; }
+.mc-in {
+  position: relative; width: 100%; height: 100%; border-radius: 11px; padding: 10px 11px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 55%),
+    linear-gradient(168deg, #201608, #140e07 58%, #181008);
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, transparent);
+  box-shadow: 0 24px 34px -16px rgba(0,0,0,.9), inset 0 1px 0 color-mix(in srgb, var(--brand) 22%, transparent), inset 0 0 0 1px rgba(0,0,0,.4);
+  transition: transform .5s cubic-bezier(.22,1.2,.36,1), opacity .4s ease, box-shadow .3s ease;
 }
-.mcard:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-.mc-art { position: relative; height: 118px; border-radius: 7px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--hairline); background: radial-gradient(80% 70% at 50% 30%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%); }
-.mc-art .engr { width: 210%; opacity: .55; }
-.mc-art .mc-ic { position: relative; color: var(--brand); filter: drop-shadow(0 3px 12px color-mix(in srgb, var(--brand) 50%, transparent)); }
-.mc-art .mc-ic .i { width: 26px; height: 26px; }
+.mc-in.deal { transform: translate3d(0, 430px, 90px) rotateZ(10deg); opacity: 0; }
+.mc-in.lift { transform: translate3d(0, -6px, 34px); box-shadow: 0 42px 54px -18px rgba(0,0,0,.95), inset 0 1px 0 color-mix(in srgb, var(--brand) 30%, transparent); transition-duration: .18s; }
+.mc-pip { position: absolute; width: 4px; height: 4px; transform: rotate(45deg); background: color-mix(in srgb, var(--brand) 55%, transparent); }
+.mc-pip.tl { top: 6px; left: 6px; } .mc-pip.tr { top: 6px; right: 6px; }
+.mc-pip.bl { bottom: 6px; left: 6px; } .mc-pip.br { bottom: 6px; right: 6px; }
+.mc-art { position: relative; height: 116px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--hairline); background: radial-gradient(85% 75% at 50% 32%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 72%); }
+.mc-med { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, #000 30%, transparent 78%); mask-image: radial-gradient(60% 60% at 50% 50%, #000 30%, transparent 78%); }
+.mc-med .engr { position: static; width: 128%; aspect-ratio: 1; transform: none; opacity: .8; color: var(--brand); }
+.mcard .engr path { stroke-width: .8; }
+.mc-art .mc-ic { position: relative; color: var(--brand); filter: drop-shadow(0 3px 12px color-mix(in srgb, var(--brand) 55%, transparent)); }
+.mc-art .mc-ic .i { width: 25px; height: 25px; }
 .mc-fav { position: absolute; top: 6px; right: 6px; color: var(--brand); }
 .mc-fav .i { width: 13px; height: 13px; }
-.mc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; line-height: 1.18; margin-top: 9px; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.mc-meta { margin-top: 5px; font-size: 8.5px; font-weight: 650; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint); }
-.mesa-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(90% 55% at 50% 108%, rgba(0,0,0,.6), transparent 55%); }
+.mc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; line-height: 1.18; margin-top: 10px; color: #efe6d2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mc-meta { margin-top: 5px; font-size: 8.5px; font-weight: 650; letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--brand) 55%, #6b6156); }
+.mc-shade { position: absolute; inset: -1px; border-radius: 11px; background: #060403; opacity: 0; pointer-events: none; transition: opacity .3s linear; }
 
-/* En claro, la mesa mantiene su penumbra propia (es una escena) */
-:root[data-theme="light"] .mesa .mc-name { color: #efe6d2; }
-@media (prefers-color-scheme: light) { html:not([data-theme="dark"]) .mesa .mc-name { color: #efe6d2; } }
+/* Con reduced-motion no hay reparto: las cartas ya están en su sitio */
+@media (prefers-reduced-motion: reduce) { .mc-in.deal { transform: none; opacity: 1; } }
 
 </style>
 <div class="app"><div id="view"></div></div>
@@ -2732,12 +2755,15 @@ window.Cloud = (function () {
     var j = seededJitter(t.id);
     var col = i % 2, row = (i - col) / 2;
     var x = 38 + col * 162 + j.dx, y = 26 + row * 236 + j.dy;
-    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
-      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
-      '<div class="mc-art">' + engraving(t.id) + '<span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
+    return '<div class="mcard" data-id="' + t.id + '" data-y="' + Math.round(y) + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
+      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,2px) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
+      '<div class="mc-in deal" style="transition-delay:' + Math.min(i * 55, 440) + 'ms">' +
+      '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
+      '<div class="mc-art"><span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
       (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
       '<div class="mc-name">' + esc(t.title) + '</div>' +
-      '<div class="mc-meta">' + esc(t.category || "—") + "</div></div>";
+      '<div class="mc-meta">' + esc(t.category || "\u2014") + "</div>" +
+      '<span class="mc-shade" aria-hidden="true"></span></div></div>';
   }
   var mesaRaf = 0;
   function buildMesa(list) {
@@ -2745,43 +2771,77 @@ window.Cloud = (function () {
     cancelAnimationFrame(mesaRaf);
     var rows = Math.ceil(list.length / 2);
     var feltH = Math.max(560, 60 + rows * 236 + 160);
-    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"></div>' +
-      list.map(mesaCardHtml).join("") + "</div>" + '<div class="mesa-glow" aria-hidden="true"></div>';
+    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span></div>' +
+      list.map(mesaCardHtml).join("") + "</div>" +
+      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>';
     var cam = document.getElementById("mesaCam");
+    var cards = [].slice.call(wrap.querySelectorAll(".mcard")).map(function (el0) {
+      return { el: el0, inEl: el0.firstChild, shade: el0.querySelector(".mc-shade"), y: parseFloat(el0.getAttribute("data-y")) };
+    });
+    // Reparto: las cartas caen sobre el tapete en cascada
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      cards.forEach(function (c) { c.inEl.classList.remove("deal"); });
+      // tras el reparto, el delay escalonado ya no pinta nada: fuera,
+      // para que el levantamiento al pulsar responda al instante
+      setTimeout(function () { cards.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
+    }); });
+    if (list.length) snd("deal");
     var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
-    var dragging = false, moved = 0, py0 = 0, lastY = 0, lastT = 0;
+    var dragging = false, moved = 0, lastY = 0, lastT = 0, lifted = null;
+    var lastFog = -1e9;
+    function fog() {
+      if (Math.abs(scroll - lastFog) < 20) return;
+      lastFog = scroll;
+      for (var i = 0; i < cards.length; i++) {
+        var d = cards[i].y - scroll; // distancia sobre el tapete desde la cámara
+        var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
+        cards[i].shade.style.opacity = o.toFixed(2);
+      }
+    }
     function camPaint() {
       var g = window.__tiltG || [0, 0];
-      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-scroll).toFixed(1) + "px,0)";
+      // Fuera de rango, resistencia elástica (rubber band)
+      var over = scroll < 0 ? scroll : (scroll > maxScroll ? scroll - maxScroll : 0);
+      var disp = scroll - over * 0.65;
+      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-disp).toFixed(1) + "px,0)";
     }
     function tick() {
       if (!wrap.isConnected) return;
-      if (!dragging && Math.abs(vel) > 0.15) {
-        scroll = Math.min(maxScroll, Math.max(0, scroll + vel)); vel *= 0.94;
+      if (!dragging) {
+        if (scroll < 0) { vel = 0; scroll += (0 - scroll) * 0.16; if (Math.abs(scroll) < 0.4) scroll = 0; }
+        else if (scroll > maxScroll) { vel = 0; scroll += (maxScroll - scroll) * 0.16; if (Math.abs(scroll - maxScroll) < 0.4) scroll = maxScroll; }
+        else if (Math.abs(vel) > 0.15) { scroll += vel; vel *= 0.94; }
       }
-      camPaint();
+      camPaint(); fog();
       mesaRaf = requestAnimationFrame(tick);
     }
+    function unlift() { if (lifted) { lifted.classList.remove("lift"); lifted = null; } }
     wrap.addEventListener("pointerdown", function (e) {
-      dragging = true; moved = 0; py0 = e.clientY; lastY = e.clientY; lastT = performance.now(); vel = 0;
+      dragging = true; moved = 0; lastY = e.clientY; lastT = performance.now(); vel = 0;
+      var mc = e.target && e.target.closest ? e.target.closest(".mcard") : null;
+      if (mc) { lifted = mc.firstChild; lifted.classList.add("lift"); }
     });
     wrap.addEventListener("pointermove", function (e) {
       if (!dragging) return;
       var dy = e.clientY - lastY; moved += Math.abs(dy);
+      if (moved > 10) unlift();
       var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
       lastY = e.clientY;
-      scroll = Math.min(maxScroll, Math.max(0, scroll - dy));
+      var next = scroll - dy;
+      // resistencia al salir del rango
+      if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
     }, { passive: true });
     function endDrag(e) {
       if (!dragging) return;
       dragging = false;
       if (moved < 10 && e && e.target && e.target.closest) {
         var mc = e.target.closest(".mcard");
-        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); }
+        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); return; }
       }
+      unlift();
     }
     wrap.addEventListener("pointerup", endDrag);
-    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    wrap.addEventListener("pointercancel", function () { dragging = false; unlift(); });
     wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
     wrap.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
@@ -4008,29 +4068,85 @@ window.Cloud = (function () {
     }
     return AC;
   }
+  // Reverb de sala generada (ruido con decaimiento exponencial) — da cuerpo
+  // y espacio a los sonidos sintetizados sin descargar ni un byte.
+  var revBuf = null;
+  function makeReverb(a) {
+    if (!revBuf) {
+      var len = Math.floor(a.sampleRate * 0.8);
+      revBuf = a.createBuffer(2, len, a.sampleRate);
+      for (var ch = 0; ch < 2; ch++) {
+        var d = revBuf.getChannelData(ch);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+      }
+    }
+    var cv = a.createConvolver(); cv.buffer = revBuf; return cv;
+  }
+  var lastTap = 0;
   function snd(kind) {
     if (!sndEnabled) return;
+    if (kind === "tap") { var n0 = performance.now(); if (n0 - lastTap < 90) return; lastTap = n0; }
     try {
       var a = audioCtx(), t = a.currentTime;
-      var master = a.createGain(); master.gain.value = 0.14; master.connect(a.destination);
-      function noise(dur, f0, f1, vol, type) {
+      var comp = a.createDynamicsCompressor();
+      comp.threshold.value = -22; comp.ratio.value = 6; comp.connect(a.destination);
+      var dry = a.createGain(); dry.gain.value = 0.10; dry.connect(comp);
+      var rev = makeReverb(a); var wet = a.createGain(); wet.gain.value = 0.055;
+      rev.connect(wet); wet.connect(comp);
+      function noise(o) {
         var src = a.createBufferSource(); src.buffer = noiseBuf;
-        var fl = a.createBiquadFilter(); fl.type = type || "bandpass";
-        fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
-        var g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        src.connect(fl); fl.connect(g); g.connect(master); src.start(t); src.stop(t + dur + 0.02);
+        var fl = a.createBiquadFilter(); fl.type = o.type || "bandpass"; fl.Q.value = o.q || 0.9;
+        fl.frequency.setValueAtTime(o.f0, t + (o.at || 0));
+        fl.frequency.exponentialRampToValueAtTime(Math.max(50, o.f1), t + (o.at || 0) + o.dur);
+        var g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t + (o.at || 0));
+        g.gain.exponentialRampToValueAtTime(o.vol, t + (o.at || 0) + (o.attack || 0.008));
+        g.gain.exponentialRampToValueAtTime(0.001, t + (o.at || 0) + o.dur);
+        src.connect(fl); fl.connect(g); g.connect(dry);
+        if (o.rev) { var rg = a.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(rev); }
+        src.start(t + (o.at || 0)); src.stop(t + (o.at || 0) + o.dur + 0.05);
       }
-      function tone(freq, delay, dur, vol, type) {
-        var o = a.createOscillator(); o.type = type || "triangle"; o.frequency.value = freq;
-        var g = a.createGain(); g.gain.setValueAtTime(0.0001, t + delay);
-        g.gain.exponentialRampToValueAtTime(vol, t + delay + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
-        o.connect(g); g.connect(master); o.start(t + delay); o.stop(t + delay + dur + 0.05);
+      function partial(freq, o) {
+        var osc = a.createOscillator(); osc.type = o.wave || "sine";
+        osc.frequency.setValueAtTime(freq, t + (o.at || 0));
+        if (o.glide) osc.frequency.exponentialRampToValueAtTime(freq * o.glide, t + (o.at || 0) + o.dur);
+        var g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t + (o.at || 0));
+        g.gain.exponentialRampToValueAtTime(o.vol, t + (o.at || 0) + (o.attack || 0.006));
+        g.gain.exponentialRampToValueAtTime(0.0008, t + (o.at || 0) + o.dur);
+        osc.connect(g); g.connect(dry);
+        if (o.rev) { var rg = a.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(rev); }
+        osc.start(t + (o.at || 0)); osc.stop(t + (o.at || 0) + o.dur + 0.1);
       }
-      if (kind === "tap") noise(0.035, 1400, 700, 0.5, "lowpass");
-      else if (kind === "slide") noise(0.15, 950, 260, 0.32);
-      else if (kind === "pluck") tone(660, 0, 0.09, 0.5, "sine");
-      else if (kind === "chime") { tone(659.25, 0, 0.5, 0.32); tone(987.77, 0.08, 0.6, 0.26); }
+      // Campana de latón: parciales inarmónicos con decaimientos independientes
+      function bell(freq, at, vol, dur) {
+        partial(freq, { at: at, dur: dur, vol: vol, rev: 1.6 });
+        partial(freq * 2.74, { at: at, dur: dur * 0.55, vol: vol * 0.24, rev: 1.2 });
+        partial(freq * 5.43, { at: at, dur: dur * 0.3, vol: vol * 0.08, rev: 0.8 });
+        partial(freq * 1.005, { at: at, dur: dur * 0.9, vol: vol * 0.35, rev: 1.4 }); // batido cálido
+      }
+      if (kind === "tap") {
+        // Yema sobre fieltro: golpe sordo con cuerpo grave, casi subliminal
+        noise({ type: "lowpass", f0: 420, f1: 150, dur: 0.045, vol: 0.5, q: 0.7, rev: 0.25 });
+        partial(155, { dur: 0.055, vol: 0.22, glide: 0.82, wave: "sine", rev: 0.2 });
+      } else if (kind === "slide") {
+        // Carta deslizándose sobre el tapete: soplo con forma, no estática
+        noise({ f0: 1500, f1: 380, dur: 0.16, vol: 0.34, q: 1.4, attack: 0.03, rev: 0.5 });
+        noise({ type: "highpass", f0: 2600, f1: 900, dur: 0.1, vol: 0.1, q: 0.7, attack: 0.02, rev: 0.4 });
+      } else if (kind === "deal") {
+        // Reparto: tres cartas rápidas
+        noise({ f0: 1600, f1: 420, dur: 0.09, vol: 0.26, q: 1.5, attack: 0.015, rev: 0.4 });
+        noise({ f0: 1400, f1: 400, dur: 0.09, vol: 0.24, q: 1.5, at: 0.085, attack: 0.015, rev: 0.4 });
+        noise({ f0: 1750, f1: 460, dur: 0.1, vol: 0.22, q: 1.5, at: 0.17, attack: 0.015, rev: 0.5 });
+      } else if (kind === "pluck") {
+        // Me gusta: nota cálida corta con octava fantasma
+        partial(523.25, { dur: 0.22, vol: 0.3, glide: 0.985, rev: 0.9 });
+        partial(1046.5, { dur: 0.12, vol: 0.08, rev: 0.7 });
+      } else if (kind === "chime") {
+        // Celebración: dos campanas de latón, Mi5 y La5 (cadencia amable)
+        bell(659.25, 0, 0.26, 0.9);
+        bell(880, 0.1, 0.2, 1.1);
+      }
     } catch (e) {}
   }
   function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }

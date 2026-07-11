@@ -621,12 +621,15 @@
     var j = seededJitter(t.id);
     var col = i % 2, row = (i - col) / 2;
     var x = 38 + col * 162 + j.dx, y = 26 + row * 236 + j.dy;
-    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
-      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
-      '<div class="mc-art">' + engraving(t.id) + '<span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
+    return '<div class="mcard" data-id="' + t.id + '" data-y="' + Math.round(y) + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
+      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,2px) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
+      '<div class="mc-in deal" style="transition-delay:' + Math.min(i * 55, 440) + 'ms">' +
+      '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
+      '<div class="mc-art"><span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
       (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
       '<div class="mc-name">' + esc(t.title) + '</div>' +
-      '<div class="mc-meta">' + esc(t.category || "—") + "</div></div>";
+      '<div class="mc-meta">' + esc(t.category || "\u2014") + "</div>" +
+      '<span class="mc-shade" aria-hidden="true"></span></div></div>';
   }
   var mesaRaf = 0;
   function buildMesa(list) {
@@ -634,43 +637,77 @@
     cancelAnimationFrame(mesaRaf);
     var rows = Math.ceil(list.length / 2);
     var feltH = Math.max(560, 60 + rows * 236 + 160);
-    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"></div>' +
-      list.map(mesaCardHtml).join("") + "</div>" + '<div class="mesa-glow" aria-hidden="true"></div>';
+    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span></div>' +
+      list.map(mesaCardHtml).join("") + "</div>" +
+      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>';
     var cam = document.getElementById("mesaCam");
+    var cards = [].slice.call(wrap.querySelectorAll(".mcard")).map(function (el0) {
+      return { el: el0, inEl: el0.firstChild, shade: el0.querySelector(".mc-shade"), y: parseFloat(el0.getAttribute("data-y")) };
+    });
+    // Reparto: las cartas caen sobre el tapete en cascada
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      cards.forEach(function (c) { c.inEl.classList.remove("deal"); });
+      // tras el reparto, el delay escalonado ya no pinta nada: fuera,
+      // para que el levantamiento al pulsar responda al instante
+      setTimeout(function () { cards.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
+    }); });
+    if (list.length) snd("deal");
     var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
-    var dragging = false, moved = 0, py0 = 0, lastY = 0, lastT = 0;
+    var dragging = false, moved = 0, lastY = 0, lastT = 0, lifted = null;
+    var lastFog = -1e9;
+    function fog() {
+      if (Math.abs(scroll - lastFog) < 20) return;
+      lastFog = scroll;
+      for (var i = 0; i < cards.length; i++) {
+        var d = cards[i].y - scroll; // distancia sobre el tapete desde la cámara
+        var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
+        cards[i].shade.style.opacity = o.toFixed(2);
+      }
+    }
     function camPaint() {
       var g = window.__tiltG || [0, 0];
-      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-scroll).toFixed(1) + "px,0)";
+      // Fuera de rango, resistencia elástica (rubber band)
+      var over = scroll < 0 ? scroll : (scroll > maxScroll ? scroll - maxScroll : 0);
+      var disp = scroll - over * 0.65;
+      cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-disp).toFixed(1) + "px,0)";
     }
     function tick() {
       if (!wrap.isConnected) return;
-      if (!dragging && Math.abs(vel) > 0.15) {
-        scroll = Math.min(maxScroll, Math.max(0, scroll + vel)); vel *= 0.94;
+      if (!dragging) {
+        if (scroll < 0) { vel = 0; scroll += (0 - scroll) * 0.16; if (Math.abs(scroll) < 0.4) scroll = 0; }
+        else if (scroll > maxScroll) { vel = 0; scroll += (maxScroll - scroll) * 0.16; if (Math.abs(scroll - maxScroll) < 0.4) scroll = maxScroll; }
+        else if (Math.abs(vel) > 0.15) { scroll += vel; vel *= 0.94; }
       }
-      camPaint();
+      camPaint(); fog();
       mesaRaf = requestAnimationFrame(tick);
     }
+    function unlift() { if (lifted) { lifted.classList.remove("lift"); lifted = null; } }
     wrap.addEventListener("pointerdown", function (e) {
-      dragging = true; moved = 0; py0 = e.clientY; lastY = e.clientY; lastT = performance.now(); vel = 0;
+      dragging = true; moved = 0; lastY = e.clientY; lastT = performance.now(); vel = 0;
+      var mc = e.target && e.target.closest ? e.target.closest(".mcard") : null;
+      if (mc) { lifted = mc.firstChild; lifted.classList.add("lift"); }
     });
     wrap.addEventListener("pointermove", function (e) {
       if (!dragging) return;
       var dy = e.clientY - lastY; moved += Math.abs(dy);
+      if (moved > 10) unlift();
       var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
       lastY = e.clientY;
-      scroll = Math.min(maxScroll, Math.max(0, scroll - dy));
+      var next = scroll - dy;
+      // resistencia al salir del rango
+      if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
     }, { passive: true });
     function endDrag(e) {
       if (!dragging) return;
       dragging = false;
       if (moved < 10 && e && e.target && e.target.closest) {
         var mc = e.target.closest(".mcard");
-        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); }
+        if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); return; }
       }
+      unlift();
     }
     wrap.addEventListener("pointerup", endDrag);
-    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    wrap.addEventListener("pointercancel", function () { dragging = false; unlift(); });
     wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
     wrap.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
@@ -1897,29 +1934,85 @@
     }
     return AC;
   }
+  // Reverb de sala generada (ruido con decaimiento exponencial) — da cuerpo
+  // y espacio a los sonidos sintetizados sin descargar ni un byte.
+  var revBuf = null;
+  function makeReverb(a) {
+    if (!revBuf) {
+      var len = Math.floor(a.sampleRate * 0.8);
+      revBuf = a.createBuffer(2, len, a.sampleRate);
+      for (var ch = 0; ch < 2; ch++) {
+        var d = revBuf.getChannelData(ch);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+      }
+    }
+    var cv = a.createConvolver(); cv.buffer = revBuf; return cv;
+  }
+  var lastTap = 0;
   function snd(kind) {
     if (!sndEnabled) return;
+    if (kind === "tap") { var n0 = performance.now(); if (n0 - lastTap < 90) return; lastTap = n0; }
     try {
       var a = audioCtx(), t = a.currentTime;
-      var master = a.createGain(); master.gain.value = 0.14; master.connect(a.destination);
-      function noise(dur, f0, f1, vol, type) {
+      var comp = a.createDynamicsCompressor();
+      comp.threshold.value = -22; comp.ratio.value = 6; comp.connect(a.destination);
+      var dry = a.createGain(); dry.gain.value = 0.10; dry.connect(comp);
+      var rev = makeReverb(a); var wet = a.createGain(); wet.gain.value = 0.055;
+      rev.connect(wet); wet.connect(comp);
+      function noise(o) {
         var src = a.createBufferSource(); src.buffer = noiseBuf;
-        var fl = a.createBiquadFilter(); fl.type = type || "bandpass";
-        fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
-        var g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        src.connect(fl); fl.connect(g); g.connect(master); src.start(t); src.stop(t + dur + 0.02);
+        var fl = a.createBiquadFilter(); fl.type = o.type || "bandpass"; fl.Q.value = o.q || 0.9;
+        fl.frequency.setValueAtTime(o.f0, t + (o.at || 0));
+        fl.frequency.exponentialRampToValueAtTime(Math.max(50, o.f1), t + (o.at || 0) + o.dur);
+        var g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t + (o.at || 0));
+        g.gain.exponentialRampToValueAtTime(o.vol, t + (o.at || 0) + (o.attack || 0.008));
+        g.gain.exponentialRampToValueAtTime(0.001, t + (o.at || 0) + o.dur);
+        src.connect(fl); fl.connect(g); g.connect(dry);
+        if (o.rev) { var rg = a.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(rev); }
+        src.start(t + (o.at || 0)); src.stop(t + (o.at || 0) + o.dur + 0.05);
       }
-      function tone(freq, delay, dur, vol, type) {
-        var o = a.createOscillator(); o.type = type || "triangle"; o.frequency.value = freq;
-        var g = a.createGain(); g.gain.setValueAtTime(0.0001, t + delay);
-        g.gain.exponentialRampToValueAtTime(vol, t + delay + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
-        o.connect(g); g.connect(master); o.start(t + delay); o.stop(t + delay + dur + 0.05);
+      function partial(freq, o) {
+        var osc = a.createOscillator(); osc.type = o.wave || "sine";
+        osc.frequency.setValueAtTime(freq, t + (o.at || 0));
+        if (o.glide) osc.frequency.exponentialRampToValueAtTime(freq * o.glide, t + (o.at || 0) + o.dur);
+        var g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t + (o.at || 0));
+        g.gain.exponentialRampToValueAtTime(o.vol, t + (o.at || 0) + (o.attack || 0.006));
+        g.gain.exponentialRampToValueAtTime(0.0008, t + (o.at || 0) + o.dur);
+        osc.connect(g); g.connect(dry);
+        if (o.rev) { var rg = a.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(rev); }
+        osc.start(t + (o.at || 0)); osc.stop(t + (o.at || 0) + o.dur + 0.1);
       }
-      if (kind === "tap") noise(0.035, 1400, 700, 0.5, "lowpass");
-      else if (kind === "slide") noise(0.15, 950, 260, 0.32);
-      else if (kind === "pluck") tone(660, 0, 0.09, 0.5, "sine");
-      else if (kind === "chime") { tone(659.25, 0, 0.5, 0.32); tone(987.77, 0.08, 0.6, 0.26); }
+      // Campana de latón: parciales inarmónicos con decaimientos independientes
+      function bell(freq, at, vol, dur) {
+        partial(freq, { at: at, dur: dur, vol: vol, rev: 1.6 });
+        partial(freq * 2.74, { at: at, dur: dur * 0.55, vol: vol * 0.24, rev: 1.2 });
+        partial(freq * 5.43, { at: at, dur: dur * 0.3, vol: vol * 0.08, rev: 0.8 });
+        partial(freq * 1.005, { at: at, dur: dur * 0.9, vol: vol * 0.35, rev: 1.4 }); // batido cálido
+      }
+      if (kind === "tap") {
+        // Yema sobre fieltro: golpe sordo con cuerpo grave, casi subliminal
+        noise({ type: "lowpass", f0: 420, f1: 150, dur: 0.045, vol: 0.5, q: 0.7, rev: 0.25 });
+        partial(155, { dur: 0.055, vol: 0.22, glide: 0.82, wave: "sine", rev: 0.2 });
+      } else if (kind === "slide") {
+        // Carta deslizándose sobre el tapete: soplo con forma, no estática
+        noise({ f0: 1500, f1: 380, dur: 0.16, vol: 0.34, q: 1.4, attack: 0.03, rev: 0.5 });
+        noise({ type: "highpass", f0: 2600, f1: 900, dur: 0.1, vol: 0.1, q: 0.7, attack: 0.02, rev: 0.4 });
+      } else if (kind === "deal") {
+        // Reparto: tres cartas rápidas
+        noise({ f0: 1600, f1: 420, dur: 0.09, vol: 0.26, q: 1.5, attack: 0.015, rev: 0.4 });
+        noise({ f0: 1400, f1: 400, dur: 0.09, vol: 0.24, q: 1.5, at: 0.085, attack: 0.015, rev: 0.4 });
+        noise({ f0: 1750, f1: 460, dur: 0.1, vol: 0.22, q: 1.5, at: 0.17, attack: 0.015, rev: 0.5 });
+      } else if (kind === "pluck") {
+        // Me gusta: nota cálida corta con octava fantasma
+        partial(523.25, { dur: 0.22, vol: 0.3, glide: 0.985, rev: 0.9 });
+        partial(1046.5, { dur: 0.12, vol: 0.08, rev: 0.7 });
+      } else if (kind === "chime") {
+        // Celebración: dos campanas de latón, Mi5 y La5 (cadencia amable)
+        bell(659.25, 0, 0.26, 0.9);
+        bell(880, 0.1, 0.2, 1.1);
+      }
     } catch (e) {}
   }
   function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }

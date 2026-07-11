@@ -1652,3 +1652,17 @@ body { background: transparent; background-image: none; }
 .appbar .spacer { min-width: 6px; }
 /* Cinturón de seguridad del shell: jamás scroll horizontal */
 .app { overflow-x: hidden; }
+
+/* ------- UX-1: objetivos táctiles dignos de un pulgar ------- */
+/* Chips de filtro: de 31px a ~40px de alto sin perder densidad visual */
+.chip { padding: 11px 15px; }
+.chips { gap: 8px; }
+/* Botones de cabecera: 40px mínimo en ambos ejes */
+.iconbtn { min-width: 40px; min-height: 40px; }
+/* Interruptores un poco más generosos (además la fila entera es pulsable) */
+.switch { width: 52px; height: 31px; }
+.switch::before { width: 25px; height: 25px; }
+.switch.on::before { transform: translateX(21px); }
+/* Enlace discreto bajo el botón de entrar */
+.linklike { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--ink-faint); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-family: inherit; }
+.linklike:hover { color: var(--brand); }

@@ -13,7 +13,7 @@ window.Cloud = (function () {
   try {
     if (window.supabase && window.supabase.createClient) {
       sb = window.supabase.createClient(URL, KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
     }
   } catch (e) { sb = null; }
@@ -28,7 +28,9 @@ window.Cloud = (function () {
       return s ? s.user : null;
     }).catch(function () { return null; });
   }
-  function onChange(cb) { if (sb) sb.auth.onAuthStateChange(function (_e, s) { cb(s ? s.user : null); }); }
+  function onChange(cb) { if (sb) sb.auth.onAuthStateChange(function (e, s) { cb(s ? s.user : null, e); }); }
+  function resetPassword(email) { return sb.auth.resetPasswordForEmail(email); }
+  function updatePassword(pw) { return sb.auth.updateUser({ password: pw }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function signUp(email, password) { return sb.auth.signUp({ email: email, password: password }); }
   function verifySignup(email, token) { return sb.auth.verifyOtp({ email: email, token: token, type: "signup" }); }
   function resend(email) { return sb.auth.resend({ type: "signup", email: email }); }
@@ -360,6 +362,7 @@ window.Cloud = (function () {
 
   return {
     available: available, currentUser: currentUser, onChange: onChange,
+    resetPassword: resetPassword, updatePassword: updatePassword,
     signUp: signUp, verifySignup: verifySignup, resend: resend, signIn: signIn, signOut: signOut,
     listTricks: listTricks, upsertTrick: upsertTrick, deleteTrick: deleteTrick,
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,

@@ -1153,8 +1153,17 @@
             '<div class="pracact"><button class="btn small" data-done="' + t.id + '">' + icon("check", "i-sm") + ' Hecho</button><button class="btn small ghost" data-snooze="' + t.id + '">Posponer</button></div></div>';
         }).join("") + "</div>"
       : '<div class="empty">' + emptyArt() + '<h3>¡Todo al día!</h3><p>No hay trucos para practicar hoy. Marca trucos como “Aprendiendo” para entrenarlos aquí con repetición espaciada.</p></div>';
+    var now = Date.now();
+    var upcoming = state.tricks.filter(function (t) { return t.status === "aprendiendo" && t.practice && t.practice.due > now; })
+      .sort(function (a, b) { return a.practice.due - b.practice.due; }).slice(0, 3);
+    var upHtml = upcoming.length
+      ? '<div class="sec-label">Próximos repasos</div><div class="ritems">' + upcoming.map(function (t) {
+          var days = Math.max(1, Math.round((t.practice.due - now) / 86400000));
+          return '<div class="pracrow"><div class="rc" data-open="' + t.id + '"><div class="n">' + esc(t.title) + '</div><div class="d">' + (days === 1 ? "mañana" : "en " + days + " días") + "</div></div></div>";
+        }).join("") + "</div>"
+      : "";
     view.innerHTML = '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/\'">' + icon("back") + '</button><h1>Práctica</h1></div>' +
-      '<p class="subtitle">' + (due.length ? due.length + " truco(s) para hoy" : "Repetición espaciada") + "</p>" + body + "</div>";
+      '<p class="subtitle">' + (due.length ? (due.length === 1 ? "1 truco para hoy" : due.length + " trucos para hoy") : "Repetición espaciada") + "</p>" + body + upHtml + "</div>";
     view.querySelectorAll(".rc[data-open]").forEach(function (c) { c.addEventListener("click", function () { location.hash = "#/truco/" + c.getAttribute("data-open"); }); });
     view.querySelectorAll("[data-done]").forEach(function (b) { b.addEventListener("click", function () { var t = getTrick(b.getAttribute("data-done")); if (t) { markPracticed(t); toast("¡Bien! Próximo repaso programado"); renderPractice(); } }); });
     view.querySelectorAll("[data-snooze]").forEach(function (b) { b.addEventListener("click", function () { var t = getTrick(b.getAttribute("data-snooze")); if (t) { postponePractice(t); renderPractice(); } }); });
@@ -3417,6 +3426,7 @@
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
       '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
       '<button class="btn" id="aGo">' + (isSignup ? "Solicitar mi acceso" : "Entrar") + "</button>" +
+      (isSignup ? "" : '<button class="linklike" id="forgotBtn" type="button">He olvidado mi contraseña</button>') +
       "</div>" +
       '<p class="gate-foot">' + (isSignup ? "App del Mago es un espacio cerrado. Necesitas el código de un mago que ya sea miembro." : "¿Sin cuenta? Necesitas una invitación de un miembro.") + "</p>" +
       "</div>";
@@ -3424,6 +3434,15 @@
     document.getElementById("tabSignup").addEventListener("click", function () { if (authMode !== "signup") { authMode = "signup"; renderGate(); } });
     document.getElementById("aPass").addEventListener("keydown", function (e) { if (e.key === "Enter") gateSubmit(isSignup); });
     document.getElementById("aGo").addEventListener("click", function () { gateSubmit(isSignup); });
+    var fb = document.getElementById("forgotBtn");
+    if (fb) fb.addEventListener("click", function () {
+      var email = (document.getElementById("aEmail").value || "").trim();
+      if (!email) { toast("Escribe tu email arriba y vuelve a pulsar"); document.getElementById("aEmail").focus(); return; }
+      fb.disabled = true; fb.textContent = "Enviando…";
+      Cloud.resetPassword(email)
+        .then(function () { fb.textContent = "Enlace enviado: revisa tu correo"; toast("Te hemos enviado un enlace para cambiarla"); })
+        .catch(function () { fb.disabled = false; fb.textContent = "He olvidado mi contraseña"; toast("No se pudo enviar, inténtalo de nuevo"); });
+    });
   }
 
   function gateSubmit(isSignup) {
@@ -3491,6 +3510,7 @@
   /* ------------------------------ router ------------------------------ */
   function route() {
     try {
+      if (recovering) return renderNewPassword();
       var h0 = location.hash || "";
       var qs = document.getElementById("qs");
       if (qs && h0 !== "#/lector") qs.classList.remove("open");
@@ -3561,6 +3581,27 @@
     }
   }
 
+  // Recuperación de contraseña: al llegar desde el enlace del correo,
+  // Supabase abre sesión y emite PASSWORD_RECOVERY; mostramos el cambio.
+  var recovering = false;
+  function renderNewPassword() {
+    clearTabbar();
+    view.innerHTML = '<div class="screen gate"><div class="gate-hero"><div class="logo">' + mark("", true) + '</div>' +
+      '<h1 class="wm">Nueva contraseña</h1><p class="tagline">Elige una nueva para tu cuenta</p></div>' +
+      '<div class="gate-card">' +
+      '<div class="field"><label>Nueva contraseña</label><input id="npPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres"></div>' +
+      '<button class="btn" id="npGo">Guardar y entrar</button></div></div>';
+    document.getElementById("npGo").addEventListener("click", function () {
+      var pw = document.getElementById("npPass").value;
+      if (pw.length < 6) { toast("Mínimo 6 caracteres"); return; }
+      var btn = document.getElementById("npGo"); btn.disabled = true; btn.textContent = "Guardando…";
+      Cloud.updatePassword(pw).then(function () {
+        recovering = false; toast("Contraseña cambiada");
+        location.hash = "#/"; route();
+      }).catch(function () { btn.disabled = false; btn.textContent = "Guardar y entrar"; toast("No se pudo cambiar, inténtalo de nuevo"); });
+    });
+  }
+
   // Arranque de la app (tras desbloqueo si hay PIN)
   var booted = false;
   function boot() {
@@ -3573,7 +3614,8 @@
           route();
           if (session) { syncOnLogin(true); startRealtime(); startFeedRealtime(); }
         });
-        Cloud.onChange(function (u2) {
+        Cloud.onChange(function (u2, ev) {
+          if (ev === "PASSWORD_RECOVERY") { session = u2 || session; recovering = true; renderNewPassword(); return; }
           var was = logged(); session = u2 || null;
           if (logged()) {
             startRealtime();

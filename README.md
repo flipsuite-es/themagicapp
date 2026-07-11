@@ -1,75 +1,70 @@
-# 🔮 App del Mago
+# ♠ App del Mago
 
-Una colección de trucos de **mentalismo y magia** pensados para hacerse **en el móvil del espectador**, delante de quien sea y donde sea. Es una web app sin instalación, **sin dependencias y que funciona sin conexión**: se abre en cualquier navegador de teléfono.
+**El círculo privado de los magos.** Una PWA sin dependencias para el mago de trabajo: su biblioteca de trucos, sus rutinas y bolos, su práctica con repetición espaciada — y, si quiere, una comunidad y un mercado solo por invitación.
 
-> Este proyecto vive **aislado** en el repositorio `themagicapp`. No toca ni depende de ningún otro proyecto.
-
----
-
-## Cómo usarla
-
-1. Abre `index.html` en cualquier navegador (móvil u ordenador), o despliega la carpeta como sitio estático (Vercel, Netlify, GitHub Pages…).
-2. En el móvil, puedes "Añadir a pantalla de inicio" para que se abra como una app a pantalla completa.
-3. Una vez cargada, funciona **offline**: perfecto para actuar en cualquier sitio.
-
-Sin build, sin `npm install`. Son archivos estáticos: `index.html`, `styles.css`, `app.js`.
+> Repositorio aislado. Sin build, sin `npm install` para la app: archivos estáticos que funcionan offline.
 
 ---
 
-> **Estado actual:** la app tiene un único efecto, el **Lector Mental**. Los demás trucos se irán añadiendo bajo demanda. La arquitectura (`app.js`) está lista para incorporar más.
+## Qué hace
 
-## El truco: 🧠 Lector Mental — *el motor universal*
-Su carta (o una palabra, un nombre, una fecha…) aparece revelada en su propia pantalla como si la app le leyera la mente. Es potentísimo porque **funciona con cualquier método de forzaje o peek** que ya conozcas.
+**Privado (funciona 100% offline, datos en el dispositivo):**
+- **Biblioteca** — trucos con categoría, dificultad, estado de aprendizaje, notas, etiquetas, fotos paso a paso y vídeos (enlace o subida propia con TUS reanudable).
+- **Rutinas** — sets ordenados con **modo Actuar**: pantalla de escenario con notas grandes, wake-lock y paso de truco tocando media pantalla.
+- **Bolos** — agenda con cliente, caché, setlist; resumen de ingresos del año.
+- **Práctica** — repetición espaciada sobre los trucos "aprendiendo", con recordatorios push opcionales.
+- **Trucos incluidos** — el Lector Mental (revela cartas/palabras en el móvil del espectador; carga secreta deslizando desde el borde superior).
+- **PIN** de bloqueo, copia de seguridad exportar/importar, compartir trucos/rutinas por enlace revocable.
 
-**Método (carga secreta):** en la pantalla del orbe, **desliza hacia abajo desde el borde superior**. Se abre un panel translúcido: toca la carta o escribe la palabra. Se cierra solo y el orbe se pone **dorado** (= cargado). Entrega el teléfono; el espectador pulsa el orbe y la app "revela" lo que cargaste.
+**Social (opcional, Supabase, solo por invitación):**
+- Feed con fotos/vídeo/trucos, historias 24h, clips verticales, retos semanales automáticos, ranking, mensajes directos.
+- **Mercado**: métodos digitales (entrega instantánea en la biblioteca del comprador) y **material físico** (stock, envío, estado) con disciplinas para todo tipo de mago. Reseñas y lista de deseos. *Pagos con tarjeta: pendiente de activar Stripe.*
+- Invitaciones con cupo (8/mago), racha diaria, recap semanal.
 
-- Averigua la carta con tu técnica habitual (forzaje, peek, papelito escrito y vislumbrado…).
-- Carga mientras "calibras el sensor". Un segundo.
-- Si no cargas nada, la app elige una carta al azar (salida de emergencia, no queda en blanco).
-
----
-
-## Público vs. Mago (importante)
-
-La app está pensada para actuar: hay que separar lo que ve el espectador de lo que solo ve el mago.
-
-- **Escenario (lo que ve el público):** la portada y las pantallas de actuación de cada truco. Puedes dejar el móvil en manos del espectador sin miedo.
-- **Modo Mago (oculto):** tutoriales para **aprender cada truco** (efecto, qué ve el público, el secreto, paso a paso, guion y errores a evitar). Cada sección está etiquetada como *"Lo ve el público"* o *"Solo el mago"*.
-
-Para entrar al **Modo Mago**: en la portada, **mantén pulsado el título "App del Mago"** ~1 segundo. En modo app instalada (PWA) no hay barra de direcciones, así que el público no puede colarse escribiendo una URL.
-
-## Instalar como app (PWA)
-
-Es una PWA instalable, con service worker (funciona **100% offline** tras instalarla) e iconos nativos:
-
-- **iPhone (Safari):** Compartir → "Añadir a pantalla de inicio". Se abre a pantalla completa, respetando el notch, sin barra del navegador.
-- **Android (Chrome):** aparece "Instalar app" (o menú ⋮ → "Instalar aplicación").
-
-> Para que la instalación sea perfecta necesita estar servida por HTTPS (p. ej. Vercel). Ver `vercel.json` y las instrucciones de despliegue.
-
----
-
-## Privacidad
-
-Todo ocurre en el dispositivo. **No se envía nada a ningún servidor** y no se guarda ningún dato entre sesiones (la carga secreta se borra al recargar y tras cada revelación).
-
----
-
-## Estructura
+## Arquitectura
 
 ```
-themagicapp/
-├── index.html      # shell de la app
-├── styles.css      # tema visual
-├── app.js          # router + los tres trucos (sin dependencias)
-├── manifest.json   # PWA / añadir a inicio
-├── icon.svg        # icono
-└── vercel.json     # despliegue estático opcional
+index.html      shell + registro del SW
+styles.css      sistema de diseño "Atelier"
+app.js          TODA la app (ES5, sin dependencias)
+cloud.js        capa Supabase (auth, datos, storage, realtime, telemetría)
+supabase.js     vendored: supabase-js v2 (UMD)
+tus.js          vendored: tus-js-client (subidas reanudables)
+sw.js           service worker: SWR + offline; sube CACHE en cada deploy
+tests/          batería E2E (Playwright) + linter de compatibilidad
 ```
 
-## Roadmap (ideas para más trucos)
+- **Datos locales**: `localStorage` (`magic_lib_v1`); la nube sincroniza con last-write-wins y re-key de IDs no-UUID.
+- **Backend**: Supabase (proyecto `themagicapp`) — RLS en todo, RPCs para feed/mercado/invitaciones, crons (rotación de retos, recap, recordatorios, purgas).
+- **Estética "Atelier"**: lujo silencioso — filigrana dorada (`--hairline`), oro foil en títulos (Fraunces cursiva), guilloché generativo por ítem (`engraving(seed)`), humo WebGL y foil 3D opcionales (Ajustes → Efectos), sonido de mesa sintetizado opt-in.
+- **Compatibilidad**: base iOS Safari 15.4+/Chrome 100+; `app.js`/`cloud.js` en ES5 estricto; mejoras progresivas (view transitions, content-visibility) con detección previa. Reglas vigiladas por `tests/tcompat.mjs`.
 
-- Carta forzada digital + predicción sellada.
-- Test de libro (book test) con lista de palabras.
-- Modo "código invisible" avanzado (cargar sin mirar la pantalla, por zonas táctiles).
-- Predicción con reloj/fecha/hora real del dispositivo.
+## Desarrollo
+
+```bash
+python3 -m http.server 8099        # o cualquier estático; abre http://localhost:8099
+```
+
+Al desplegar: **sube la versión de `CACHE` en `sw.js`** (p. ej. `magic-v73`) o los clientes instalados no refrescarán.
+
+## Tests
+
+```bash
+npm i -D playwright && npx playwright install chromium   # una vez
+node tests/run-all.mjs                                   # levanta su propio servidor
+```
+
+13 suites (~180 checks): linter de compatibilidad, crawler de 60 vistas, mercado físico/digital, flujos de datos (PIN, copia de seguridad, CRUD), sonido/giroscopio, modo ligero, contenido extremo con CPU x4, escritorio, **offline real** y el standalone. Detalles en `tests/README.md`.
+
+## Operación
+
+- **Retos semanales**: rotan solos (lunes 9:00) desde `challenge_pool`; rellena el pool cuando `used_at is null` baje de ~8.
+- **Errores de clientes**: llegan solos a `public.client_errors` (retención 30 días). Lectura: `select message, source, count(*) from client_errors group by 1,2 order by 3 desc;`
+- **Backups de usuario**: cada mago exporta/importa su JSON desde Ajustes.
+
+## Estado y pendientes
+
+- ✅ Todo lo anterior en producción (rama `claude/magic-tricks-tech-7loog4`).
+- ⏳ **Stripe** (cobro en el mercado): conector pendiente de autorizar; el descuento de stock por venta se hará en servidor al integrarlo.
+- ⏳ Vídeo multiplataforma (Cloudflare Stream) si los vídeos nativos crecen.
+- 🧪 Falta validar en dispositivo real: giroscopio/foil/sonido en iPhone y el flujo completo de registro con invitación (el entorno de CI no alcanza `supabase.co` ni ejecuta WebKit).

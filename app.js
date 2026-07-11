@@ -3729,9 +3729,30 @@
       ov.remove();
     });
   })();
+  // Telemetría mínima: los errores reales llegan solos a client_errors
+  // (tope de 5 por sesión, nunca re-entra, jamás molesta al usuario).
+  var errSent = 0, errBusy = false;
+  function reportClientError(msg, src, stack) {
+    if (errBusy || errSent >= 5) return;
+    if (!cloudReady() || !logged() || !Cloud.logError) return;
+    errBusy = true; errSent++;
+    try {
+      Cloud.logError({
+        message: String(msg || "error").slice(0, 300),
+        source: String(src || "").slice(0, 200),
+        stack: String(stack || "").slice(0, 1500),
+        ua: (navigator.userAgent || "").slice(0, 200)
+      });
+    } catch (e) {}
+    errBusy = false;
+  }
+  window.addEventListener("error", function (ev) {
+    reportClientError(ev.message, (ev.filename || "") + ":" + (ev.lineno || 0), ev.error && ev.error.stack);
+  });
   window.addEventListener("unhandledrejection", function (ev) {
     ev.preventDefault();
     try { console.warn("[segundo plano]", (ev.reason && ev.reason.message) || ev.reason); } catch (e) {}
+    reportClientError((ev.reason && ev.reason.message) || String(ev.reason), "promise", ev.reason && ev.reason.stack);
   });
   window.addEventListener("hashchange", function () {
     if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {

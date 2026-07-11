@@ -326,6 +326,9 @@ window.Cloud = (function () {
   function getStoryViewers(id) { return sb.rpc("get_story_viewers", { sid: id }).then(function (r) { if (r.error) throw r.error; return r.data || []; }); }
   function block(id) { return sb.from("blocks").insert({ blocked: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unblock(id) { return currentUser().then(function (u) { return sb.from("blocks").delete().eq("blocker", u.id).eq("blocked", id).then(function () { return true; }); }); }
+  function logError(row) {
+    try { return sb.from("client_errors").insert(row).then(function () {}, function () {}); } catch (e) {}
+  }
   function report(targetType, targetId, reason) { return sb.from("reports").insert({ target_type: targetType, target_id: targetId, reason: reason || null }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function follow(id) { return sb.from("follows").insert({ following: id }).then(function (r) { if (r.error) throw r.error; return true; }); }
   function unfollow(id) { return currentUser().then(function (u) { return sb.from("follows").delete().eq("follower", u.id).eq("following", id).then(function (r) { if (r.error) throw r.error; return true; }); }); }
@@ -379,7 +382,7 @@ window.Cloud = (function () {
     getClipComments: getClipComments, addClipComment: addClipComment, deleteClipComment: deleteClipComment, bumpClipView: bumpClipView, uploadClipVideo: uploadClipVideo,
     createPost: createPost, deletePost: deletePost, updatePost: updatePost, updateComment: updateComment, likePost: likePost, unlikePost: unlikePost, addComment: addComment,
     updateListing: updateListing, updateListingContent: updateListingContent, deleteListing: deleteListing,
-    follow: follow, unfollow: unfollow, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
+    follow: follow, unfollow: unfollow, logError: logError, createListing: createListing, claimFree: claimFree, getListingContent: getListingContent,
     subscribeFeed: subscribeFeed, subscribeNotifications: subscribeNotifications,
     bookmark: bookmark, unbookmark: unbookmark, repost: repost, deleteComment: deleteComment,
     getNotifications: getNotifications, markNotificationsRead: markNotificationsRead,

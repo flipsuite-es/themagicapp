@@ -1631,8 +1631,14 @@ body::after {
 /* El fondo pasa a html para que el lienzo quede entre fondo y contenido */
 html { background: var(--bg); background-image: var(--grad-page); background-attachment: fixed; }
 body { background: transparent; background-image: none; }
-#fx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
-/* El lienzo pinta ambos temas: humo dorado en oscuro, velos sobre papel en claro */
+#fx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.1s ease; }
+#fx.on { opacity: 1; }
+/* El primer pintado tras cargar entra quieto: nada de animaciones de
+   entrada en la carga (sí en la navegación interna) */
+html.boot .screen, html.boot .fab, html.boot .tabbar { animation: none !important; }
+/* El lienzo pinta ambos temas (humo dorado en oscuro, seda sobre papel en
+   claro) partiendo del mismo degradado que la página: entra en fundido
+   sobre un fondo idéntico y no produce ningún parpadeo al cargar */
 
 /* Foil 3D: destello especular que sigue al puntero sobre la tarjeta */
 .card.foil, .listcard.foil { transition: transform .08s linear; will-change: transform; z-index: 2; }
@@ -2345,6 +2351,7 @@ window.Cloud = (function () {
     if (!logged() || !cloudReady()) return Promise.resolve();
     if (navigator.onLine === false) return Promise.resolve(); // offline: usa caché local
     syncing = true; reflectSync();
+    var sigBefore = stateSig();
     // 1) subir los locales que aún no están en la nube
     var locals = state.tricks.filter(function (t) { return !t.remote; });
     var chain = Promise.resolve();
@@ -2387,11 +2394,18 @@ window.Cloud = (function () {
       state.gigs = Object.keys(gById).map(function (k) { return gById[k]; });
       save();
       syncing = false; reflectSync();
-      if (isMain()) route();
+      // Repinta solo si la sincronización cambió algo: el re-render "por si
+      // acaso" tras cada arranque hacía parpadear la vista recién pintada.
+      if (isMain() && stateSig() !== sigBefore) route();
       if (!silent) toast("Sincronizado");
     }).catch(function () { syncing = false; reflectSync(); if (!silent) toast("No se pudo sincronizar"); });
   }
   function isMain() { var h = location.hash || "#/"; return h === "#/" || h === "" || h === "#/rutinas" || h === "#/bolos" || h === "#/ajustes" || h === "#/cuenta"; }
+  // Huella barata del contenido visible: id+updatedAt de cada colección
+  function stateSig() {
+    var sig = function (arr) { return arr.map(function (x) { return x.id + ":" + (x.updatedAt || 0); }).sort().join("|"); };
+    return sig(state.tricks) + "#" + sig(state.routines) + "#" + sig(state.gigs);
+  }
 
   /* ----------------------- sincronización en vivo -------------------- */
   var realtimeCh = null, rerenderTimer = null;
@@ -4008,8 +4022,11 @@ window.Cloud = (function () {
     fxMode = m;
     try { localStorage.setItem("magic_fx", m); } catch (e) {}
     var c = document.getElementById("fx");
-    if (m === "lite") { if (c) c.remove(); }
-    else if (!c) initAmbient();
+    if (m === "lite") {
+      // se despide en fundido, igual que llegó
+      if (c) { c.className = ""; c.__off = setTimeout(function () { if (fxMode === "lite") c.remove(); }, 1200); }
+    } else if (c) { clearTimeout(c.__off); c.className = "on"; } // reactivado a mitad de fundido
+    else initAmbient();
   }
 
   /* ========== SONIDO DE MESA (WebAudio, sintetizado, opt-in) ========== */
@@ -4191,13 +4208,16 @@ window.Cloud = (function () {
         "vec3 gold=vec3(.84,.65,.37);" +
         "vec2 g=gl_FragCoord.xy/2.6;vec2 id=floor(g);float sp=h(id);" +
         "float tw=step(.9975,sp)*pow(.5+.5*sin(T*(1.2+sp*2.5)+sp*44.),8.);float m=smoothstep(.15,.5,s);" +
-        // oscuro: humo dorado aditivo sobre negro
-        "vec3 cd=gold*s*.14*(1.1-u.y*.55)+gold*tw*.6*m;" +
-        // claro: seda sobre papel de galería — el mismo degradado de pagina
-        // (calcado de --grad-page para que activar efectos no "salte"), una
-        // veladura que sombrea y abrillanta como tela al moverse, y motas de
-        // oro redondas y escasas, no pixeles cuadrados
+        // Ambos temas calcan el --grad-page del CSS como base: el lienzo solo
+        // AÑADE humo sobre un fondo identico al de la pagina, asi su aparición
+        // (con fundido de opacidad) no produce ningún salto ni parpadeo.
         "float d=length(vec2((u.x-.5)/1.3,(1.-u.y+.12)/.9));" +
+        // oscuro: humo dorado sobre el degradado nocturno
+        "vec3 bd=mix(vec3(.098,.082,.129),vec3(.047,.043,.067),clamp(d/.46,0.,1.));" +
+        "bd=mix(bd,vec3(.027,.024,.035),clamp((d-.46)/.54,0.,1.));" +
+        "vec3 cd=bd+gold*s*.14*(1.1-u.y*.55)+gold*tw*.6*m;" +
+        // claro: seda sobre papel de galería — veladura que sombrea y
+        // abrillanta como tela, y motas de oro redondas y escasas
         "vec3 base=mix(vec3(.988,.976,.949),vec3(.945,.929,.894),clamp(d/.48,0.,1.));" +
         "base=mix(base,vec3(.902,.882,.831),clamp((d-.48)/.52,0.,1.));" +
         "float shn=smoothstep(.55,1.,s);" +
@@ -4226,10 +4246,12 @@ window.Cloud = (function () {
         var m = document.documentElement.getAttribute("data-theme");
         return m === "dark" || (m !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
       }
-      // Primer fotograma sincrono y recién entonces al DOM: cero parpadeo
+      // Primer fotograma síncrono y recién entonces al DOM, con fundido de
+      // opacidad: el humo "respira" al aparecer en vez de dar un golpe.
       gl.uniform1f(uT, 0); gl.uniform1f(uL, dark() ? 0 : 1); gl.uniform2f(uG, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       document.body.insertBefore(cv, document.body.firstChild);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { cv.className = "on"; }); });
       function frame(ts) {
         if (!cv.isConnected) { removeEventListener("resize", size); return; } // apagado desde Ajustes
         requestAnimationFrame(frame);
@@ -5771,8 +5793,14 @@ window.Cloud = (function () {
   }
 
   /* ------------------------------ router ------------------------------ */
+  var routedOnce = false;
   function route() {
     try {
+      // El primer render carga quieto (html.boot); a partir del segundo la
+      // clase cae aquí mismo, justo antes de reemplazar el contenido, para
+      // que las animaciones de entrada vuelvan sin reiniciar nada visible.
+      if (routedOnce) document.documentElement.classList.remove("boot");
+      routedOnce = true;
       if (recovering) return renderNewPassword();
       var h0 = location.hash || "";
       var qs = document.getElementById("qs");
@@ -5870,8 +5898,13 @@ window.Cloud = (function () {
   function boot() {
     if (booted) return; booted = true;
     if (cloudReady()) {
-      view.innerHTML = '<div class="screen splash"><div class="logo">' + mark("", true) + '</div><div class="wm">App del Mago</div><div class="spin"></div></div>';
+      // El splash solo si la sesión tarda de verdad (>250ms): en una recarga
+      // normal se resuelve al instante y mostrarlo era un fogonazo de logo.
+      var splashT = setTimeout(function () {
+        view.innerHTML = '<div class="screen splash"><div class="logo">' + mark("", true) + '</div><div class="wm">App del Mago</div><div class="spin"></div></div>';
+      }, 250);
       Cloud.currentUser().then(function (u) {
+        clearTimeout(splashT);
         session = u || null;
         loadProfile().then(function () {
           route();
@@ -5882,11 +5915,14 @@ window.Cloud = (function () {
           var was = logged(); session = u2 || null;
           if (logged()) {
             startRealtime();
-            if (!myProfile) { loadProfile().then(function () { startFeedRealtime(); if (!was) syncOnLogin(true); route(); }); }
+            // Solo re-renderiza si de verdad se acaba de iniciar sesión: los
+            // eventos de cortesía (sesión inicial, token renovado) llegaban
+            // justo tras el arranque y repintaban la vista ya pintada.
+            if (!myProfile) { loadProfile().then(function () { startFeedRealtime(); if (!was) { syncOnLogin(true); route(); } }); }
             else if (!was) { startFeedRealtime(); syncOnLogin(true); route(); }
           } else if (was) { stopRealtime(); stopFeedRealtime(); myProfile = null; needsOnboarding = false; route(); }
         });
-      }).catch(function () { session = null; route(); });
+      }).catch(function () { clearTimeout(splashT); session = null; route(); });
     } else {
       route(); // sin nube (modo local/preview)
     }
@@ -5982,6 +6018,12 @@ window.Cloud = (function () {
   });
   window.addEventListener("online", function () { if (logged() && cloudReady()) { syncOnLogin(true); startRealtime(); } });
   try { localStorage.removeItem("magic_mesa_org"); localStorage.removeItem("magic_view"); } catch (e) {}
+  // El primer pintado entra quieto (sin animación de .screen/.fab): al
+  // recargar, el contenido aparece de una pieza en vez de "parpadear".
+  // OJO: quitar la clase reinicia las animaciones del contenido visible,
+  // así que solo cae dentro de un render posterior (el contenido se
+  // reemplaza en la misma pasada y no hay reinicio visible).
+  document.documentElement.classList.add("boot");
   if (hasPin() && !unlocked) renderLock();
   else boot();
   initAmbient();

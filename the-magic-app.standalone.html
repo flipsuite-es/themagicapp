@@ -1494,14 +1494,16 @@ html.vt-theme::view-transition-new(root) { animation: themeReveal .5s ease-out; 
 @keyframes flamebeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
 /* --- Vacíos con vida: el emblema flota y titilan destellos --- */
-.empty-art { position: relative; animation: bob 5.5s ease-in-out infinite; }
+.empty-art { animation: bob 5.5s ease-in-out infinite; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-.empty-art::before, .empty-art::after {
+/* Los destellos van en .ea-glow: los ::before/::after de .empty-art ya son
+   los anillos concéntricos del emblema y no deben tocarse. */
+.ea-glow::before, .ea-glow::after {
   content: "✦"; position: absolute; color: var(--brand); pointer-events: none;
-  animation: twinkle 3s ease-in-out infinite;
+  line-height: 1; animation: twinkle 3s ease-in-out infinite;
 }
-.empty-art::before { font-size: 12px; top: 4px; right: -14px; }
-.empty-art::after { font-size: 8px; bottom: 8px; left: -12px; animation-delay: 1.4s; }
+.ea-glow::before { font-size: 12px; top: -2px; right: -10px; }
+.ea-glow::after { font-size: 8px; bottom: 2px; left: -8px; animation-delay: 1.4s; }
 
 /* --- Toast con entrada elástica --- */
 .toast { transition: opacity .22s ease, transform .32s cubic-bezier(.2,.9,.3,1.25); transform: translateX(-50%) translateY(16px) scale(.95); }

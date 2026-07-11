@@ -163,8 +163,8 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .search .mag { color: var(--ink-faint); }
 
 /* ---------- Chips ---------- */
-.chips { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 4px; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
+/* Envuelven a varias filas: todos los filtros visibles, ninguno cortado */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 6px; margin-bottom: 4px; }
 .chip { flex: 0 0 auto; padding: 7px 13px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
@@ -1739,12 +1739,12 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
       sombra del chip activo (el recorte vertical del scroller la comía) */
 .chips { padding-top: 3px; padding-bottom: 9px; margin-bottom: 6px; }
 
-/* 4) Tiras horizontales a sangre completa en móvil: si un elemento queda
-      cortado lo corta el borde físico de la pantalla —se lee como "sigue
-      deslizando"—, nunca un borde invisible dentro del contenido.
-      (Solo scrollers sueltos; los chips dentro de formularios no sangran.) */
+/* 4) Los carruseles de avatares (historias, top magos) van a sangre completa
+      en móvil: un círculo a medias en el borde físico + fundido se lee como
+      carrusel. Los chips de texto ya no se desplazan: envuelven y se ven
+      todos, en cualquier ancho. */
 @media (max-width: 755px) {
-  .screen > .chips, #comBody > .chips, .stories-bar, .top-strip {
+  .stories-bar, .top-strip {
     margin-left: calc(-18px - env(safe-area-inset-left, 0px));
     margin-right: calc(-18px - env(safe-area-inset-right, 0px));
     padding-left: calc(18px + env(safe-area-inset-left, 0px));
@@ -4273,11 +4273,11 @@ window.Cloud = (function () {
     document.addEventListener("pointercancel", drop, { passive: true });
     document.addEventListener("scroll", drop, { passive: true, capture: true });
   }
-  /* ==== Tiras horizontales: desvanecido que dice "sigue deslizando" ====
+  /* ==== Carruseles (historias, top): desvanecido "sigue deslizando" ====
      Si hay más contenido por un lado, ese borde se funde; al llegar al
-     final el fundido desaparece. Así un chip cortado nunca parece un bug. */
+     final el fundido desaparece. Los chips ya no se desplazan: envuelven. */
   function updateHFades() {
-    var els = document.querySelectorAll(".chips, .stories-bar, .top-strip");
+    var els = document.querySelectorAll(".stories-bar, .top-strip");
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       var max = el.scrollWidth - el.clientWidth;

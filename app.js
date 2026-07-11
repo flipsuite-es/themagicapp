@@ -2099,11 +2099,11 @@
     document.addEventListener("pointercancel", drop, { passive: true });
     document.addEventListener("scroll", drop, { passive: true, capture: true });
   }
-  /* ==== Tiras horizontales: desvanecido que dice "sigue deslizando" ====
+  /* ==== Carruseles (historias, top): desvanecido "sigue deslizando" ====
      Si hay más contenido por un lado, ese borde se funde; al llegar al
-     final el fundido desaparece. Así un chip cortado nunca parece un bug. */
+     final el fundido desaparece. Los chips ya no se desplazan: envuelven. */
   function updateHFades() {
-    var els = document.querySelectorAll(".chips, .stories-bar, .top-strip");
+    var els = document.querySelectorAll(".stories-bar, .top-strip");
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       var max = el.scrollWidth - el.clientWidth;

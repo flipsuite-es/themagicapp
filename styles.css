@@ -1655,7 +1655,7 @@ body { background: transparent; background-image: none; }
 
 /* ------- UX-1: objetivos táctiles dignos de un pulgar ------- */
 /* Chips de filtro: de 31px a ~40px de alto sin perder densidad visual */
-.chip { padding: 11px 15px; }
+.chip { padding: 13px 16px; }
 .chips { gap: 8px; }
 /* Botones de cabecera: 40px mínimo en ambos ejes */
 .iconbtn { min-width: 40px; min-height: 40px; }
@@ -1666,3 +1666,15 @@ body { background: transparent; background-image: none; }
 /* Enlace discreto bajo el botón de entrar */
 .linklike { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--ink-faint); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-family: inherit; }
 .linklike:hover { color: var(--brand); }
+
+/* Contraseña con "ojo" para mostrarla */
+.passwrap { position: relative; }
+.passwrap input { width: 100%; padding-right: 46px; }
+.passwrap .peek { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; background: none; color: var(--ink-faint); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.passwrap .peek.on { color: var(--brand); }
+/* El "x" nativo del buscador, discreto en oscuro */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; height: 14px; width: 14px; background: color-mix(in srgb, var(--ink-faint) 80%, transparent); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat; cursor: pointer; }
+
+/* Punto de avisos en la pestaña Comunidad */
+.tabbar a { position: relative; }
+.tb-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; letter-spacing: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 80%, transparent); }

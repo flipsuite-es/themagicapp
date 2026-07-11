@@ -1663,7 +1663,7 @@ body { background: transparent; background-image: none; }
 
 /* ------- UX-1: objetivos táctiles dignos de un pulgar ------- */
 /* Chips de filtro: de 31px a ~40px de alto sin perder densidad visual */
-.chip { padding: 11px 15px; }
+.chip { padding: 13px 16px; }
 .chips { gap: 8px; }
 /* Botones de cabecera: 40px mínimo en ambos ejes */
 .iconbtn { min-width: 40px; min-height: 40px; }
@@ -1674,6 +1674,18 @@ body { background: transparent; background-image: none; }
 /* Enlace discreto bajo el botón de entrar */
 .linklike { display: block; margin: 12px auto 0; background: none; border: 0; color: var(--ink-faint); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-family: inherit; }
 .linklike:hover { color: var(--brand); }
+
+/* Contraseña con "ojo" para mostrarla */
+.passwrap { position: relative; }
+.passwrap input { width: 100%; padding-right: 46px; }
+.passwrap .peek { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; background: none; color: var(--ink-faint); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.passwrap .peek.on { color: var(--brand); }
+/* El "x" nativo del buscador, discreto en oscuro */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; height: 14px; width: 14px; background: color-mix(in srgb, var(--ink-faint) 80%, transparent); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' stroke='black' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat; cursor: pointer; }
+
+/* Punto de avisos en la pestaña Comunidad */
+.tabbar a { position: relative; }
+.tb-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 9.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; letter-spacing: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 80%, transparent); }
 
 </style>
 <div class="app"><div id="view"></div></div>
@@ -2502,7 +2514,8 @@ window.Cloud = (function () {
     else tabs.push({ h: "#/incluidos", ic: "wand", t: "Incluidos", k: "inc" });
     tabs.push({ h: "#/ajustes", ic: "sliders", t: "Ajustes", k: "set" });
     return '<nav class="tabbar"><div class="tbbrand">' + mark() + "<span>App del Mago</span></div>" + tabs.map(function (x) {
-      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + (active === x.k ? '<span class="tb-ind" aria-hidden="true"></span>' : "") + icon(x.ic) + "<span>" + x.t + "</span></a>";
+      var badge = x.k === "com" && unreadNotif ? '<span class="tb-badge" id="tabComBadge">' + (unreadNotif > 9 ? "9+" : unreadNotif) + "</span>" : (x.k === "com" ? '<span class="tb-badge" id="tabComBadge" style="display:none"></span>' : "");
+      return '<a href="' + x.h + '" class="' + (active === x.k ? "on" : "") + '">' + (active === x.k ? '<span class="tb-ind" aria-hidden="true"></span>' : "") + icon(x.ic) + badge + "<span>" + x.t + "</span></a>";
     }).join("") + "</nav>";
   }
   function mountTabbar(active) {
@@ -2548,7 +2561,8 @@ window.Cloud = (function () {
     if (state.tricks.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Tu biblioteca está vacía</h3>' +
         "<p>Guarda aquí cada truco que aprendas: notas, vídeos y tu progreso.<br>Empieza creando el primero.</p>" +
-        '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button></div>';
+        '<button class="btn" onclick="location.hash=\'#/nuevo\'">Crear mi primer truco</button>' +
+        '<button class="btn ghost" style="margin-top:10px" onclick="location.hash=\'#/incluidos\'">' + icon("wand", "i-sm") + ' Ver los trucos incluidos</button></div>';
     } else if (filtered.length === 0) {
       body = '<div class="empty">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>';
     } else {
@@ -2564,7 +2578,7 @@ window.Cloud = (function () {
       (logged() && cloudReady() ? '<button class="iconbtn ' + (syncing ? "spinning" : "") + '" id="syncBtn" aria-label="Sincronizar">' + icon("cloud") + "</button>" : "") +
       '<button class="iconbtn ' + (filter.fav ? "on" : "") + '" id="favToggle" aria-label="Favoritos" aria-pressed="' + (filter.fav ? "true" : "false") + '">' + icon(filter.fav ? "starfill" : "star") + "</button>" +
       '<button class="iconbtn" id="acctBtn" aria-label="Cuenta">' + icon("user") + "</button></div>" +
-      '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
+      '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" type="search" enterkeyhint="search" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
       (dueCount ? '<div class="pracbanner" id="pracBanner">' + icon("target", "i-sm") + "<span>" + dueCount + " truco" + (dueCount > 1 ? "s" : "") + " para practicar hoy</span>" + icon("chev", "i-sm") + "</div>" : "") +
       '<div class="chips">' + catChips + "</div>" +
       '<div class="chips">' + statusChips + "</div>" +
@@ -3123,6 +3137,13 @@ window.Cloud = (function () {
       '<button id="pNext" ' + (s.i === s.tricks.length - 1 ? "disabled" : "") + ">Siguiente " + icon("chev") + "</button></div>" +
       "</div>";
     document.getElementById("pExit").addEventListener("click", exitPerform);
+    // En escena no se busca un botón: tocar la mitad derecha avanza y la
+    // izquierda retrocede (el cuerpo entero es la zona táctil).
+    document.getElementById("pBody").addEventListener("click", function (e) {
+      var r0 = this.getBoundingClientRect();
+      if (e.clientX - r0.left > r0.width / 2) { if (s.i < s.tricks.length - 1) { s.i++; snd("slide"); paintPerform(); } }
+      else if (s.i > 0) { s.i--; snd("slide"); paintPerform(); }
+    });
     var prev = document.getElementById("pPrev"), next = document.getElementById("pNext");
     prev.addEventListener("click", function () { if (s.i > 0) { s.i--; paintPerform(); } });
     next.addEventListener("click", function () { if (s.i < s.tricks.length - 1) { s.i++; paintPerform(); } });
@@ -3148,13 +3169,25 @@ window.Cloud = (function () {
         "<p>Lleva tu agenda: fecha, cliente, caché y qué actuaste (para no repetir con el mismo público).</p>" +
         '<button class="btn" onclick="location.hash=\'#/bolo-nuevo\'">Añadir un bolo</button></div>';
     } else {
-      body = '<div class="rlist">' + gs.map(function (g) {
+      var today = new Date().toISOString().slice(0, 10);
+      var row = function (g) {
         return '<div class="rrow" data-id="' + g.id + '"><div class="ri">' + icon("calendar") + "</div>" +
           '<div class="rt"><div class="n">' + esc(g.client || "Bolo") + '</div><div class="d">' + fmtDate(g.date) + (g.venue ? " · " + esc(g.venue) : "") + (g.fee !== "" && g.fee != null ? " · " + esc(g.fee) + " €" : "") + "</div></div>" +
           '<span class="go">' + icon("chev") + "</span></div>";
-      }).join("") + "</div>";
+      };
+      var next0 = gs.filter(function (g) { return (g.date || "") >= today; }).reverse(); // ascendente: el más cercano primero
+      var past = gs.filter(function (g) { return (g.date || "") < today; });
+      body = (next0.length ? '<div class="sec-label">Próximos</div><div class="rlist">' + next0.map(row).join("") + "</div>" : "") +
+        (past.length ? '<div class="sec-label">Pasados</div><div class="rlist">' + past.map(row).join("") + "</div>" : "");
     }
-    view.innerHTML = '<div class="screen"><h1 class="title">Bolos</h1><p class="subtitle">Tu agenda de actuaciones.</p>' + body + "</div>";
+    // Resumen del año: caché total y nº de bolos (solo si hay datos)
+    var yr = String(new Date().getFullYear());
+    var yearGigs = state.gigs.filter(function (g) { return (g.date || "").indexOf(yr) === 0; });
+    var total = yearGigs.reduce(function (a, g) { var f = parseFloat(g.fee); return a + (isNaN(f) ? 0 : f); }, 0);
+    var summary = yearGigs.length
+      ? '<p class="subtitle">' + yr + ": <b>" + total.toLocaleString("es-ES") + " €</b> · " + yearGigs.length + (yearGigs.length === 1 ? " bolo" : " bolos") + "</p>"
+      : '<p class="subtitle">Tu agenda de actuaciones.</p>';
+    view.innerHTML = '<div class="screen"><h1 class="title">Bolos</h1>' + summary + body + "</div>";
     view.querySelectorAll(".rrow[data-id]").forEach(function (row) { row.addEventListener("click", function () { location.hash = "#/bolo/" + row.getAttribute("data-id"); }); });
   }
 
@@ -3759,7 +3792,11 @@ window.Cloud = (function () {
   var unreadNotif = 0;
   function refreshNotifBadge() {
     if (!cloudReady() || !logged()) return;
-    Cloud.getNotifications().then(function (d) { unreadNotif = d.unread || 0; var b = document.getElementById("notifBadge"); if (b) { b.style.display = unreadNotif ? "flex" : "none"; b.textContent = unreadNotif > 9 ? "9+" : unreadNotif; } }).catch(function () {});
+    Cloud.getNotifications().then(function (d) {
+      unreadNotif = d.unread || 0;
+      var b = document.getElementById("notifBadge"); if (b) { b.style.display = unreadNotif ? "flex" : "none"; b.textContent = unreadNotif > 9 ? "9+" : unreadNotif; }
+      var tb = document.getElementById("tabComBadge"); if (tb) { tb.style.display = unreadNotif ? "flex" : "none"; tb.textContent = unreadNotif > 9 ? "9+" : unreadNotif; }
+    }).catch(function () {});
   }
   function communityHeader(mode) {
     return '<div class="appbar"><h1 class="pagetitle" style="display:block">Comunidad</h1>' +
@@ -5333,7 +5370,7 @@ window.Cloud = (function () {
       '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/ajustes\'">' + icon("back") + '</button><h1>' + (isSignup ? "Crear cuenta" : "Iniciar sesión") + "</h1></div>" +
       '<p class="subtitle">Sincroniza tu biblioteca entre dispositivos y sube tus vídeos.</p>' +
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
-      '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
+      '<div class="field"><label>Contraseña</label><div class="passwrap"><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"><button type="button" class="peek" id="aPeek" aria-label="Mostrar contraseña">' + icon("theme", "i-sm") + '</button></div></div>' +
       '<button class="btn" id="aGo">' + (isSignup ? "Crear cuenta" : "Entrar") + "</button>" +
       '<button class="btn ghost" id="aSwap">' + (isSignup ? "Ya tengo cuenta · Iniciar sesión" : "No tengo cuenta · Registrarme") + "</button></div>";
     document.getElementById("aSwap").addEventListener("click", function () { authMode = isSignup ? "login" : "signup"; renderAccount(); });
@@ -5511,7 +5548,7 @@ window.Cloud = (function () {
       '<button class="' + (isSignup ? "on" : "") + '" id="tabSignup">Tengo invitación</button></div>' +
       (isSignup ? '<div class="field"><label>Código de invitación</label><input id="aInvite" autocapitalize="characters" autocomplete="off" placeholder="MAGO-XXXXX" value="' + esc(getPendingInvite()) + '"></div>' : "") +
       '<div class="field"><label>Email</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com"></div>' +
-      '<div class="field"><label>Contraseña</label><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"></div>' +
+      '<div class="field"><label>Contraseña</label><div class="passwrap"><input id="aPass" type="password" autocomplete="' + (isSignup ? "new-password" : "current-password") + '" placeholder="mínimo 6 caracteres"><button type="button" class="peek" id="aPeek" aria-label="Mostrar contraseña">' + icon("theme", "i-sm") + '</button></div></div>' +
       '<button class="btn" id="aGo">' + (isSignup ? "Solicitar mi acceso" : "Entrar") + "</button>" +
       (isSignup ? "" : '<button class="linklike" id="forgotBtn" type="button">He olvidado mi contraseña</button>') +
       "</div>" +
@@ -5520,6 +5557,14 @@ window.Cloud = (function () {
     document.getElementById("tabLogin").addEventListener("click", function () { if (authMode !== "login") { authMode = "login"; renderGate(); } });
     document.getElementById("tabSignup").addEventListener("click", function () { if (authMode !== "signup") { authMode = "signup"; renderGate(); } });
     document.getElementById("aPass").addEventListener("keydown", function (e) { if (e.key === "Enter") gateSubmit(isSignup); });
+    var pk = document.getElementById("aPeek"), pIn = document.getElementById("aPass");
+    if (pk) pk.addEventListener("click", function () {
+      var show = pIn.type === "password";
+      pIn.type = show ? "text" : "password";
+      pk.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña");
+      pk.classList.toggle("on", show); pIn.focus();
+    });
+    setTimeout(function () { var em = document.getElementById("aEmail"); if (em && !em.value) { try { em.focus(); } catch (e) {} } }, 120);
     document.getElementById("aGo").addEventListener("click", function () { gateSubmit(isSignup); });
     var fb = document.getElementById("forgotBtn");
     if (fb) fb.addEventListener("click", function () {

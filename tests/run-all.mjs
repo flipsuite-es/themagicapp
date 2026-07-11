@@ -26,7 +26,7 @@ const server = createServer(async (req, res) => {
 await new Promise(r => server.listen(8099, '127.0.0.1', r));
 console.log('· servidor estático en http://127.0.0.1:8099');
 
-const SUITES = ['tcrawl.mjs', 'tmarket.mjs', 'tflows.mjs', 'tsenses.mjs', 'tfxstress.mjs', 'tedge.mjs', 'tstand.mjs'];
+const SUITES = ['tcompat.mjs', 'tcrawl.mjs', 'tmarket.mjs', 'tflows.mjs', 'tsenses.mjs', 'tfxstress.mjs', 'tedge.mjs', 'tdesktop.mjs', 'toffline.mjs', 'tstand.mjs'];
 let failed = 0;
 for (const suite of SUITES) {
   process.stdout.write(`\n▶ ${suite}\n`);

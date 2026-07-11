@@ -180,7 +180,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .card .thumb .ph { color: var(--ink-faint); opacity: .55; }
 .card .thumb .cthumb { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; background-color: var(--surface-2); }
 .card .thumb .ph .i { width: 30px; height: 30px; }
-.card .thumb .play { position: absolute; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.card .thumb .play { position: absolute; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 .card .thumb .play .i { width: 18px; height: 18px; }
 .card .thumb .fav { position: absolute; top: 9px; right: 9px; color: var(--brand); }
 .card .thumb .fav .i { filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
@@ -263,7 +263,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .fab:active { transform: scale(.94); background: var(--brand-press); }
 
 /* ---------- Barra inferior ---------- */
-.tabbar { position: fixed; z-index: 45; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-around; padding: 9px 8px calc(9px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
+.tabbar { position: fixed; z-index: 45; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-around; padding: 9px 8px calc(9px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
 .tabbar a { flex: 1; max-width: 120px; text-align: center; text-decoration: none; color: var(--ink-faint); font-size: 10.5px; font-weight: 600; letter-spacing: .01em; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .tabbar a .i { width: 22px; height: 22px; }
 .tabbar a.on { color: var(--brand); }
@@ -298,7 +298,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .textreveal { font-family: var(--display); font-size: 34px; font-weight: 600; text-align: center; padding: 30px 16px; color: var(--brand); animation: pop .5s cubic-bezier(.2,.9,.3,1.3); word-break: break-word; }
 
 /* Carga secreta */
-.qs { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--bg) 95%, transparent); backdrop-filter: blur(6px); display: none; flex-direction: column; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
+.qs { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--bg) 95%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: none; flex-direction: column; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
 .qs.open { display: flex; }
 .qs h4 { margin: 4px 0 12px; color: var(--ink-faint); font-size: 12px; text-align: center; text-transform: uppercase; letter-spacing: .1em; }
 .qs .suitrow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -449,7 +449,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
     flex-direction: column; justify-content: flex-start; align-items: stretch;
     gap: 4px; padding: 26px 16px calc(26px + env(safe-area-inset-bottom));
     border-top: none; border-right: 1px solid var(--line);
-    background: var(--surface); backdrop-filter: none;
+    background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none;
   }
   .tbbrand {
     display: flex; align-items: center; gap: 10px; padding: 6px 12px 22px;
@@ -532,7 +532,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 .statbar .track i.b-slate { background: var(--ink-faint); }
 
 /* Compartir: modal de enlace */
-.modal-ov { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; background: color-mix(in srgb, #000 48%, transparent); backdrop-filter: blur(4px); }
+.modal-ov { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; background: color-mix(in srgb, #000 48%, transparent); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 .modal { width: 100%; max-width: 460px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.34); }
 .modal h3 { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 6px; }
 .modal .hint { margin: 0 0 14px; }
@@ -1232,7 +1232,7 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 .chip.active { background: var(--ink); color: var(--bg); box-shadow: var(--shadow); }
 
 /* Modales/hojas: cristal más profundo */
-.modal-ov { background: color-mix(in srgb, #000 56%, transparent); backdrop-filter: blur(6px); }
+.modal-ov { background: color-mix(in srgb, #000 56%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 
 /* ==========================================================================
    v5 — Arte de marca en superficies sin imagen + revelación del emblema
@@ -1358,7 +1358,7 @@ h1.title { font-size: 34px; letter-spacing: -0.035em; line-height: 1.04; }
 .perform .pnav button { background: var(--surface); color: var(--ink); border-color: var(--line); }
 
 /* Chat a pantalla completa: los mensajes llenan y la entrada queda abajo */
-.screen.chat { display: flex; flex-direction: column; min-height: calc(100dvh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+.screen.chat { display: flex; flex-direction: column; min-height: calc(100vh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height: calc(100dvh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 .screen.chat .chat-scroll > .bubble:first-child { margin-top: auto; }
 
 /* ==========================================================================
@@ -1540,6 +1540,10 @@ body::after {
 
 /* --- Hairlines doradas: la línea gris pasa a filigrana cálida --- */
 :root {
+  /* fallback estático para navegadores sin color-mix (Safari <16.2) */
+  --hairline: rgba(216, 182, 103, 0.20);
+  --hairline-2: rgba(216, 182, 103, 0.32);
+  --foil: linear-gradient(105deg, #a8823f 12%, #e5cd8e 36%, #d8b667 54%, #eed9a0 72%, #a8823f 90%);
   --hairline: color-mix(in srgb, var(--brand) 20%, transparent);
   --hairline-2: color-mix(in srgb, var(--brand) 32%, transparent);
   --foil: linear-gradient(105deg, color-mix(in srgb, var(--brand) 78%, #6b5426) 12%, color-mix(in srgb, var(--brand) 60%, #fff) 36%, var(--brand) 54%, color-mix(in srgb, var(--brand) 66%, #fff) 72%, color-mix(in srgb, var(--brand) 80%, #6b5426) 90%);

@@ -1716,3 +1716,41 @@ body { background: transparent; background-image: none; }
 
 /* Con reduced-motion no hay reparto: las cartas ya están en su sitio */
 @media (prefers-reduced-motion: reduce) { .mc-in.deal { transform: none; opacity: 1; } }
+
+/* ------- Mesa v12.2: miniaturas, organización libre y cajones ------- */
+.mc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--surface-2) center/cover no-repeat; }
+.mc-img.cthumb { display: block; }
+.mc-play { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.mc-play .i { width: 14px; height: 14px; }
+.mc-in.drag { transform: translate3d(0, -14px, 70px) scale(1.05) !important; box-shadow: 0 60px 70px -24px rgba(0,0,0,1), 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--brand) 35%, transparent); transition-duration: .16s; }
+.mesa.arranging { cursor: grabbing; }
+.mf-empty { position: absolute; top: 240px; left: 50%; width: 240px; margin-left: -120px; text-align: center; color: var(--ink-faint); font-size: 13.5px; line-height: 1.6; }
+
+.mesa-rail { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: stretch; padding: 12px 88px 14px 16px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(0deg, rgba(4,3,2,.94) 30%, transparent); }
+.mesa-rail::-webkit-scrollbar { display: none; }
+.rail-slot {
+  flex: 0 0 auto; position: relative; min-width: 92px; padding: 9px 12px 8px; border-radius: 8px 8px 4px 4px;
+  border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent); border-bottom-width: 3px;
+  background: linear-gradient(180deg, #241809, #170f07 70%, #12100a);
+  color: var(--ink); font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: .01em;
+  cursor: pointer; display: flex; align-items: center; gap: 7px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand) 18%, transparent), 0 8px 18px -10px rgba(0,0,0,.8);
+}
+.rail-slot .rs-handle { width: 18px; height: 5px; border-radius: 3px; background: var(--grad-brand); box-shadow: 0 1px 3px rgba(0,0,0,.6); flex: 0 0 auto; }
+.rail-slot .rs-count { font-family: var(--ui); font-size: 10px; font-weight: 700; color: var(--on-brand); background: var(--grad-brand); border-radius: 999px; padding: 1px 7px; }
+.rail-slot.add { min-width: 44px; justify-content: center; font-size: 20px; color: var(--brand); font-family: var(--ui); font-weight: 400; }
+.rail-slot.back { background: none; border-color: transparent; box-shadow: none; color: var(--brand); }
+.rail-slot.open { border-color: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent), 0 8px 18px -10px rgba(0,0,0,.8); }
+.rail-slot.hot { transform: translateY(-5px) scale(1.06); border-color: var(--brand); box-shadow: 0 0 22px color-mix(in srgb, var(--brand) 45%, transparent); }
+.rail-slot.tool { min-width: 0; font-family: var(--ui); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); background: none; border-color: var(--hairline); box-shadow: none; border-bottom-width: 1px; border-radius: 8px; }
+.rail-slot.tool.danger { color: var(--danger); }
+
+.mesa-hint {
+  position: absolute; left: 20px; right: 20px; bottom: 76px; z-index: 6; text-align: center;
+  color: var(--ink-soft); font-size: 12.5px; padding: 10px 14px; border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 85%, transparent); color: var(--bg);
+  backdrop-filter: blur(6px); transition: opacity .6s ease; pointer-events: none;
+}
+:root[data-theme="light"] .mesa-hint { color: #f5f0e4; }
+.mesa-hint.bye { opacity: 0; }
+.mesa-fog.bot { height: 110px; }

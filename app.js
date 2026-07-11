@@ -510,7 +510,7 @@
       if (!mw) { renderLibrary(); return; }
       if (countEl) countEl.textContent = filtered.length ? filtered.length + (filtered.length === 1 ? " truco" : " trucos") : "";
       if (!filtered.length) { mw.innerHTML = '<div class="empty" style="padding:40px 12px">' + emptyArt() + '<h3>Sin resultados</h3><p>Prueba a cambiar los filtros o la búsqueda.</p></div>'; return; }
-      buildMesa(filtered); return;
+      buildMesa(filtered); bindCardThumbs(); return;
     }
     var holder = view.querySelector(".cards");
     if (!holder) { renderLibrary(); return; }
@@ -617,56 +617,97 @@
     h ^= h >>> 15;
     return { rz: ((h % 100) / 100 - 0.5) * 6, dx: (((h >> 7) % 100) / 100 - 0.5) * 14, dy: (((h >> 13) % 100) / 100 - 0.5) * 16 };
   }
-  function mesaCardHtml(t, i) {
-    var j = seededJitter(t.id);
-    var col = i % 2, row = (i - col) / 2;
-    var x = 38 + col * 162 + j.dx, y = 26 + row * 236 + j.dy;
-    return '<div class="mcard" data-id="' + t.id + '" data-y="' + Math.round(y) + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '"' +
-      ' style="transform:translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,2px) rotateZ(' + j.rz.toFixed(2) + 'deg)">' +
-      '<div class="mc-in deal" style="transition-delay:' + Math.min(i * 55, 440) + 'ms">' +
+  // Organización de la mesa: posiciones libres y cajones creados por el mago.
+  // Se guarda en el dispositivo (como la disposición de un escritorio real).
+  var mesaOrg = (function () {
+    try { var o = JSON.parse(localStorage.getItem("magic_mesa_org")) || {}; return { pos: o.pos || {}, drawers: o.drawers || [], items: o.items || {}, hinted: !!o.hinted }; }
+    catch (e) { return { pos: {}, drawers: [], items: {}, hinted: false }; }
+  })();
+  function saveMesaOrg() { try { localStorage.setItem("magic_mesa_org", JSON.stringify(mesaOrg)); } catch (e) {} }
+  var mesaDrawer = null; // null = sobre la mesa; id = dentro de un cajón
+  var mesaDeal = true;    // solo se reparte al entrar en la vista, no al reorganizar
+  function mesaThumbHtml(t) {
+    var th = trickThumb(t);
+    if (th && th.kind === "embedimg") return '<img class="mc-img" src="' + esc(th.url) + '" loading="lazy" decoding="async" alt="">';
+    if (th && (th.kind === "img" || th.kind === "video")) return '<span class="cthumb mc-img" data-thumb="' + esc(th.path) + '"></span>';
+    return "";
+  }
+  function mesaCardHtml(c, i) {
+    var t = c.t;
+    var thumb = mesaThumbHtml(t);
+    var art = thumb
+      ? thumb + ((trickThumb(t) || {}).kind === "video" || (t.media || []).some(function (m) { return m.embed || m.path; }) ? '<span class="mc-play">' + icon("play", "i-sm") + "</span>" : "")
+      : '<span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>";
+    return '<div class="mcard" data-id="' + t.id + '" tabindex="0" role="link" aria-label="' + esc(t.title) + '">' +
+      '<div class="mc-in' + (mesaDeal ? " deal" : "") + '" style="transition-delay:' + (mesaDeal ? Math.min(i * 55, 440) : 0) + 'ms">' +
       '<span class="mc-pip tl"></span><span class="mc-pip tr"></span><span class="mc-pip bl"></span><span class="mc-pip br"></span>' +
-      '<div class="mc-art"><span class="mc-med">' + engraving(t.id) + '</span><span class="mc-ic">' + icon(t.media && t.media.length ? "film" : "cards") + "</span>" +
+      '<div class="mc-art">' + art +
       (t.favorite ? '<span class="mc-fav">' + icon("starfill", "i-sm") + "</span>" : "") + "</div>" +
       '<div class="mc-name">' + esc(t.title) + '</div>' +
       '<div class="mc-meta">' + esc(t.category || "\u2014") + "</div>" +
       '<span class="mc-shade" aria-hidden="true"></span></div></div>';
   }
-  var mesaRaf = 0;
-  function buildMesa(list) {
-    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
-    cancelAnimationFrame(mesaRaf);
-    var rows = Math.ceil(list.length / 2);
-    var feltH = Math.max(560, 60 + rows * 236 + 160);
-    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span></div>' +
-      list.map(mesaCardHtml).join("") + "</div>" +
-      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>';
-    var cam = document.getElementById("mesaCam");
-    var cards = [].slice.call(wrap.querySelectorAll(".mcard")).map(function (el0) {
-      return { el: el0, inEl: el0.firstChild, shade: el0.querySelector(".mc-shade"), y: parseFloat(el0.getAttribute("data-y")) };
+  function railHtml() {
+    var slots = "";
+    if (mesaDrawer) slots += '<button class="rail-slot back" data-drawer=""><span class="rs-name">\u25C2 Mesa</span></button>';
+    mesaOrg.drawers.forEach(function (d) {
+      var n = 0; for (var k in mesaOrg.items) if (mesaOrg.items[k] === d.id) n++;
+      slots += '<button class="rail-slot' + (mesaDrawer === d.id ? " open" : "") + '" data-drawer="' + esc(d.id) + '"><span class="rs-handle"></span><span class="rs-name">' + esc(d.name) + '</span><span class="rs-count">' + n + "</span></button>";
     });
-    // Reparto: las cartas caen sobre el tapete en cascada
+    slots += '<button class="rail-slot add" id="railAdd" aria-label="Crear cajón">+</button>';
+    if (mesaDrawer) slots += '<button class="rail-slot tool" id="railRen">Renombrar</button><button class="rail-slot tool danger" id="railDel">Eliminar</button>';
+    return '<div class="mesa-rail" id="mesaRail">' + slots + "</div>";
+  }
+  var mesaRaf = 0, mesaList = [];
+  function buildMesa(list, redeal) {
+    if (redeal === undefined) redeal = true;
+    var wrap = document.getElementById("mesaWrap"); if (!wrap) return;
+    mesaList = list;
+    mesaDeal = !!redeal;
+    cancelAnimationFrame(mesaRaf);
+    var visible = list.filter(function (t) { return (mesaOrg.items[t.id] || null) === mesaDrawer; });
+    var slot = 0, maxY = 300;
+    var cardsData = visible.map(function (t) {
+      var p = mesaOrg.pos[t.id], j = seededJitter(t.id), x, y;
+      if (p && typeof p.x === "number") { x = p.x; y = p.y; }
+      else { var col = slot % 2, row = (slot - col) / 2; x = 38 + col * 162 + j.dx; y = 26 + row * 236 + j.dy; slot++; }
+      if (y > maxY) maxY = y;
+      return { t: t, x: x, y: y, rz: j.rz, el: null, inEl: null, shade: null };
+    });
+    var feltH = Math.max(560, maxY + 380);
+    wrap.innerHTML = '<div class="mesa-cam" id="mesaCam"><div class="mesa-felt" style="height:' + feltH + 'px"><span class="mf-line"></span>' +
+      (visible.length ? "" : '<div class="mf-empty">' + (mesaDrawer ? "Caj\u00f3n vac\u00edo.<br>Mant\u00e9n pulsada una carta y su\u00e9ltala sobre \u00e9l." : "La mesa est\u00e1 despejada.") + "</div>") +
+      "</div>" + cardsData.map(mesaCardHtml).join("") + "</div>" +
+      '<div class="mesa-fog top" aria-hidden="true"></div><div class="mesa-fog bot" aria-hidden="true"></div>' + railHtml() +
+      (!mesaOrg.hinted && !mesaDrawer && visible.length ? '<div class="mesa-hint" id="mesaHint">Mant\u00e9n pulsada una carta para colocarla a tu gusto o guardarla en un caj\u00f3n</div>' : "");
+    var cam = document.getElementById("mesaCam"), rail = document.getElementById("mesaRail");
+    cardsData.forEach(function (c, i) {
+      c.el = wrap.querySelectorAll(".mcard")[i]; c.inEl = c.el.firstChild; c.shade = c.el.querySelector(".mc-shade");
+      paintCard(c);
+    });
+    function paintCard(c) { c.el.style.transform = "translate3d(" + c.x.toFixed(1) + "px," + c.y.toFixed(1) + "px,2px) rotateZ(" + c.rz.toFixed(2) + "deg)"; }
     requestAnimationFrame(function () { requestAnimationFrame(function () {
-      cards.forEach(function (c) { c.inEl.classList.remove("deal"); });
-      // tras el reparto, el delay escalonado ya no pinta nada: fuera,
-      // para que el levantamiento al pulsar responda al instante
-      setTimeout(function () { cards.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
+      cardsData.forEach(function (c) { c.inEl.classList.remove("deal"); });
+      setTimeout(function () { cardsData.forEach(function (c) { c.inEl.style.transitionDelay = "0ms"; }); }, 1000);
     }); });
-    if (list.length) snd("deal");
+    if (visible.length && mesaDeal) snd("deal");
+    var hintEl = document.getElementById("mesaHint");
+    if (hintEl) setTimeout(function () { if (hintEl.isConnected) hintEl.classList.add("bye"); }, 6000);
     var scroll = 0, vel = 0, maxScroll = Math.max(0, feltH - 640);
-    var dragging = false, moved = 0, lastY = 0, lastT = 0, lifted = null;
+    var dragging = false, moved = 0, lastX = 0, lastY = 0, lastT = 0, lifted = null;
+    var pressT = 0, movingCard = null;
     var lastFog = -1e9;
     function fog() {
       if (Math.abs(scroll - lastFog) < 20) return;
       lastFog = scroll;
-      for (var i = 0; i < cards.length; i++) {
-        var d = cards[i].y - scroll; // distancia sobre el tapete desde la cámara
+      for (var i = 0; i < cardsData.length; i++) {
+        var d = cardsData[i].y - scroll;
         var o = d < 240 ? 0 : Math.min(0.55, (d - 240) / 620);
-        cards[i].shade.style.opacity = o.toFixed(2);
+        cardsData[i].shade.style.opacity = o.toFixed(2);
       }
     }
     function camPaint() {
       var g = window.__tiltG || [0, 0];
-      // Fuera de rango, resistencia elástica (rubber band)
       var over = scroll < 0 ? scroll : (scroll > maxScroll ? scroll - maxScroll : 0);
       var disp = scroll - over * 0.65;
       cam.style.transform = "rotateX(" + (36 + g[1] * 3).toFixed(2) + "deg) rotateZ(" + (-g[0] * 1.6).toFixed(2) + "deg) translate3d(" + (-g[0] * 12).toFixed(1) + "px," + (-disp).toFixed(1) + "px,0)";
@@ -682,24 +723,68 @@
       mesaRaf = requestAnimationFrame(tick);
     }
     function unlift() { if (lifted) { lifted.classList.remove("lift"); lifted = null; } }
+    function findCard(el0) {
+      var mc = el0 && el0.closest ? el0.closest(".mcard") : null; if (!mc) return null;
+      for (var i = 0; i < cardsData.length; i++) if (cardsData[i].el === mc) return cardsData[i];
+      return null;
+    }
+    function railTarget(e) {
+      var el0 = document.elementFromPoint(e.clientX, e.clientY);
+      return el0 && el0.closest ? el0.closest(".rail-slot[data-drawer]") : null;
+    }
     wrap.addEventListener("pointerdown", function (e) {
-      dragging = true; moved = 0; lastY = e.clientY; lastT = performance.now(); vel = 0;
-      var mc = e.target && e.target.closest ? e.target.closest(".mcard") : null;
-      if (mc) { lifted = mc.firstChild; lifted.classList.add("lift"); }
+      if (e.target.closest && e.target.closest(".mesa-rail")) return;
+      dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
+      var c = findCard(e.target);
+      if (c) {
+        lifted = c.inEl; lifted.classList.add("lift");
+        clearTimeout(pressT);
+        pressT = setTimeout(function () {
+          if (moved < 9 && dragging) {
+            movingCard = c; c.inEl.classList.add("drag"); wrap.classList.add("arranging");
+            buzz(12); snd("tap");
+            if (!mesaOrg.hinted) { mesaOrg.hinted = true; saveMesaOrg(); var h = document.getElementById("mesaHint"); if (h) h.classList.add("bye"); }
+          }
+        }, 340);
+      }
     });
     wrap.addEventListener("pointermove", function (e) {
       if (!dragging) return;
-      var dy = e.clientY - lastY; moved += Math.abs(dy);
-      if (moved > 10) unlift();
-      var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
-      lastY = e.clientY;
-      var next = scroll - dy;
-      // resistencia al salir del rango
-      if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (movingCard) {
+        movingCard.x += dx; movingCard.y += dy * 1.22 + (0); paintCard(movingCard);
+        var rt = railTarget(e); rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.toggle("hot", r0 === rt); });
+      } else {
+        if (moved > 10) { unlift(); clearTimeout(pressT); }
+        var now = performance.now(); if (now - lastT > 4) { vel = -dy * 0.9; lastT = now; }
+        var next = scroll - dy;
+        if (next < 0 || next > maxScroll) scroll = scroll - dy * 0.4; else scroll = next;
+      }
+      lastX = e.clientX; lastY = e.clientY;
     }, { passive: true });
     function endDrag(e) {
+      clearTimeout(pressT);
       if (!dragging) return;
       dragging = false;
+      if (movingCard) {
+        var c = movingCard; movingCard = null;
+        wrap.classList.remove("arranging"); c.inEl.classList.remove("drag"); unlift();
+        rail.querySelectorAll(".rail-slot").forEach(function (r0) { r0.classList.remove("hot"); });
+        var rt = e ? railTarget(e) : null;
+        if (rt) {
+          var target = rt.getAttribute("data-drawer") || null;
+          if (target) mesaOrg.items[c.t.id] = target; else delete mesaOrg.items[c.t.id];
+          delete mesaOrg.pos[c.t.id];
+          saveMesaOrg(); snd("drawer"); buzz([10, 30, 12]);
+          toast(target ? "Guardado en el caj\u00f3n" : "Devuelto a la mesa");
+          buildMesa(mesaList, false); bindCardThumbs();
+        } else {
+          mesaOrg.pos[c.t.id] = { x: Math.round(c.x), y: Math.round(c.y) };
+          saveMesaOrg(); snd("slide");
+        }
+        return;
+      }
       if (moved < 10 && e && e.target && e.target.closest) {
         var mc = e.target.closest(".mcard");
         if (mc) { snd("slide"); location.hash = "#/truco/" + mc.getAttribute("data-id"); return; }
@@ -707,10 +792,40 @@
       unlift();
     }
     wrap.addEventListener("pointerup", endDrag);
-    wrap.addEventListener("pointercancel", function () { dragging = false; unlift(); });
+    wrap.addEventListener("pointercancel", function () { clearTimeout(pressT); dragging = false; movingCard = null; wrap.classList.remove("arranging"); unlift(); });
     wrap.addEventListener("wheel", function (e) { e.preventDefault(); scroll = Math.min(maxScroll, Math.max(0, scroll + e.deltaY)); }, { passive: false });
     wrap.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && e.target.classList && e.target.classList.contains("mcard")) location.hash = "#/truco/" + e.target.getAttribute("data-id");
+    });
+    // ---- cajones: crear, abrir, renombrar, eliminar ----
+    rail.addEventListener("click", function (e) {
+      var add = e.target.closest("#railAdd");
+      if (add) {
+        var name = (prompt("Nombre del caj\u00f3n (p. ej. Bolos, En ensayo, Favoritos)") || "").trim();
+        if (!name) return;
+        mesaOrg.drawers.push({ id: uid(), name: name.slice(0, 24) });
+        saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
+        return;
+      }
+      if (e.target.closest("#railRen")) {
+        var d0 = mesaOrg.drawers.filter(function (d) { return d.id === mesaDrawer; })[0];
+        var nn = (prompt("Nuevo nombre", d0 ? d0.name : "") || "").trim();
+        if (nn && d0) { d0.name = nn.slice(0, 24); saveMesaOrg(); buildMesa(mesaList, false); bindCardThumbs(); }
+        return;
+      }
+      if (e.target.closest("#railDel")) {
+        if (!confirm("\u00bfEliminar este caj\u00f3n? Sus cartas vuelven a la mesa.")) return;
+        for (var k in mesaOrg.items) if (mesaOrg.items[k] === mesaDrawer) delete mesaOrg.items[k];
+        mesaOrg.drawers = mesaOrg.drawers.filter(function (d) { return d.id !== mesaDrawer; });
+        mesaDrawer = null; saveMesaOrg(); snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
+        return;
+      }
+      var slotEl = e.target.closest(".rail-slot[data-drawer]");
+      if (slotEl) {
+        var id = slotEl.getAttribute("data-drawer") || null;
+        mesaDrawer = (id === mesaDrawer) ? null : id;
+        snd("drawer"); buildMesa(mesaList, false); bindCardThumbs();
+      }
     });
     tick();
   }
@@ -1948,6 +2063,23 @@
     }
     var cv = a.createConvolver(); cv.buffer = revBuf; return cv;
   }
+  var cardBuf = null;
+  function makeCardBuf(a) {
+    if (cardBuf) return cardBuf;
+    var sr = a.sampleRate, len = Math.floor(sr * 0.17);
+    cardBuf = a.createBuffer(1, len, sr);
+    var d = cardBuf.getChannelData(0), lp = 0, lp2 = 0, grain = 1, step = Math.floor(sr / 320);
+    for (var i = 0; i < len; i++) {
+      var t = i / len;
+      var env = Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.12)), 1.7);
+      if (i % step === 0) grain = 0.5 + Math.random() * 0.5;
+      var w = Math.random() * 2 - 1;
+      var cut = 0.34 - 0.24 * t;
+      lp += cut * (w - lp); lp2 += cut * (lp - lp2);
+      d[i] = lp2 * env * grain * 2.4;
+    }
+    return cardBuf;
+  }
   var lastTap = 0;
   function snd(kind) {
     if (!sndEnabled) return;
@@ -1995,15 +2127,24 @@
         // Yema sobre fieltro: golpe sordo con cuerpo grave, casi subliminal
         noise({ type: "lowpass", f0: 420, f1: 150, dur: 0.045, vol: 0.5, q: 0.7, rev: 0.25 });
         partial(155, { dur: 0.055, vol: 0.22, glide: 0.82, wave: "sine", rev: 0.2 });
-      } else if (kind === "slide") {
-        // Carta deslizándose sobre el tapete: soplo con forma, no estática
-        noise({ f0: 1500, f1: 380, dur: 0.16, vol: 0.34, q: 1.4, attack: 0.03, rev: 0.5 });
-        noise({ type: "highpass", f0: 2600, f1: 900, dur: 0.1, vol: 0.1, q: 0.7, attack: 0.02, rev: 0.4 });
-      } else if (kind === "deal") {
-        // Reparto: tres cartas rápidas
-        noise({ f0: 1600, f1: 420, dur: 0.09, vol: 0.26, q: 1.5, attack: 0.015, rev: 0.4 });
-        noise({ f0: 1400, f1: 400, dur: 0.09, vol: 0.24, q: 1.5, at: 0.085, attack: 0.015, rev: 0.4 });
-        noise({ f0: 1750, f1: 460, dur: 0.1, vol: 0.22, q: 1.5, at: 0.17, attack: 0.015, rev: 0.5 });
+      } else if (kind === "slide" || kind === "deal") {
+        // Carta real deslizándose: buffer horneado con grano de fricción,
+        // velocidad ligeramente aleatoria para que nunca suene clonado.
+        var plays = kind === "deal" ? [[0, 1.18, 0.4], [0.09, 1.04, 0.36], [0.18, 0.92, 0.33]] : [[0, 0.94 + Math.random() * 0.18, 0.5]];
+        plays.forEach(function (pp) {
+          var src = a.createBufferSource(); src.buffer = makeCardBuf(a); src.playbackRate.value = pp[1];
+          var g = a.createGain(); g.gain.value = pp[2];
+          src.connect(g); g.connect(dry);
+          var rg = a.createGain(); rg.gain.value = 0.5; g.connect(rg); rg.connect(rev);
+          src.start(t + pp[0]);
+          // la carta se posa: toque sordo al final
+          partial(120, { at: pp[0] + 0.15 / pp[1], dur: 0.05, vol: 0.1, glide: 0.8, rev: 0.2 });
+        });
+      } else if (kind === "drawer") {
+        // Cajón de madera: golpe grave con cuerpo y un toque de latón
+        noise({ type: "lowpass", f0: 340, f1: 110, dur: 0.11, vol: 0.55, q: 0.8, rev: 0.5 });
+        partial(96, { dur: 0.13, vol: 0.3, glide: 0.75, rev: 0.4 });
+        partial(1180, { at: 0.02, dur: 0.05, vol: 0.05, rev: 0.6 });
       } else if (kind === "pluck") {
         // Me gusta: nota cálida corta con octava fantasma
         partial(523.25, { dur: 0.22, vol: 0.3, glide: 0.985, rev: 0.9 });

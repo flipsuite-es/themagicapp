@@ -3,7 +3,8 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/r/:code", "destination": "/r.html" }
+    { "source": "/r", "destination": "/e.html" },
+    { "source": "/r/:code", "destination": "/e.html" }
   ],
   "headers": [
     {
@@ -11,11 +12,11 @@
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     },
     {
-      "source": "/r.html",
+      "source": "/r/:code",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     },
     {
-      "source": "/r/:code",
+      "source": "/e.html",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     }
   ]

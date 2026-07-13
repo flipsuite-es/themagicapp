@@ -3083,11 +3083,11 @@
     return Cloud.mrMyHandle().then(function (c) { mrState.code = c; return c; }).catch(function () { return null; });
   }
   function mrSpectatorUrl() {
-    // Enlace permanente: /r?c=<código>. /r sirve r.html (neutro, fuera del SW) por
-    // las clean URLs de Vercel, y el código va en el parámetro (funciona en todos
-    // los móviles, sin depender de reescrituras ni del fragmento #).
+    // Enlace permanente y limpio: /r/<código>. En Vercel una reescritura sirve
+    // e.html para /r y /r/<código> (e.html lee el código de la ruta, del hash o
+    // de ?c=, así el enlace nunca depende de un formato concreto).
     var base = location.pathname.replace(/[^/]*$/, "");
-    return mrState.code ? (location.origin + base + "r?c=" + mrState.code) : "";
+    return mrState.code ? (location.origin + base + "r/" + mrState.code) : "";
   }
   function mrFillLinks() {
     var url = mrSpectatorUrl();
@@ -3130,7 +3130,7 @@
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Revelación musical</h1></div>' +
       '<p class="subtitle">Configura la frase inocente y prepara el truco. Tu enlace es permanente: el espectador lo abre cuando quieras y se puede repetir tantas veces como haga falta, sin caducidad.</p>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
-      '<div class="mr-code">/r?c=<b id="mrCodeBig">…</b></div>' +
+      '<div class="mr-code">/r/<b id="mrCodeBig">…</b></div>' +
       '<div class="mr-linkfull" id="mrLinkShort">…</div>' +
       '<p class="hint">Es siempre tu enlace, para cualquier momento. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y espera tu revelación.</p></div>' +
       '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
@@ -3174,7 +3174,7 @@
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Truco preparado</h1></div>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
-      '<div class="mr-code">/r?c=<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
+      '<div class="mr-code">/r/<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
       '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + "</div>" +
       '<p class="hint">Es siempre el mismo, para cualquier momento. El espectador lo abre y espera; al enviar la revelación, su móvil abre YouTube. Se puede repetir cuantas veces quieras, incluso si vuelve a entrar en el enlace.</p>' +
       '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
@@ -3233,7 +3233,7 @@
       mrDiagRow("Sondeo de estado", mrState.poll ? "activo (2 s)" : "inactivo") +
       mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
       mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
-      mrDiagRow("Enlace permanente", "/r?c=" + (mrState.code || "…") + " · sin caducidad") +
+      mrDiagRow("Enlace permanente", "/r/" + (mrState.code || "…") + " · sin caducidad") +
       mrDiagRow("Último error", d.err || "—");
   }
   function mrMonitor() {
@@ -3265,7 +3265,7 @@
      El router solo rebota cualquier enlace antiguo #/r/<código> hacia /r/<código>. */
   function renderSpectator(code) {
     var base = location.pathname.replace(/[^/]*$/, "");
-    window.location.replace(location.origin + base + "r?c=" + encodeURIComponent(code || ""));
+    window.location.replace(location.origin + base + "r/" + encodeURIComponent(code || ""));
   }
 
   /* ------------------------- LECTOR MENTAL --------------------------- */

@@ -56,19 +56,43 @@
     }
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
-    function go(url, rev) {
-      if (done || !url) return;
+    function go(reveal, rev) {
+      if (done || !reveal || !reveal.youtube_url) return;
       done = true; stop();
-      // Acuse de entrega (no bloquea) y a YouTube real. La sesión NO caduca ni se
-      // consume: al volver a entrar en el enlace, el truco puede repetirse.
+      // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume:
+      // al volver a entrar en el enlace, el truco puede repetirse.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      window.location.replace(url);
+      openReal(reveal);
+    }
+    // Abre YouTube REAL prefiriendo la APP (reproduce con sonido, sin la
+    // restricción de autoplay silenciado del navegador). Si la app no está,
+    // cae a la web (que arrancará en mudo por política del navegador).
+    function openReal(reveal) {
+      var web = reveal.youtube_url, id = reveal.video_id || "", t = reveal.start_seconds || 0;
+      var ua = navigator.userAgent || "";
+      if (id && /Android/i.test(ua)) {
+        // Intent con fallback nativo al navegador si la app no está instalada.
+        window.location.replace("intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+          "#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=" +
+          encodeURIComponent(web) + ";end");
+        return;
+      }
+      if (id && /iPhone|iPad|iPod/i.test(ua)) {
+        // Intenta la app de YouTube (suena). Si en ~1,4 s no nos hemos ido, no
+        // estaba instalada → abre la web.
+        var wentToApp = false;
+        document.addEventListener("visibilitychange", function () { if (document.hidden) wentToApp = true; });
+        window.setTimeout(function () { if (!wentToApp) window.location.replace(web); }, 1400);
+        window.location.href = "youtube://watch?v=" + id + "&t=" + t;
+        return;
+      }
+      window.location.replace(web);
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {
         if (!p) { tries++; if (tries > 40) gone(); return; } // fallo de red transitorio: reintenta
         tries = 0;
-        if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal.youtube_url, p.rev); return; }
+        if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal, p.rev); return; }
         // p.ok sin señal nueva → sigue esperando (siempre disponible).
         if (!p.ok && p.reason === "not_found") { gone(); return; }
       });

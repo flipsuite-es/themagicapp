@@ -40,6 +40,7 @@ ok('cloud: mrSendReveal envía p_input (entrada cruda al servidor)', /p_input:\s
 ok('cloud: expone mrMyHandle (código permanente)', /mrMyHandle/.test(cloud));
 ok("app: el enlace del espectador usa el código permanente /r/<código>", /base \+ "r\/" \+ mrState\.code/.test(app));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
+ok('r.html: prefiere abrir la app de YouTube (sonido) con fallback web', /youtube:\/\//.test(rhtml) && /intent:\/\//.test(rhtml) && /browser_fallback_url/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---

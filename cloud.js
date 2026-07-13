@@ -220,6 +220,41 @@ window.Cloud = (function () {
       .then(function (r) { return r.error ? null : r.data; }).catch(function () { return null; });
   }
 
+  /* ================= Revelación musical (truco) ================= */
+  // El mago crea una sesión efímera; devuelve la fila (incluye spectator_token).
+  function mrCreateSession(innocent, trig, startMode, custom) {
+    return sb.rpc("mr_create_session", { p_innocent: innocent, p_trigger: trig, p_start_mode: startMode, p_custom: custom })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  // Envío manual de la revelación (Paso 1). Valida propiedad y el id de vídeo en el servidor.
+  function mrSendReveal(sessionId, videoId, startSeconds) {
+    return sb.rpc("mr_send_reveal", { p_session: sessionId, p_video_id: videoId, p_start: startSeconds })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrStatus(sessionId) {
+    return sb.rpc("mr_session_status", { p_session: sessionId })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrCancel(sessionId) {
+    return sb.rpc("mr_cancel_session", { p_session: sessionId })
+      .then(function (r) { return r.data; }).catch(function () { return null; });
+  }
+  // El espectador (anónimo) valida su token y se conecta.
+  function mrSpectatorJoin(token) {
+    return sb.rpc("mr_spectator_join", { p_token: token })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  // El espectador obtiene la revelación autoritativa (un solo uso).
+  function mrSpectatorPoll(token) {
+    return sb.rpc("mr_spectator_poll", { p_token: token })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  // Canal efímero de señalización (broadcast) compartido por mago y espectador.
+  function mrChannel(sessionId) {
+    if (!sb) return null;
+    return sb.channel("mr-" + sessionId, { config: { broadcast: { self: false } } });
+  }
+
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
   function getMyProfile() {
@@ -371,6 +406,8 @@ window.Cloud = (function () {
     listRoutines: listRoutines, upsertRoutine: upsertRoutine, deleteRoutine: deleteRoutine,
     listGigs: listGigs, upsertGig: upsertGig, deleteGig: deleteGig,
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
+    mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
+    mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,

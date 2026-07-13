@@ -3065,7 +3065,192 @@
       '<div class="hero"><h2>Lector Mental</h2><p>La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.</p></div>' +
       '<button class="btn" onclick="location.hash=\'#/lector\'">' + icon("play", "i-sm") + " Actuar</button>" +
       '<button class="btn ghost" onclick="location.hash=\'#/lector-metodo\'">' + icon("book", "i-sm") + " Aprender el método</button>" +
+      '<div class="hero" style="margin-top:22px"><h2>Revelación musical</h2><p>El espectador dice un cantante y su propio móvil abre, solo, la canción en YouTube.</p></div>' +
+      (cloudReady() ? '<button class="btn" onclick="location.hash=\'#/revelacion-musical\'">' + icon("play", "i-sm") + " Preparar truco</button>"
+        : '<p class="hint">Este truco necesita tu cuenta en la nube. Inicia sesión para usarlo.</p>') +
       "</div>";
+  }
+
+  /* ==================== REVELACIÓN MUSICAL (truco) ====================
+     Paso 1: sesión efímera + página neutra del espectador + realtime +
+     revelación MANUAL desde esta página (para probar el redirect a YouTube
+     en dispositivos reales antes de añadir teclado / OpenAI / YouTube API). */
+  var mrState = { session: null, channel: null, poll: null, spectator: false };
+  var MR_INNOCENT_KEY = "magic_mr_innocent";
+
+  function teardownMusicReveal() {
+    if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
+    if (mrState.channel) { try { Cloud.unsubscribeRealtime(mrState.channel); } catch (e) {} mrState.channel = null; }
+    mrState.spectator = false;
+  }
+  function mrStartMode() {
+    var seg = document.getElementById("mrStartSeg");
+    var on = seg && seg.querySelector(".on");
+    return on ? on.getAttribute("data-v") : "chorus_minus_30";
+  }
+  function mrDefaultStart() {
+    var mode = mrState.session ? mrState.session.start_mode : mrStartMode();
+    if (mode === "custom") { var n = parseInt(mrState.session && mrState.session.custom_start_seconds, 10); return isNaN(n) ? 0 : Math.max(0, n); }
+    return 0; // sin base de estribillos (Paso 5) el inicio manual arranca en 0 salvo que se indique
+  }
+  function parseYouTubeId(s) {
+    s = String(s || "").trim();
+    var m = s.match(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    return null;
+  }
+  function renderMusicReveal() {
+    clearTabbar(); teardownMusicReveal();
+    if (!cloudReady() || !logged()) { location.hash = "#/incluidos"; return; }
+    if (mrState.session) return mrRenderSession();
+    var saved = "";
+    try { saved = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
+    if (!saved) saved = "restaurantes italianos cerca de mí";
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Revelación musical</h1></div>' +
+      '<p class="subtitle">Configura la frase inocente, prepara la sesión y muéstrale el enlace al espectador. Cuando llegue su cantante, envías la revelación y su móvil abre YouTube solo.</p>' +
+      '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
+      '<input id="mrInnocent" type="text" value="' + esc(saved) + '" placeholder="restaurantes italianos cerca de mí">' +
+      '<div class="hint">Es lo que se verá escribirse en Google mientras tú tecleas en secreto el nombre del cantante.</div></div>' +
+      '<div class="field"><label>Inicio de la canción</label>' +
+      '<div class="seg" id="mrStartSeg">' +
+      '<button type="button" data-v="start">Desde el principio</button>' +
+      '<button type="button" data-v="chorus_minus_30" class="on">Antes del estribillo</button>' +
+      '<button type="button" data-v="custom">Personalizado</button></div>' +
+      '<div class="hint" id="mrStartHint">Cuando esté la base de estribillos, empezará 30 s antes del estribillo. Hasta entonces, el envío manual arranca donde tú indiques.</div></div>' +
+      '<div class="field" id="mrCustomWrap" style="display:none"><label for="mrCustom">Segundo de inicio</label>' +
+      '<input id="mrCustom" type="number" min="0" inputmode="numeric" value="0"></div>' +
+      '<div class="field"><label>Disparador del teclado</label><input type="text" value="qq" disabled>' +
+      '<div class="hint">Dos letras que envían el cantante sin aparecer en Google. Configurable en el futuro. El teclado es un complemento aparte para iPhone.</div></div>' +
+      '<button class="btn" id="mrPrepare">' + icon("play", "i-sm") + " Preparar truco</button>" +
+      "</div>";
+    view.querySelectorAll("#mrStartSeg button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        view.querySelectorAll("#mrStartSeg button").forEach(function (x) { x.classList.toggle("on", x === btn); });
+        var cw = document.getElementById("mrCustomWrap"); if (cw) cw.style.display = btn.getAttribute("data-v") === "custom" ? "block" : "none";
+      });
+    });
+    document.getElementById("mrPrepare").addEventListener("click", function () {
+      var innocent = (document.getElementById("mrInnocent").value || "").trim();
+      var mode = mrStartMode();
+      var custom = mode === "custom" ? Math.max(0, parseInt(document.getElementById("mrCustom").value, 10) || 0) : null;
+      try { localStorage.setItem(MR_INNOCENT_KEY, innocent); } catch (e) {}
+      var btn = document.getElementById("mrPrepare"); btn.disabled = true; btn.textContent = "Preparando…";
+      Cloud.mrCreateSession(innocent, "qq", mode, custom).then(function (s) {
+        mrState.session = s; mrRenderSession();
+      }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Preparar truco"; toast("No se pudo preparar la sesión"); });
+    });
+  }
+  function mrSpectatorUrl() {
+    return location.origin + location.pathname + "#/r/" + (mrState.session ? mrState.session.spectator_token : "");
+  }
+  function mrRenderSession() {
+    var url = mrSpectatorUrl();
+    view.innerHTML =
+      '<div class="screen">' +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Sesión preparada</h1></div>' +
+      '<div class="panel"><div class="sec-label">Enlace del espectador</div>' +
+      '<p class="hint">Muéstraselo al espectador para que lo abra en su móvil (pronto con código QR). Caduca en 15 minutos y es de un solo uso.</p>' +
+      '<div class="linkbox"><input readonly id="mrLink" value="' + esc(url) + '"></div>' +
+      '<div class="row" style="margin-top:10px"><button class="btn" id="mrCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
+      (navigator.share ? '<button class="btn ghost" id="mrShare">' + icon("share", "i-sm") + " Compartir…</button>" : "") + "</div></div>" +
+      '<div class="panel" id="mrStatusPanel"><div class="sec-label">Estado</div>' +
+      '<div class="mr-status" id="mrStatusLine">' + icon("refresh", "i-sm") + " <span>Esperando al espectador…</span></div></div>" +
+      '<div class="panel"><div class="sec-label">Revelación (manual)</div>' +
+      '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para probar en dispositivos reales que el móvil del espectador abre YouTube solo. Cuando conectemos el teclado y las APIs, esto será automático.</p>' +
+      '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" placeholder="https://www.youtube.com/watch?v=…"></div>' +
+      '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
+      '<button class="btn" id="mrReveal">' + icon("play", "i-sm") + " Enviar revelación</button></div>" +
+      '<button class="btn danger" id="mrCancelBtn">Cancelar sesión</button>' +
+      "</div>";
+    var linkInput = document.getElementById("mrLink");
+    document.getElementById("mrCopy").addEventListener("click", function () {
+      try { linkInput.select(); } catch (e) {}
+      copyText(url).then(function (ok) { toast(ok ? "Enlace copiado" : "Selecciónalo y copia"); });
+    });
+    var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: url }).catch(function () {}); });
+    document.getElementById("mrCancelBtn").addEventListener("click", function () {
+      if (!confirm("¿Cancelar la sesión? El enlace dejará de funcionar.")) return;
+      Cloud.mrCancel(mrState.session.id); teardownMusicReveal(); mrState.session = null; location.hash = "#/incluidos";
+    });
+    document.getElementById("mrReveal").addEventListener("click", function () {
+      var vid = parseYouTubeId(document.getElementById("mrVid").value);
+      if (!vid) { toast("Enlace o ID de YouTube no válido"); return; }
+      var start = Math.max(0, parseInt(document.getElementById("mrStart").value, 10) || 0);
+      var btn = document.getElementById("mrReveal"); btn.disabled = true; btn.textContent = "Enviando…";
+      Cloud.mrSendReveal(mrState.session.id, vid, start).then(function () {
+        mrSignal("reveal");
+        mrSetStatus(icon("play", "i-sm"), "Revelación enviada. El móvil del espectador debería abrir YouTube.");
+        btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
+      }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación"; toast("No se pudo enviar la revelación"); });
+    });
+    mrConnectMagician();
+  }
+  function mrSetStatus(iconHtml, text) {
+    var line = document.getElementById("mrStatusLine");
+    if (line) line.innerHTML = iconHtml + " <span>" + esc(text) + "</span>";
+  }
+  function mrSignal(event) {
+    if (mrState.channel) { try { mrState.channel.send({ type: "broadcast", event: event, payload: {} }); } catch (e) {} }
+  }
+  function mrConnectMagician() {
+    teardownMusicReveal();
+    var ch = Cloud.mrChannel(mrState.session.id);
+    if (ch) {
+      ch.on("broadcast", { event: "spectator_ready" }, function () {
+        mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
+      });
+      ch.subscribe();
+      mrState.channel = ch;
+    }
+    // Respaldo del realtime: sondeo del estado cada 3 s
+    mrState.poll = setInterval(function () {
+      if (!mrState.session) return;
+      Cloud.mrStatus(mrState.session.id).then(function (st) {
+        if (!st || !st.ok) return;
+        if (st.status === "completed") { mrSetStatus(icon("check", "i-sm"), "Truco completado."); return; }
+        if (st.reveal) { mrSetStatus(icon("play", "i-sm"), "Revelación enviada."); return; }
+        if (st.spectator_connected) mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
+      }).catch(function () {});
+    }, 3000);
+  }
+
+  /* ---- Página temporal del espectador: neutra, sin marca ni menú ---- */
+  function mrSpectatorScreen(msg) {
+    return '<div class="mr-spec"><div class="mr-spec-dot"></div><div class="mr-spec-msg">' + esc(msg || "Preparando experiencia…") + "</div></div>";
+  }
+  function renderSpectator(token) {
+    clearTabbar(); teardownMusicReveal(); mrState.spectator = true;
+    view.innerHTML = mrSpectatorScreen("Preparando experiencia…");
+    if (!token || !cloudReady()) { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); return; }
+    var done = false;
+    var go = function (reveal) {
+      if (done || !reveal || !reveal.youtube_url) return;
+      done = true; teardownMusicReveal();
+      window.location.replace(reveal.youtube_url);
+    };
+    Cloud.mrSpectatorJoin(token).then(function (r) {
+      if (!r || !r.ok) { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); return; }
+      if (r.reveal) { go(r.reveal); return; }
+      var ch = Cloud.mrChannel(r.session_id);
+      if (ch) {
+        ch.on("broadcast", { event: "reveal" }, function () {
+          Cloud.mrSpectatorPoll(token).then(function (p) { if (p && p.ok && p.reveal) go(p.reveal); }).catch(function () {});
+        });
+        ch.subscribe(function (status) { if (status === "SUBSCRIBED") mrSignal("spectator_ready"); });
+        mrState.channel = ch;
+      }
+      // Respaldo: sondeo autoritativo por token cada 2,5 s
+      mrState.poll = setInterval(function () {
+        Cloud.mrSpectatorPoll(token).then(function (p) {
+          if (!p) return;
+          if (p.ok && p.reveal) go(p.reveal);
+          else if (!p.ok) { teardownMusicReveal(); }
+        }).catch(function () {});
+      }, 2500);
+    }).catch(function () { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); });
   }
 
   /* ------------------------- LECTOR MENTAL --------------------------- */
@@ -3632,7 +3817,10 @@
       // Limpieza al salir de pantallas con estado vivo (fugas de listeners/observers/vídeo)
       if (h0.indexOf("#/lector") !== 0) teardownLector();
       if (h0 !== "#/clips" && h0.indexOf("#/clips/") !== 0) teardownClips();
+      if (h0 !== "#/revelacion-musical" && h0.indexOf("#/r/") !== 0) teardownMusicReveal();
       teardownStories();
+      // Página neutra del espectador (truco de revelación): salta candado y login
+      if (h0.indexOf("#/r/") === 0) return renderSpectator(h0.slice(4));
       // Enlace compartido: contenido público de solo lectura; salta candado y login
       if (h0.indexOf("#/s/") === 0) return renderShared(h0.slice(4));
       if (chatCh && h0.indexOf("#/chat/") !== 0) { Cloud.unsubscribeRealtime(chatCh); chatCh = null; }
@@ -3686,6 +3874,7 @@
       if (h.indexOf("#/mago/") === 0) return socialEnabled ? renderProfile(h.slice(7)) : renderLibrary();
       if (h.indexOf("#/mercado/") === 0) return socialEnabled ? renderListing(h.slice(10)) : renderLibrary();
       if (h === "#/incluidos") return renderIncluded();
+      if (h === "#/revelacion-musical") return renderMusicReveal();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
       if (h === "#/ajustes") return renderSettings();

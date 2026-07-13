@@ -46,37 +46,37 @@
     if (!code) code = param("c");
     code = (code || "").replace(/[^A-Za-z0-9]/g, "");   // el código es base36; descarta cualquier otra cosa
     var tok = param("t");
-    if (!code && !tok) { neutral("Este enlace ya no está disponible."); return; }
-    var joinFn = code ? "mr_spectator_join_by_code" : "mr_spectator_join";
-    var pollFn = code ? "mr_spectator_poll_by_code" : "mr_spectator_poll";
-    var arg = code ? { p_code: code } : { p_token: tok };
-    function rpc(fn, body) {
+    if (!code) { neutral("Este enlace ya no está disponible."); return; }
+    function rpc(fn, body, keepalive) {
       return fetch(SB + "/rest/v1/rpc/" + fn, {
         method: "POST",
         headers: { "apikey": KEY, "Authorization": "Bearer " + KEY, "Content-Type": "application/json" },
-        body: JSON.stringify(body), cache: "no-store", credentials: "omit"
+        body: JSON.stringify(body), cache: "no-store", credentials: "omit", keepalive: !!keepalive
       }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
     }
-    var done = false, timer = null, tries = 0;
+    var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
-    function go(url) {
+    function go(url, rev) {
       if (done || !url) return;
       done = true; stop();
-      // Abandona esta página y abre YouTube real (respeta &t= cuando el dispositivo lo permite)
+      // Acuse de entrega (no bloquea) y a YouTube real. La sesión NO caduca ni se
+      // consume: al volver a entrar en el enlace, el truco puede repetirse.
+      rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
       window.location.replace(url);
     }
     function poll() {
-      rpc(pollFn, arg).then(function (p) {
+      rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {
         if (!p) { tries++; if (tries > 40) gone(); return; } // fallo de red transitorio: reintenta
         tries = 0;
-        if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal.youtube_url); return; }
-        // p.ok con reveal null / status 'idle' → el mago aún no ha revelado; se sigue esperando.
-        // Solo un código/enlace inexistente ('not_found') es terminal.
+        if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal.youtube_url, p.rev); return; }
+        // p.ok sin señal nueva → sigue esperando (siempre disponible).
         if (!p.ok && p.reason === "not_found") { gone(); return; }
       });
     }
-    rpc(joinFn, arg).then(function (j) {
-      if (j && j.ok === false && j.reason === "not_found") { gone(); return; }
+    // Baseline: espera una señal MÁS NUEVA que la que hay al entrar.
+    rpc("mr_spec_state", { p_code: code }).then(function (s) {
+      if (!s || (s.ok === false && s.reason === "not_found")) { gone(); return; }
+      baseline = (s && typeof s.rev === "number") ? s.rev : 0;
       poll();
       timer = setInterval(poll, 1000);
     });

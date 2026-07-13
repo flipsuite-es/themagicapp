@@ -259,6 +259,18 @@ window.Cloud = (function () {
   function mrMyHandle() {
     return sb.rpc("mr_my_handle").then(function (r) { if (r.error) throw r.error; return r.data; });
   }
+  // Modelo "en vivo": permanente por mago, sin caducidad, repetible.
+  function mrPrepare(innocent, trig, startMode, custom) {
+    return sb.rpc("mr_prepare", { p_innocent: innocent, p_trigger: trig, p_start_mode: startMode, p_custom: custom })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrSendRevealLive(rawInput, startSeconds) {
+    return sb.rpc("mr_send_reveal_live", { p_input: rawInput, p_start: startSeconds })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrLiveStatus() {
+    return sb.rpc("mr_live_status").then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
 
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
@@ -413,6 +425,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,

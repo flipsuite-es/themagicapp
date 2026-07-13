@@ -2056,6 +2056,18 @@ window.Cloud = (function () {
   function mrMyHandle() {
     return sb.rpc("mr_my_handle").then(function (r) { if (r.error) throw r.error; return r.data; });
   }
+  // Modelo "en vivo": permanente por mago, sin caducidad, repetible.
+  function mrPrepare(innocent, trig, startMode, custom) {
+    return sb.rpc("mr_prepare", { p_innocent: innocent, p_trigger: trig, p_start_mode: startMode, p_custom: custom })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrSendRevealLive(rawInput, startSeconds) {
+    return sb.rpc("mr_send_reveal_live", { p_input: rawInput, p_start: startSeconds })
+      .then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
+  function mrLiveStatus() {
+    return sb.rpc("mr_live_status").then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
 
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
@@ -2210,6 +2222,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
@@ -5314,7 +5327,7 @@ window.Cloud = (function () {
      Paso 1: sesión efímera + página neutra del espectador + realtime +
      revelación MANUAL desde esta página (para probar el redirect a YouTube
      en dispositivos reales antes de añadir teclado / OpenAI / YouTube API). */
-  var mrState = { session: null, channel: null, poll: null, spectator: false, diag: null, code: null };
+  var mrState = { poll: null, diag: null, code: null, ready: false, startMode: "chorus_minus_30", custom: null };
   // Enlace permanente y corto del mago (no cambia nunca). Se pide una vez y se cachea.
   function mrEnsureCode() {
     if (mrState.code) return Promise.resolve(mrState.code);
@@ -5337,8 +5350,6 @@ window.Cloud = (function () {
 
   function teardownMusicReveal() {
     if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
-    if (mrState.channel) { try { Cloud.unsubscribeRealtime(mrState.channel); } catch (e) {} mrState.channel = null; }
-    mrState.spectator = false;
   }
   function mrStartMode() {
     var seg = document.getElementById("mrStartSeg");
@@ -5346,25 +5357,24 @@ window.Cloud = (function () {
     return on ? on.getAttribute("data-v") : "chorus_minus_30";
   }
   function mrDefaultStart() {
-    var mode = mrState.session ? mrState.session.start_mode : mrStartMode();
-    if (mode === "custom") { var n = parseInt(mrState.session && mrState.session.custom_start_seconds, 10); return isNaN(n) ? 0 : Math.max(0, n); }
+    if (mrState.startMode === "custom") { var n = parseInt(mrState.custom, 10); return isNaN(n) ? 0 : Math.max(0, n); }
     return 0; // sin base de estribillos (Paso 5) el inicio manual arranca en 0 salvo que se indique
   }
   function renderMusicReveal() {
     clearTabbar(); teardownMusicReveal();
     if (!cloudReady() || !logged()) { location.hash = "#/incluidos"; return; }
-    if (mrState.session) return mrRenderSession();
+    if (mrState.ready) return mrRenderSession();
     var saved = "";
     try { saved = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
     if (!saved) saved = "restaurantes italianos cerca de mí";
     view.innerHTML =
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Revelación musical</h1></div>' +
-      '<p class="subtitle">Configura la frase inocente, prepara la sesión y muéstrale el enlace al espectador. Cuando llegue su cantante, envías la revelación y su móvil abre YouTube solo.</p>' +
+      '<p class="subtitle">Configura la frase inocente y prepara el truco. Tu enlace es permanente: el espectador lo abre cuando quieras y se puede repetir tantas veces como haga falta, sin caducidad.</p>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
       '<div class="mr-code">/r#<b id="mrCodeBig">…</b></div>' +
       '<div class="mr-linkfull" id="mrLinkShort">…</div>' +
-      '<p class="hint">Este es siempre tu enlace. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y se conecta a la sesión que prepares.</p></div>' +
+      '<p class="hint">Es siempre tu enlace, para cualquier momento. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y espera tu revelación.</p></div>' +
       '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
       '<input id="mrInnocent" type="text" value="' + esc(saved) + '" placeholder="restaurantes italianos cerca de mí">' +
       '<div class="hint">Es lo que se verá escribirse en Google mientras tú tecleas en secreto el nombre del cantante.</div></div>' +
@@ -5393,42 +5403,39 @@ window.Cloud = (function () {
       var custom = mode === "custom" ? Math.max(0, parseInt(document.getElementById("mrCustom").value, 10) || 0) : null;
       try { localStorage.setItem(MR_INNOCENT_KEY, innocent); } catch (e) {}
       var btn = document.getElementById("mrPrepare"); btn.disabled = true; btn.textContent = "Preparando…";
-      Cloud.mrCreateSession(innocent, "qq", mode, custom).then(function (s) {
-        mrState.session = s; mrRenderSession();
-      }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Preparar truco"; toast("No se pudo preparar la sesión"); });
+      Cloud.mrPrepare(innocent, "qq", mode, custom).then(function (s) {
+        mrState.ready = true; mrState.startMode = mode; mrState.custom = custom;
+        if (s && s.code) mrState.code = s.code;
+        mrRenderSession();
+      }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Preparar truco"; toast("No se pudo preparar el truco"); });
     });
   }
   function mrRenderSession() {
-    mrState.diag = { ws: "conectando…", sentAt: 0, consumedAt: 0, saved: false, consumed: false, spectator: false, status: mrState.session.status || "waiting", err: "" };
+    mrState.diag = { sentAt: 0, saved: false, spectator: false, sentRev: 0, deliveredRev: 0, err: "" };
     view.innerHTML =
       '<div class="screen">' +
-      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Sesión preparada</h1></div>' +
+      '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Truco preparado</h1></div>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
       '<div class="mr-code">/r#<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
       '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + "</div>" +
-      '<p class="hint">Memorízalo: es siempre el mismo. El espectador lo abre en su móvil y se conecta a la sesión que tengas activa. Caduca a los 15 min y la revelación es de un solo uso.</p>' +
+      '<p class="hint">Es siempre el mismo, para cualquier momento. El espectador lo abre y espera; al enviar la revelación, su móvil abre YouTube. Se puede repetir cuantas veces quieras, incluso si vuelve a entrar en el enlace.</p>' +
       '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
       '<div class="row" style="margin-top:10px"><button class="btn" id="mrCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
       (navigator.share ? '<button class="btn ghost" id="mrShare">' + icon("share", "i-sm") + " Compartir…</button>" : "") + "</div></div>" +
       '<div class="panel" id="mrStatusPanel"><div class="sec-label">Estado</div>' +
       '<div class="mr-status" id="mrStatusLine">' + icon("refresh", "i-sm") + " <span>Esperando al espectador…</span></div></div>" +
       '<div class="panel"><div class="sec-label">Revelación (manual)</div>' +
-      '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para comprobar en móviles reales que el móvil del espectador abre YouTube solo. Con el teclado y las APIs, esto será automático.</p>' +
+      '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para comprobar en móviles reales que el móvil del espectador abre YouTube solo. Puedes enviarla las veces que quieras (con cada espectador). Con el teclado y las APIs, esto será automático.</p>' +
       '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…"></div>' +
       '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
       '<button class="btn" id="mrReveal">' + icon("play", "i-sm") + " Enviar revelación</button></div>" +
       '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div></details>' +
-      '<button class="btn danger" id="mrCancelBtn">Cancelar sesión</button>' +
       "</div>";
     document.getElementById("mrCopy").addEventListener("click", function () {
       var u = mrSpectatorUrl(); var inp = document.getElementById("mrLink"); if (inp) try { inp.select(); } catch (e) {}
       copyText(u).then(function (ok) { toast(ok ? "Enlace copiado" : "Selecciónalo y copia"); });
     });
     var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: mrSpectatorUrl() }).catch(function () {}); });
-    document.getElementById("mrCancelBtn").addEventListener("click", function () {
-      if (!confirm("¿Cancelar la sesión? El enlace dejará de funcionar.")) return;
-      Cloud.mrCancel(mrState.session.id); teardownMusicReveal(); mrState.session = null; location.hash = "#/incluidos";
-    });
     document.getElementById("mrReveal").addEventListener("click", function () {
       var raw = (document.getElementById("mrVid").value || "").trim();
       if (!raw) { toast("Pega un enlace o ID de YouTube"); return; }
@@ -5436,24 +5443,19 @@ window.Cloud = (function () {
       var btn = document.getElementById("mrReveal"); btn.disabled = true; btn.textContent = "Enviando…";
       mrState.diag.sentAt = Date.now(); mrState.diag.err = ""; mrRenderDiag();
       // El servidor valida y construye la URL canónica; el cliente nunca la controla.
-      Cloud.mrSendReveal(mrState.session.id, raw, start).then(function (res) {
-        if (res && res.ok === false) {
-          mrState.diag.err = res.reason || "error"; mrRenderDiag();
-          btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
-          toast(res.reason === "consumed" ? "Ya se ha usado esta sesión" : res.reason === "cancelled" ? "La sesión está cancelada" : "No se pudo enviar");
-          return;
-        }
+      Cloud.mrSendRevealLive(raw, start).then(function (res) {
+        if (res && res.rev) mrState.diag.sentRev = res.rev;
         mrState.diag.saved = true; mrRenderDiag();
-        mrSignal("reveal"); // aviso rápido (la entrega real la resuelve el sondeo por token)
-        mrSetStatus(icon("check", "i-sm"), res && res.already ? "Ya se había enviado la revelación." : "Revelación enviada. El móvil del espectador debería abrir YouTube.");
-        btn.disabled = true; btn.innerHTML = icon("check", "i-sm") + " Revelación enviada"; // no re-ejecutable
+        mrSetStatus(icon("check", "i-sm"), "Revelación enviada (nº " + (res && res.rev ? res.rev : "") + "). El móvil del espectador debería abrir YouTube.");
+        // Repetible: el botón vuelve a estar disponible para el siguiente espectador
+        btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar de nuevo";
       }).catch(function (e) {
         mrState.diag.err = (e && e.message) ? String(e.message) : "invalid"; mrRenderDiag();
         btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
         toast("Enlace o ID de YouTube no válido");
       });
     });
-    mrConnectMagician();
+    mrMonitor();
     mrRenderDiag();
     mrEnsureCode().then(mrFillLinks); // rellena el enlace fijo en cuanto se conoce el código
   }
@@ -5461,54 +5463,39 @@ window.Cloud = (function () {
     var line = document.getElementById("mrStatusLine");
     if (line) line.innerHTML = iconHtml + " <span>" + esc(text) + "</span>";
   }
-  function mrSignal(event) {
-    if (mrState.channel) { try { mrState.channel.send({ type: "broadcast", event: event, payload: {} }); } catch (e) {} }
-  }
   function mrDiagRow(label, value) {
     return '<div class="mr-drow"><span>' + esc(label) + '</span><b>' + esc(value) + "</b></div>";
   }
   function mrRenderDiag() {
     var b = document.getElementById("mrDiagBody"); if (!b || !mrState.diag) return;
     var d = mrState.diag;
-    var t = (d.sentAt && d.consumedAt) ? ((d.consumedAt - d.sentAt) / 1000).toFixed(1) + " s" : (d.sentAt ? "esperando…" : "—");
     b.innerHTML =
-      mrDiagRow("Estado de la sesión", d.status) +
-      mrDiagRow("Espectador conectado", d.spectator ? "sí" : "no") +
-      mrDiagRow("WebSocket (infra realtime)", d.ws) +
-      mrDiagRow("Sondeo de respaldo", mrState.poll ? "activo (2 s)" : "inactivo") +
-      mrDiagRow("Revelación guardada", d.saved ? "sí" : "no") +
-      mrDiagRow("Revelación entregada (≈ redirección)", d.consumed ? "sí" : "no") +
-      mrDiagRow("Tiempo envío → entrega", t) +
+      mrDiagRow("Espectador mirando", d.spectator ? "sí" : "no") +
+      mrDiagRow("Sondeo de estado", mrState.poll ? "activo (2 s)" : "inactivo") +
+      mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
+      mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
+      mrDiagRow("Enlace permanente", "/r#" + (mrState.code || "…") + " · sin caducidad") +
       mrDiagRow("Último error", d.err || "—");
   }
-  function mrConnectMagician() {
+  function mrMonitor() {
     teardownMusicReveal();
-    // Canal en tiempo real: aviso rápido + comprobación de salud (diagnóstico).
-    var ch = Cloud.mrChannel(mrState.session.id);
-    if (ch) {
-      ch.subscribe(function (status) {
-        if (mrState.diag) { mrState.diag.ws = status === "SUBSCRIBED" ? "conectado" : (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") ? "desconectado" : String(status || "—").toLowerCase(); mrRenderDiag(); }
-      });
-      mrState.channel = ch;
-    } else if (mrState.diag) { mrState.diag.ws = "no disponible"; }
-    // Fuente de la verdad: el servidor. Sondeo de estado cada 2 s.
+    // Fuente de la verdad: el servidor. Sondeo del estado en vivo cada 2 s.
     mrState.poll = setInterval(function () {
-      if (!mrState.session) return;
-      Cloud.mrStatus(mrState.session.id).then(function (st) {
+      if (!Cloud.mrLiveStatus) return;
+      Cloud.mrLiveStatus().then(function (st) {
         if (!st || !st.ok || !mrState.diag) return;
-        mrState.diag.status = st.status;
-        mrState.diag.spectator = !!st.spectator_connected;
+        mrState.diag.spectator = !!st.spectator_seen;
         mrState.diag.saved = mrState.diag.saved || !!st.reveal_saved;
-        if (st.reveal_consumed && !mrState.diag.consumed) { mrState.diag.consumed = true; mrState.diag.consumedAt = Date.now(); }
-        if (st.status === "reveal_consumed") {
+        if (typeof st.rev === "number") mrState.diag.sentRev = st.rev;
+        if (typeof st.delivered_rev === "number") mrState.diag.deliveredRev = st.delivered_rev;
+        if (st.delivered_rev && st.delivered_rev >= st.rev && st.reveal_saved) {
           mrSetStatus(icon("check", "i-sm"), "Revelación entregada al espectador (debería estar abriendo YouTube).");
-          if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
         } else if (st.reveal_saved) {
           mrSetStatus(icon("check", "i-sm"), "Revelación enviada. Esperando a que el móvil del espectador la reciba…");
-        } else if (st.spectator_connected) {
-          mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
-        } else if (st.status === "expired") {
-          mrSetStatus(icon("refresh", "i-sm"), "La sesión ha caducado. Vuelve a prepararla.");
+        } else if (st.spectator_seen) {
+          mrSetStatus(icon("check", "i-sm"), "Espectador mirando el enlace. Todo preparado.");
+        } else {
+          mrSetStatus(icon("refresh", "i-sm"), "Esperando a que el espectador abra tu enlace…");
         }
         mrRenderDiag();
       }).catch(function () {});

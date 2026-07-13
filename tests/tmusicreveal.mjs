@@ -15,7 +15,12 @@ const cloud = readFileSync(ROOT + 'cloud.js', 'utf8');
 
 // --- Estáticos: el service worker deja r.html fuera ---
 ok('sw: r.html NO está en el precache (ASSETS)', !/["']\.\/r\.html["']/.test(sw));
-ok('sw: bypass de red para r.html', /r\\?\.html/.test(sw) && /return;/.test(sw));
+ok('sw: bypass de red para /r y /r.html (cleanUrls de Vercel)', /r\(\\\.html\)\?\$/.test(sw));
+// Vercel sirve r.html en /r (cleanUrls) y le pone Cache-Control no-store
+const vercel = JSON.parse(readFileSync(ROOT + 'vercel.json', 'utf8'));
+const noStore = (vercel.headers || []).some(h => (h.source === '/r' || h.source === '/r.html') &&
+  (h.headers || []).some(x => x.key === 'Cache-Control' && /no-store/.test(x.value)));
+ok('vercel: Cache-Control no-store para la página del espectador', noStore);
 
 // --- Estáticos: r.html es neutra, ligera y aislada ---
 ok('r.html: título neutro', /<title>\s*Preparando/i.test(rhtml));

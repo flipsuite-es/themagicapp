@@ -9,7 +9,7 @@ const ok = (name, cond) => { if (cond) { pass++; } else { fail++; console.log(' 
 
 const ROOT = new URL('../', import.meta.url).pathname;
 const sw = readFileSync(ROOT + 'sw.js', 'utf8');
-const rhtml = readFileSync(ROOT + 'e.html', 'utf8');
+const rhtml = readFileSync(ROOT + 'r.html', 'utf8');
 const app = readFileSync(ROOT + 'app.js', 'utf8');
 const cloud = readFileSync(ROOT + 'cloud.js', 'utf8');
 
@@ -21,7 +21,6 @@ const vercel = JSON.parse(readFileSync(ROOT + 'vercel.json', 'utf8'));
 const noStore = (vercel.headers || []).some(h => /^\/r/.test(h.source) &&
   (h.headers || []).some(x => x.key === 'Cache-Control' && /no-store/.test(x.value)));
 ok('vercel: Cache-Control no-store para la página del espectador', noStore);
-ok('vercel: reescribe /r y /r/:code a e.html', (vercel.rewrites || []).some(r => /\/r\/:code/.test(r.source) && /e\.html/.test(r.destination)));
 
 // --- Estáticos: r.html es neutra, ligera y aislada ---
 ok('r.html: título neutro', /<title>\s*Preparando/i.test(rhtml));
@@ -38,7 +37,7 @@ ok('r.html: no menciona la marca ni el nombre del truco', !/App del Mago/.test(r
 // --- Estáticos: entrada cruda al servidor + código permanente ---
 ok('cloud: mrSendReveal envía p_input (entrada cruda al servidor)', /p_input:\s*rawInput/.test(cloud));
 ok('cloud: expone mrMyHandle (código permanente)', /mrMyHandle/.test(cloud));
-ok("app: el enlace del espectador usa el código permanente /r/<código>", /base \+ "r\/" \+ mrState\.code/.test(app));
+ok("app: el enlace del espectador usa el código permanente /r?c=<código>", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
 ok('r.html: prefiere abrir la app de YouTube (sonido) con fallback web', /youtube:\/\//.test(rhtml) && /intent:\/\//.test(rhtml) && /browser_fallback_url/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
@@ -49,7 +48,7 @@ const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceW
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', e => errs.push(e.message));
-await p.goto('http://127.0.0.1:8099/e.html?c=NOPE');
+await p.goto('http://127.0.0.1:8099/r.html?c=NOPE');
 await p.waitForTimeout(1200);
 const spec = await p.evaluate(() => ({
   title: document.title,
@@ -77,7 +76,7 @@ const p2 = await ctx2.newPage();
 await p2.addInitScript(() => { localStorage.setItem('magic_theme', 'light'); localStorage.setItem('magic_social', '1'); localStorage.setItem('magic_onboard', '1'); });
 await p2.route('**/cloud.js', r => r.fulfill({ contentType: 'application/javascript', body: STUB }));
 await p2.goto('http://127.0.0.1:8099/#/r/1'); await p2.waitForTimeout(1200);
-ok('app: #/r/1 rebota a /r/1', /\/r\/1$/.test(p2.url()));
+ok('app: #/r/1 rebota a /r?c=1', /\/r\?c=1$/.test(p2.url()));
 await ctx2.close();
 
 await b.close();

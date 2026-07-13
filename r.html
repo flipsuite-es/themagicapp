@@ -38,9 +38,13 @@
     function neutral(t) { msg.textContent = t; }
     function gone() { stop(); neutral("Este enlace ya no está disponible."); }
     function param(k) { try { var m = location.search.match(new RegExp("[?&]" + k + "=([^&]+)")); return m ? decodeURIComponent(m[1]) : ""; } catch (e) { return ""; } }
-    // El enlace es /r/<código> (permanente por mago). También acepta ?c=<código> y el antiguo ?t=<token>.
-    var code = ""; try { var pm = location.pathname.match(/\/r\/([^/?#]+)/); if (pm) code = decodeURIComponent(pm[1]); } catch (e) {}
+    // Enlace permanente por mago: appdelmago.com/r#<código>. También acepta
+    // /r/<código>, ?c=<código> y el antiguo ?t=<token>.
+    var code = "";
+    try { if (location.hash && location.hash.length > 1) code = decodeURIComponent(location.hash.slice(1)); } catch (e) {}
+    if (!code) { try { var pm = location.pathname.match(/\/r\/([^/?#]+)/); if (pm) code = decodeURIComponent(pm[1]); } catch (e) {} }
     if (!code) code = param("c");
+    code = (code || "").replace(/[^A-Za-z0-9]/g, "");   // el código es base36; descarta cualquier otra cosa
     var tok = param("t");
     if (!code && !tok) { neutral("Este enlace ya no está disponible."); return; }
     var joinFn = code ? "mr_spectator_join_by_code" : "mr_spectator_join";

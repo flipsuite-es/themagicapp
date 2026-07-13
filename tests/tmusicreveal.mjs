@@ -38,7 +38,9 @@ ok('r.html: no menciona la marca ni el nombre del truco', !/App del Mago/.test(r
 // --- Estáticos: entrada cruda al servidor + código permanente ---
 ok('cloud: mrSendReveal envía p_input (entrada cruda al servidor)', /p_input:\s*rawInput/.test(cloud));
 ok('cloud: expone mrMyHandle (código permanente)', /mrMyHandle/.test(cloud));
-ok('app: el enlace del espectador usa el código permanente /r#<código>', /base \+ "r#" \+ mrState\.code/.test(app));
+ok('app: el enlace del espectador usa el código permanente /r?c=<código>', /base \+ "r\?c=" \+ mrState\.code/.test(app));
+ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
+ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
@@ -74,7 +76,7 @@ const p2 = await ctx2.newPage();
 await p2.addInitScript(() => { localStorage.setItem('magic_theme', 'light'); localStorage.setItem('magic_social', '1'); localStorage.setItem('magic_onboard', '1'); });
 await p2.route('**/cloud.js', r => r.fulfill({ contentType: 'application/javascript', body: STUB }));
 await p2.goto('http://127.0.0.1:8099/#/r/1'); await p2.waitForTimeout(1200);
-ok('app: #/r/1 rebota a /r#1', /\/r#1$/.test(p2.url()));
+ok('app: #/r/1 rebota a /r?c=1', /\/r\?c=1$/.test(p2.url()));
 await ctx2.close();
 
 await b.close();

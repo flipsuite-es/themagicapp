@@ -80,8 +80,21 @@
       poll();
       timer = setInterval(poll, 1000);
     });
-    // Recupera al volver a primer plano (móvil bloqueado/desbloqueado, pestaña en 2º plano)
-    document.addEventListener("visibilitychange", function () { if (!document.hidden && !done) poll(); });
+    // Mantiene la pantalla del espectador encendida mientras espera (Wake Lock).
+    // El SO lo suelta al ocultar/bloquear, así que se vuelve a pedir al regresar.
+    var wl = null;
+    function keepAwake() {
+      try {
+        if (navigator.wakeLock && navigator.wakeLock.request) {
+          navigator.wakeLock.request("screen").then(function (w) { wl = w; }).catch(function () {});
+        }
+      } catch (e) {}
+    }
+    keepAwake();
+    // Recupera sondeo y Wake Lock al volver a primer plano (bloqueo/desbloqueo, 2º plano)
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && !done) { poll(); keepAwake(); }
+    });
   })();
   </script>
 </body>

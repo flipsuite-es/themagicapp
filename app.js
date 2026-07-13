@@ -3075,7 +3075,7 @@
      Paso 1: sesión efímera + página neutra del espectador + realtime +
      revelación MANUAL desde esta página (para probar el redirect a YouTube
      en dispositivos reales antes de añadir teclado / OpenAI / YouTube API). */
-  var mrState = { poll: null, diag: null, code: null, ready: false, startMode: "chorus_minus_30", custom: null };
+  var mrState = { poll: null, diag: null, code: null, ready: false, startMode: "chorus_minus_30", custom: null, visH: null };
   // Enlace permanente y corto del mago (no cambia nunca). Se pide una vez y se cachea.
   function mrEnsureCode() {
     if (mrState.code) return Promise.resolve(mrState.code);
@@ -3083,10 +3083,11 @@
     return Cloud.mrMyHandle().then(function (c) { mrState.code = c; return c; }).catch(function () { return null; });
   }
   function mrSpectatorUrl() {
-    // Enlace permanente: /r#<código>. /r sirve r.html (neutro, fuera del SW) y el
-    // código va en el hash, así no depende de reescrituras del servidor.
+    // Enlace permanente: /r?c=<código>. /r sirve r.html (neutro, fuera del SW) por
+    // las clean URLs de Vercel, y el código va en el parámetro (funciona en todos
+    // los móviles, sin depender de reescrituras ni del fragmento #).
     var base = location.pathname.replace(/[^/]*$/, "");
-    return mrState.code ? (location.origin + base + "r#" + mrState.code) : "";
+    return mrState.code ? (location.origin + base + "r?c=" + mrState.code) : "";
   }
   function mrFillLinks() {
     var url = mrSpectatorUrl();
@@ -3098,6 +3099,15 @@
 
   function teardownMusicReveal() {
     if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
+    if (mrState.visH) { document.removeEventListener("visibilitychange", mrState.visH); mrState.visH = null; }
+    releaseWake();
+  }
+  // Mantiene la pantalla encendida mientras el mago está en el truco (y la
+  // vuelve a pedir al regresar a primer plano, porque el SO la suelta al ocultar).
+  function mrKeepAwake() {
+    requestWake();
+    mrState.visH = function () { if (!document.hidden) requestWake(); };
+    document.addEventListener("visibilitychange", mrState.visH);
   }
   function mrStartMode() {
     var seg = document.getElementById("mrStartSeg");
@@ -3120,7 +3130,7 @@
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Revelación musical</h1></div>' +
       '<p class="subtitle">Configura la frase inocente y prepara el truco. Tu enlace es permanente: el espectador lo abre cuando quieras y se puede repetir tantas veces como haga falta, sin caducidad.</p>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
-      '<div class="mr-code">/r#<b id="mrCodeBig">…</b></div>' +
+      '<div class="mr-code">/r?c=<b id="mrCodeBig">…</b></div>' +
       '<div class="mr-linkfull" id="mrLinkShort">…</div>' +
       '<p class="hint">Es siempre tu enlace, para cualquier momento. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y espera tu revelación.</p></div>' +
       '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
@@ -3164,7 +3174,7 @@
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Truco preparado</h1></div>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
-      '<div class="mr-code">/r#<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
+      '<div class="mr-code">/r?c=<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
       '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + "</div>" +
       '<p class="hint">Es siempre el mismo, para cualquier momento. El espectador lo abre y espera; al enviar la revelación, su móvil abre YouTube. Se puede repetir cuantas veces quieras, incluso si vuelve a entrar en el enlace.</p>' +
       '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
@@ -3204,6 +3214,7 @@
       });
     });
     mrMonitor();
+    mrKeepAwake(); // la pantalla del mago no se apaga mientras prepara/actúa
     mrRenderDiag();
     mrEnsureCode().then(mrFillLinks); // rellena el enlace fijo en cuanto se conoce el código
   }
@@ -3222,7 +3233,7 @@
       mrDiagRow("Sondeo de estado", mrState.poll ? "activo (2 s)" : "inactivo") +
       mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
       mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
-      mrDiagRow("Enlace permanente", "/r#" + (mrState.code || "…") + " · sin caducidad") +
+      mrDiagRow("Enlace permanente", "/r?c=" + (mrState.code || "…") + " · sin caducidad") +
       mrDiagRow("Último error", d.err || "—");
   }
   function mrMonitor() {
@@ -3254,7 +3265,7 @@
      El router solo rebota cualquier enlace antiguo #/r/<código> hacia /r/<código>. */
   function renderSpectator(code) {
     var base = location.pathname.replace(/[^/]*$/, "");
-    window.location.replace(location.origin + base + "r#" + encodeURIComponent(code || ""));
+    window.location.replace(location.origin + base + "r?c=" + encodeURIComponent(code || ""));
   }
 
   /* ------------------------- LECTOR MENTAL --------------------------- */

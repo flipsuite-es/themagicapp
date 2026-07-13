@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/:code([a-z0-9]{1,10})", "destination": "/r" }
+  ],
   "headers": [
     {
       "source": "/r",
@@ -9,6 +12,10 @@
     },
     {
       "source": "/r.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
+    },
+    {
+      "source": "/:code([a-z0-9]{1,10})",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     }
   ]

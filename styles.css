@@ -1773,3 +1773,4 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mr-code { font-family: var(--display); font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 6px 0 2px; color: var(--ink); }
 .mr-code b { background: var(--foil); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; padding: 0 0.06em; }
 .mr-linkfull { font-size: 13px; color: var(--ink-faint); font-family: var(--ui); word-break: break-all; margin-bottom: 4px; }
+.mr-linkalt { font-size: 11.5px; color: var(--ink-faint); font-family: var(--ui); opacity: .8; margin-bottom: 4px; }

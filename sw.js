@@ -1,7 +1,7 @@
 /* Service worker de App del Mago.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v82";
+var CACHE = "magic-v83";
 var ASSETS = [
   "./",
   "./index.html",
@@ -74,8 +74,8 @@ self.addEventListener("fetch", function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
   // La página del espectador queda FUERA del SW: ni se precachea ni se cachea
-  // ni funciona offline. En Vercel (cleanUrls) su ruta es /r; también /r.html.
-  if (/(^|\/)r(\.html)?$/.test(url.pathname)) return;
+  // ni funciona offline. Rutas: /r, /r.html y /r/<código> (enlace permanente).
+  if (/(^|\/)r(\.html)?(\/|$)/.test(url.pathname)) return;
 
   // Navegaciones: red primero CON PLAZO (2.5s). Si la red va lenta o no hay,
   // se sirve el shell cacheado al instante en vez de dejar la pantalla en blanco.

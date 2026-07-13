@@ -1767,3 +1767,9 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mr-diag > summary { cursor: pointer; padding: 10px 0; font-size: 12.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
 .mr-drow { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line-2); font-size: 13px; color: var(--ink-soft); }
 .mr-drow b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Enlace fijo (código permanente) del mago */
+.mr-linkcard { text-align: center; }
+.mr-code { font-family: var(--display); font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 6px 0 2px; color: var(--ink); }
+.mr-code b { background: var(--foil); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; padding: 0 0.06em; }
+.mr-linkfull { font-size: 13px; color: var(--ink-faint); font-family: var(--ui); word-break: break-all; margin-bottom: 4px; }

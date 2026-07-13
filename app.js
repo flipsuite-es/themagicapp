@@ -3075,7 +3075,24 @@
      Paso 1: sesión efímera + página neutra del espectador + realtime +
      revelación MANUAL desde esta página (para probar el redirect a YouTube
      en dispositivos reales antes de añadir teclado / OpenAI / YouTube API). */
-  var mrState = { session: null, channel: null, poll: null, spectator: false, diag: null };
+  var mrState = { session: null, channel: null, poll: null, spectator: false, diag: null, code: null };
+  // Enlace permanente y corto del mago (no cambia nunca). Se pide una vez y se cachea.
+  function mrEnsureCode() {
+    if (mrState.code) return Promise.resolve(mrState.code);
+    if (!cloudReady() || !logged() || !Cloud.mrMyHandle) return Promise.resolve(null);
+    return Cloud.mrMyHandle().then(function (c) { mrState.code = c; return c; }).catch(function () { return null; });
+  }
+  function mrSpectatorUrl() {
+    // Página del espectador: /r/<código>, servida por r.html (archivo aparte, neutro, fuera del SW)
+    var base = location.pathname.replace(/[^/]*$/, "");
+    return mrState.code ? (location.origin + base + "r/" + mrState.code) : "";
+  }
+  function mrFillLinks() {
+    var url = mrSpectatorUrl();
+    var inp = document.getElementById("mrLink"); if (inp) inp.value = url;
+    var codeEl = document.getElementById("mrCodeBig"); if (codeEl) codeEl.textContent = mrState.code || "…";
+    var shortEl = document.getElementById("mrLinkShort"); if (shortEl) shortEl.textContent = url ? url.replace(/^https?:\/\//, "") : "…";
+  }
   var MR_INNOCENT_KEY = "magic_mr_innocent";
 
   function teardownMusicReveal() {
@@ -3104,6 +3121,10 @@
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Revelación musical</h1></div>' +
       '<p class="subtitle">Configura la frase inocente, prepara la sesión y muéstrale el enlace al espectador. Cuando llegue su cantante, envías la revelación y su móvil abre YouTube solo.</p>' +
+      '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
+      '<div class="mr-code">/r/<b id="mrCodeBig">…</b></div>' +
+      '<div class="mr-linkfull" id="mrLinkShort">…</div>' +
+      '<p class="hint">Este es siempre tu enlace. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y se conecta a la sesión que prepares.</p></div>' +
       '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
       '<input id="mrInnocent" type="text" value="' + esc(saved) + '" placeholder="restaurantes italianos cerca de mí">' +
       '<div class="hint">Es lo que se verá escribirse en Google mientras tú tecleas en secreto el nombre del cantante.</div></div>' +
@@ -3125,6 +3146,7 @@
         var cw = document.getElementById("mrCustomWrap"); if (cw) cw.style.display = btn.getAttribute("data-v") === "custom" ? "block" : "none";
       });
     });
+    mrEnsureCode().then(mrFillLinks); // muestra el enlace fijo en la pantalla de configuración
     document.getElementById("mrPrepare").addEventListener("click", function () {
       var innocent = (document.getElementById("mrInnocent").value || "").trim();
       var mode = mrStartMode();
@@ -3136,20 +3158,16 @@
       }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Preparar truco"; toast("No se pudo preparar la sesión"); });
     });
   }
-  function mrSpectatorUrl() {
-    // Página del espectador: archivo aparte, neutro y fuera del service worker
-    var base = location.pathname.replace(/[^/]*$/, "");
-    return location.origin + base + "r.html?t=" + encodeURIComponent(mrState.session ? mrState.session.spectator_token : "");
-  }
   function mrRenderSession() {
-    var url = mrSpectatorUrl();
     mrState.diag = { ws: "conectando…", sentAt: 0, consumedAt: 0, saved: false, consumed: false, spectator: false, status: mrState.session.status || "waiting", err: "" };
     view.innerHTML =
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Sesión preparada</h1></div>' +
-      '<div class="panel"><div class="sec-label">Enlace del espectador</div>' +
-      '<p class="hint">Muéstraselo al espectador para que lo abra en su móvil (pronto con código QR). Caduca en 15 minutos y es de un solo uso.</p>' +
-      '<div class="linkbox"><input readonly id="mrLink" value="' + esc(url) + '"></div>' +
+      '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
+      '<div class="mr-code">/r/<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
+      '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + "</div>" +
+      '<p class="hint">Memorízalo: es siempre el mismo. El espectador lo abre en su móvil y se conecta a la sesión que tengas activa. Caduca a los 15 min y la revelación es de un solo uso.</p>' +
+      '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
       '<div class="row" style="margin-top:10px"><button class="btn" id="mrCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
       (navigator.share ? '<button class="btn ghost" id="mrShare">' + icon("share", "i-sm") + " Compartir…</button>" : "") + "</div></div>" +
       '<div class="panel" id="mrStatusPanel"><div class="sec-label">Estado</div>' +
@@ -3162,12 +3180,11 @@
       '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div></details>' +
       '<button class="btn danger" id="mrCancelBtn">Cancelar sesión</button>' +
       "</div>";
-    var linkInput = document.getElementById("mrLink");
     document.getElementById("mrCopy").addEventListener("click", function () {
-      try { linkInput.select(); } catch (e) {}
-      copyText(url).then(function (ok) { toast(ok ? "Enlace copiado" : "Selecciónalo y copia"); });
+      var u = mrSpectatorUrl(); var inp = document.getElementById("mrLink"); if (inp) try { inp.select(); } catch (e) {}
+      copyText(u).then(function (ok) { toast(ok ? "Enlace copiado" : "Selecciónalo y copia"); });
     });
-    var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: url }).catch(function () {}); });
+    var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: mrSpectatorUrl() }).catch(function () {}); });
     document.getElementById("mrCancelBtn").addEventListener("click", function () {
       if (!confirm("¿Cancelar la sesión? El enlace dejará de funcionar.")) return;
       Cloud.mrCancel(mrState.session.id); teardownMusicReveal(); mrState.session = null; location.hash = "#/incluidos";
@@ -3198,6 +3215,7 @@
     });
     mrConnectMagician();
     mrRenderDiag();
+    mrEnsureCode().then(mrFillLinks); // rellena el enlace fijo en cuanto se conoce el código
   }
   function mrSetStatus(iconHtml, text) {
     var line = document.getElementById("mrStatusLine");
@@ -3258,10 +3276,10 @@
   }
 
   /* La página del espectador vive en r.html (aparte, neutra, fuera del SW).
-     El router solo rebota cualquier enlace #/r/<token> hacia ese archivo. */
-  function renderSpectator(token) {
+     El router solo rebota cualquier enlace antiguo #/r/<código> hacia /r/<código>. */
+  function renderSpectator(code) {
     var base = location.pathname.replace(/[^/]*$/, "");
-    window.location.replace(location.origin + base + "r.html?t=" + encodeURIComponent(token || ""));
+    window.location.replace(location.origin + base + "r/" + encodeURIComponent(code || ""));
   }
 
   /* ------------------------- LECTOR MENTAL --------------------------- */

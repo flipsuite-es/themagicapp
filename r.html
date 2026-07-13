@@ -37,11 +37,15 @@
     var msg = document.getElementById("m");
     function neutral(t) { msg.textContent = t; }
     function gone() { stop(); neutral("Este enlace ya no está disponible."); }
-    function token() {
-      try { var m = location.search.match(/[?&]t=([^&]+)/); return m ? decodeURIComponent(m[1]) : ""; } catch (e) { return ""; }
-    }
-    var tok = token();
-    if (!tok) { neutral("Este enlace ya no está disponible."); return; }
+    function param(k) { try { var m = location.search.match(new RegExp("[?&]" + k + "=([^&]+)")); return m ? decodeURIComponent(m[1]) : ""; } catch (e) { return ""; } }
+    // El enlace es /r/<código> (permanente por mago). También acepta ?c=<código> y el antiguo ?t=<token>.
+    var code = ""; try { var pm = location.pathname.match(/\/r\/([^/?#]+)/); if (pm) code = decodeURIComponent(pm[1]); } catch (e) {}
+    if (!code) code = param("c");
+    var tok = param("t");
+    if (!code && !tok) { neutral("Este enlace ya no está disponible."); return; }
+    var joinFn = code ? "mr_spectator_join_by_code" : "mr_spectator_join";
+    var pollFn = code ? "mr_spectator_poll_by_code" : "mr_spectator_poll";
+    var arg = code ? { p_code: code } : { p_token: tok };
     function rpc(fn, body) {
       return fetch(SB + "/rest/v1/rpc/" + fn, {
         method: "POST",
@@ -58,24 +62,22 @@
       window.location.replace(url);
     }
     function poll() {
-      rpc("mr_spectator_poll", { p_token: tok }).then(function (p) {
+      rpc(pollFn, arg).then(function (p) {
         if (!p) { tries++; if (tries > 40) gone(); return; } // fallo de red transitorio: reintenta
         tries = 0;
         if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal.youtube_url); return; }
-        if (!p.ok) {
-          // 'not_found' | 'consumed' | 'cancelled' | 'expired' → estado terminal neutro
-          gone(); return;
-        }
-        // p.ok con reveal null → aún esperando; el intervalo seguirá consultando
+        // p.ok con reveal null / status 'idle' → el mago aún no ha revelado; se sigue esperando.
+        // Solo un código/enlace inexistente ('not_found') es terminal.
+        if (!p.ok && p.reason === "not_found") { gone(); return; }
       });
     }
-    rpc("mr_spectator_join", { p_token: tok }).then(function (j) {
-      if (!j || !j.ok) { gone(); return; }
+    rpc(joinFn, arg).then(function (j) {
+      if (j && j.ok === false && j.reason === "not_found") { gone(); return; }
       poll();
       timer = setInterval(poll, 1000);
     });
     // Recupera al volver a primer plano (móvil bloqueado/desbloqueado, pestaña en 2º plano)
-    document.addEventListener("visibilitychange", function () { if (!document.hidden && !done && tok) poll(); });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && !done) poll(); });
   })();
   </script>
 </body>

@@ -255,6 +255,10 @@ window.Cloud = (function () {
     if (!sb) return null;
     return sb.channel("mr-" + sessionId, { config: { broadcast: { self: false } } });
   }
+  // Código permanente y corto del mago (su enlace fijo no cambia nunca).
+  function mrMyHandle() {
+    return sb.rpc("mr_my_handle").then(function (r) { if (r.error) throw r.error; return r.data; });
+  }
 
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
@@ -408,7 +412,7 @@ window.Cloud = (function () {
     listGigs: listGigs, upsertGig: upsertGig, deleteGig: deleteGig,
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
-    mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel,
+    mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,

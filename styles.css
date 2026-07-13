@@ -1757,20 +1757,13 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .hfade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px); mask-image: linear-gradient(90deg, transparent, #000 44px); }
 .hfade-l.hfade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); }
 
-/* ==================== Revelación musical (truco) ==================== */
-/* Estado en la página del mago */
+/* ==================== Revelación musical (truco) ====================
+   (La página del espectador es r.html, un archivo aparte y neutro.) */
 .mr-status { display: flex; align-items: center; gap: 9px; color: var(--ink-soft); font-size: 14.5px; }
 .mr-status .i { color: var(--brand); flex: 0 0 auto; }
 
-/* Página temporal del espectador: neutra, a pantalla completa, sin marca.
-   Colores propios (no dependen del tema del mago) y cubre todo el shell. */
-.mr-spec {
-  position: fixed; inset: 0; z-index: 500; background: #0b0b0d; color: #cfcfd6;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 18px; padding: 32px; text-align: center;
-  padding-top: calc(32px + env(safe-area-inset-top)); padding-bottom: calc(32px + env(safe-area-inset-bottom));
-}
-.mr-spec-dot { width: 12px; height: 12px; border-radius: 50%; background: #cfcfd6; opacity: .55; animation: mrPulse 1.6s ease-in-out infinite; }
-.mr-spec-msg { font-family: var(--ui); font-size: 15px; letter-spacing: .01em; opacity: .8; max-width: 20em; line-height: 1.5; }
-@keyframes mrPulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: .7; transform: scale(1.15); } }
-@media (prefers-reduced-motion: reduce) { .mr-spec-dot { animation: none; } }
+/* Diagnóstico privado del mago (solo pruebas; nunca visible para el espectador) */
+.mr-diag { margin: 0 0 14px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--surface) 60%, transparent); padding: 4px 14px; }
+.mr-diag > summary { cursor: pointer; padding: 10px 0; font-size: 12.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
+.mr-drow { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line-2); font-size: 13px; color: var(--ink-soft); }
+.mr-drow b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }

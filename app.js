@@ -3075,7 +3075,7 @@
      Paso 1: sesión efímera + página neutra del espectador + realtime +
      revelación MANUAL desde esta página (para probar el redirect a YouTube
      en dispositivos reales antes de añadir teclado / OpenAI / YouTube API). */
-  var mrState = { session: null, channel: null, poll: null, spectator: false };
+  var mrState = { session: null, channel: null, poll: null, spectator: false, diag: null };
   var MR_INNOCENT_KEY = "magic_mr_innocent";
 
   function teardownMusicReveal() {
@@ -3092,13 +3092,6 @@
     var mode = mrState.session ? mrState.session.start_mode : mrStartMode();
     if (mode === "custom") { var n = parseInt(mrState.session && mrState.session.custom_start_seconds, 10); return isNaN(n) ? 0 : Math.max(0, n); }
     return 0; // sin base de estribillos (Paso 5) el inicio manual arranca en 0 salvo que se indique
-  }
-  function parseYouTubeId(s) {
-    s = String(s || "").trim();
-    var m = s.match(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/);
-    if (m) return m[1];
-    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
-    return null;
   }
   function renderMusicReveal() {
     clearTabbar(); teardownMusicReveal();
@@ -3144,10 +3137,13 @@
     });
   }
   function mrSpectatorUrl() {
-    return location.origin + location.pathname + "#/r/" + (mrState.session ? mrState.session.spectator_token : "");
+    // Página del espectador: archivo aparte, neutro y fuera del service worker
+    var base = location.pathname.replace(/[^/]*$/, "");
+    return location.origin + base + "r.html?t=" + encodeURIComponent(mrState.session ? mrState.session.spectator_token : "");
   }
   function mrRenderSession() {
     var url = mrSpectatorUrl();
+    mrState.diag = { ws: "conectando…", sentAt: 0, consumedAt: 0, saved: false, consumed: false, spectator: false, status: mrState.session.status || "waiting", err: "" };
     view.innerHTML =
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Sesión preparada</h1></div>' +
@@ -3159,10 +3155,11 @@
       '<div class="panel" id="mrStatusPanel"><div class="sec-label">Estado</div>' +
       '<div class="mr-status" id="mrStatusLine">' + icon("refresh", "i-sm") + " <span>Esperando al espectador…</span></div></div>" +
       '<div class="panel"><div class="sec-label">Revelación (manual)</div>' +
-      '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para probar en dispositivos reales que el móvil del espectador abre YouTube solo. Cuando conectemos el teclado y las APIs, esto será automático.</p>' +
-      '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" placeholder="https://www.youtube.com/watch?v=…"></div>' +
+      '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para comprobar en móviles reales que el móvil del espectador abre YouTube solo. Con el teclado y las APIs, esto será automático.</p>' +
+      '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…"></div>' +
       '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
       '<button class="btn" id="mrReveal">' + icon("play", "i-sm") + " Enviar revelación</button></div>" +
+      '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div></details>' +
       '<button class="btn danger" id="mrCancelBtn">Cancelar sesión</button>' +
       "</div>";
     var linkInput = document.getElementById("mrLink");
@@ -3176,17 +3173,31 @@
       Cloud.mrCancel(mrState.session.id); teardownMusicReveal(); mrState.session = null; location.hash = "#/incluidos";
     });
     document.getElementById("mrReveal").addEventListener("click", function () {
-      var vid = parseYouTubeId(document.getElementById("mrVid").value);
-      if (!vid) { toast("Enlace o ID de YouTube no válido"); return; }
+      var raw = (document.getElementById("mrVid").value || "").trim();
+      if (!raw) { toast("Pega un enlace o ID de YouTube"); return; }
       var start = Math.max(0, parseInt(document.getElementById("mrStart").value, 10) || 0);
       var btn = document.getElementById("mrReveal"); btn.disabled = true; btn.textContent = "Enviando…";
-      Cloud.mrSendReveal(mrState.session.id, vid, start).then(function () {
-        mrSignal("reveal");
-        mrSetStatus(icon("play", "i-sm"), "Revelación enviada. El móvil del espectador debería abrir YouTube.");
+      mrState.diag.sentAt = Date.now(); mrState.diag.err = ""; mrRenderDiag();
+      // El servidor valida y construye la URL canónica; el cliente nunca la controla.
+      Cloud.mrSendReveal(mrState.session.id, raw, start).then(function (res) {
+        if (res && res.ok === false) {
+          mrState.diag.err = res.reason || "error"; mrRenderDiag();
+          btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
+          toast(res.reason === "consumed" ? "Ya se ha usado esta sesión" : res.reason === "cancelled" ? "La sesión está cancelada" : "No se pudo enviar");
+          return;
+        }
+        mrState.diag.saved = true; mrRenderDiag();
+        mrSignal("reveal"); // aviso rápido (la entrega real la resuelve el sondeo por token)
+        mrSetStatus(icon("check", "i-sm"), res && res.already ? "Ya se había enviado la revelación." : "Revelación enviada. El móvil del espectador debería abrir YouTube.");
+        btn.disabled = true; btn.innerHTML = icon("check", "i-sm") + " Revelación enviada"; // no re-ejecutable
+      }).catch(function (e) {
+        mrState.diag.err = (e && e.message) ? String(e.message) : "invalid"; mrRenderDiag();
         btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
-      }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación"; toast("No se pudo enviar la revelación"); });
+        toast("Enlace o ID de YouTube no válido");
+      });
     });
     mrConnectMagician();
+    mrRenderDiag();
   }
   function mrSetStatus(iconHtml, text) {
     var line = document.getElementById("mrStatusLine");
@@ -3195,62 +3206,62 @@
   function mrSignal(event) {
     if (mrState.channel) { try { mrState.channel.send({ type: "broadcast", event: event, payload: {} }); } catch (e) {} }
   }
+  function mrDiagRow(label, value) {
+    return '<div class="mr-drow"><span>' + esc(label) + '</span><b>' + esc(value) + "</b></div>";
+  }
+  function mrRenderDiag() {
+    var b = document.getElementById("mrDiagBody"); if (!b || !mrState.diag) return;
+    var d = mrState.diag;
+    var t = (d.sentAt && d.consumedAt) ? ((d.consumedAt - d.sentAt) / 1000).toFixed(1) + " s" : (d.sentAt ? "esperando…" : "—");
+    b.innerHTML =
+      mrDiagRow("Estado de la sesión", d.status) +
+      mrDiagRow("Espectador conectado", d.spectator ? "sí" : "no") +
+      mrDiagRow("WebSocket (infra realtime)", d.ws) +
+      mrDiagRow("Sondeo de respaldo", mrState.poll ? "activo (2 s)" : "inactivo") +
+      mrDiagRow("Revelación guardada", d.saved ? "sí" : "no") +
+      mrDiagRow("Revelación entregada (≈ redirección)", d.consumed ? "sí" : "no") +
+      mrDiagRow("Tiempo envío → entrega", t) +
+      mrDiagRow("Último error", d.err || "—");
+  }
   function mrConnectMagician() {
     teardownMusicReveal();
+    // Canal en tiempo real: aviso rápido + comprobación de salud (diagnóstico).
     var ch = Cloud.mrChannel(mrState.session.id);
     if (ch) {
-      ch.on("broadcast", { event: "spectator_ready" }, function () {
-        mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
+      ch.subscribe(function (status) {
+        if (mrState.diag) { mrState.diag.ws = status === "SUBSCRIBED" ? "conectado" : (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") ? "desconectado" : String(status || "—").toLowerCase(); mrRenderDiag(); }
       });
-      ch.subscribe();
       mrState.channel = ch;
-    }
-    // Respaldo del realtime: sondeo del estado cada 3 s
+    } else if (mrState.diag) { mrState.diag.ws = "no disponible"; }
+    // Fuente de la verdad: el servidor. Sondeo de estado cada 2 s.
     mrState.poll = setInterval(function () {
       if (!mrState.session) return;
       Cloud.mrStatus(mrState.session.id).then(function (st) {
-        if (!st || !st.ok) return;
-        if (st.status === "completed") { mrSetStatus(icon("check", "i-sm"), "Truco completado."); return; }
-        if (st.reveal) { mrSetStatus(icon("play", "i-sm"), "Revelación enviada."); return; }
-        if (st.spectator_connected) mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
+        if (!st || !st.ok || !mrState.diag) return;
+        mrState.diag.status = st.status;
+        mrState.diag.spectator = !!st.spectator_connected;
+        mrState.diag.saved = mrState.diag.saved || !!st.reveal_saved;
+        if (st.reveal_consumed && !mrState.diag.consumed) { mrState.diag.consumed = true; mrState.diag.consumedAt = Date.now(); }
+        if (st.status === "reveal_consumed") {
+          mrSetStatus(icon("check", "i-sm"), "Revelación entregada al espectador (debería estar abriendo YouTube).");
+          if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
+        } else if (st.reveal_saved) {
+          mrSetStatus(icon("check", "i-sm"), "Revelación enviada. Esperando a que el móvil del espectador la reciba…");
+        } else if (st.spectator_connected) {
+          mrSetStatus(icon("check", "i-sm"), "Espectador conectado. Todo preparado.");
+        } else if (st.status === "expired") {
+          mrSetStatus(icon("refresh", "i-sm"), "La sesión ha caducado. Vuelve a prepararla.");
+        }
+        mrRenderDiag();
       }).catch(function () {});
-    }, 3000);
+    }, 2000);
   }
 
-  /* ---- Página temporal del espectador: neutra, sin marca ni menú ---- */
-  function mrSpectatorScreen(msg) {
-    return '<div class="mr-spec"><div class="mr-spec-dot"></div><div class="mr-spec-msg">' + esc(msg || "Preparando experiencia…") + "</div></div>";
-  }
+  /* La página del espectador vive en r.html (aparte, neutra, fuera del SW).
+     El router solo rebota cualquier enlace #/r/<token> hacia ese archivo. */
   function renderSpectator(token) {
-    clearTabbar(); teardownMusicReveal(); mrState.spectator = true;
-    view.innerHTML = mrSpectatorScreen("Preparando experiencia…");
-    if (!token || !cloudReady()) { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); return; }
-    var done = false;
-    var go = function (reveal) {
-      if (done || !reveal || !reveal.youtube_url) return;
-      done = true; teardownMusicReveal();
-      window.location.replace(reveal.youtube_url);
-    };
-    Cloud.mrSpectatorJoin(token).then(function (r) {
-      if (!r || !r.ok) { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); return; }
-      if (r.reveal) { go(r.reveal); return; }
-      var ch = Cloud.mrChannel(r.session_id);
-      if (ch) {
-        ch.on("broadcast", { event: "reveal" }, function () {
-          Cloud.mrSpectatorPoll(token).then(function (p) { if (p && p.ok && p.reveal) go(p.reveal); }).catch(function () {});
-        });
-        ch.subscribe(function (status) { if (status === "SUBSCRIBED") mrSignal("spectator_ready"); });
-        mrState.channel = ch;
-      }
-      // Respaldo: sondeo autoritativo por token cada 2,5 s
-      mrState.poll = setInterval(function () {
-        Cloud.mrSpectatorPoll(token).then(function (p) {
-          if (!p) return;
-          if (p.ok && p.reveal) go(p.reveal);
-          else if (!p.ok) { teardownMusicReveal(); }
-        }).catch(function () {});
-      }, 2500);
-    }).catch(function () { view.innerHTML = mrSpectatorScreen("Este enlace ya no está disponible."); });
+    var base = location.pathname.replace(/[^/]*$/, "");
+    window.location.replace(location.origin + base + "r.html?t=" + encodeURIComponent(token || ""));
   }
 
   /* ------------------------- LECTOR MENTAL --------------------------- */

@@ -1,7 +1,7 @@
 /* Service worker de App del Mago.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v80";
+var CACHE = "magic-v81";
 var ASSETS = [
   "./",
   "./index.html",
@@ -73,6 +73,9 @@ self.addEventListener("fetch", function (e) {
   // Storage, streaming de vídeo) para no romper sesión ni servir datos viejos.
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
+  // La página del espectador (r.html) queda FUERA del SW: ni se precachea ni se
+  // cachea ni funciona offline. Se sirve siempre desde la red, sin nuestra caché.
+  if (/(^|\/)r\.html$/.test(url.pathname)) return;
 
   // Navegaciones: red primero CON PLAZO (2.5s). Si la red va lenta o no hay,
   // se sirve el shell cacheado al instante en vez de dejar la pantalla en blanco.

@@ -226,9 +226,10 @@ window.Cloud = (function () {
     return sb.rpc("mr_create_session", { p_innocent: innocent, p_trigger: trig, p_start_mode: startMode, p_custom: custom })
       .then(function (r) { if (r.error) throw r.error; return r.data; });
   }
-  // Envío manual de la revelación (Paso 1). Valida propiedad y el id de vídeo en el servidor.
-  function mrSendReveal(sessionId, videoId, startSeconds) {
-    return sb.rpc("mr_send_reveal", { p_session: sessionId, p_video_id: videoId, p_start: startSeconds })
+  // Envío manual de la revelación (Paso 1). El servidor recibe la entrada CRUDA
+  // (URL o ID), extrae y valida el vídeo, y construye él mismo la URL canónica.
+  function mrSendReveal(sessionId, rawInput, startSeconds) {
+    return sb.rpc("mr_send_reveal", { p_session: sessionId, p_input: rawInput, p_start: startSeconds })
       .then(function (r) { if (r.error) throw r.error; return r.data; });
   }
   function mrStatus(sessionId) {

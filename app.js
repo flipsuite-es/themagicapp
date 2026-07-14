@@ -3106,7 +3106,18 @@
   function teardownMusicReveal() {
     if (mrState.poll) { clearInterval(mrState.poll); mrState.poll = null; }
     if (mrState.visH) { document.removeEventListener("visibilitychange", mrState.visH); mrState.visH = null; }
+    mrNotchWhite(false);
     releaseWake();
+  }
+  // Notch/barra de estado BLANCA mientras se ve el buscador de Google (en app
+  // instalada, el notch toma el theme-color oscuro de la app; aquí lo forzamos a
+  // blanco para que quede igual que Google real, y se restaura al salir).
+  function mrNotchWhite(on) {
+    var m = document.getElementById("mrgTheme");
+    if (on) {
+      if (!m) { m = document.createElement("meta"); m.id = "mrgTheme"; m.setAttribute("name", "theme-color"); document.head.appendChild(m); }
+      m.setAttribute("content", "#ffffff");
+    } else if (m && m.parentNode) { m.parentNode.removeChild(m); }
   }
   // Mantiene la pantalla encendida mientras el mago está en el truco (y la
   // vuelve a pedir al regresar a primer plano, porque el SO la suelta al ocultar).
@@ -3351,6 +3362,7 @@
     if (!innocent) innocent = "restaurantes italianos cerca de mí";
     mrSearch = { innocent: innocent, raw: "", artist: "", phase: "secret", practice: !!practice };
     mrRenderSearchScreen();
+    mrNotchWhite(true); // el buscador de Google va sobre fondo blanco: notch blanco
   }
   function mrDots() { var h = ""; for (var i = 0; i < 9; i++) h += "<i></i>"; return h; }
   // Textos según el idioma del móvil (navigator.language). Español o inglés.

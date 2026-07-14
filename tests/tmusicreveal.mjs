@@ -68,6 +68,8 @@ ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 const styles = readFileSync(ROOT + 'styles.css', 'utf8');
 // Se recrea la interfaz completa del navegador (Safari actual) con dominio falso.
 ok('app: recrea Safari actual + Google (banner de app, barra inferior con dominio falso)', /function mrRenderSearchScreen/.test(app) && /mrg-banner/.test(app) && /mrg-spill saddr/.test(app) && /google\.com<\/span>/.test(app));
+// El notch/barra de estado se fuerza a BLANCO mientras se ve Google (app instalada).
+ok('app: notch blanco en el buscador (theme-color)', /function mrNotchWhite/.test(app) && /theme-color/.test(app) && /#ffffff/.test(app) && /mrNotchWhite\(true\)/.test(app));
 // Textos localizados según el idioma del móvil (español / inglés).
 ok('app: textos según el idioma del móvil (navigator.language)', /function mrLang/.test(app) && /navigator\.language/.test(app) && /MR_L10N/.test(app) && /"TODO"/.test(app) && /"IMÁGENES"/.test(app));
 // "Ofrecido por Google en:" varía por PAÍS e idioma (oculta el idioma del móvil).

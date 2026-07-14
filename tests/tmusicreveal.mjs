@@ -30,8 +30,8 @@ ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
 ok('r.html: al llegar la señal sale a YouTube (sin ningún toque), prefiriendo la app', /function go\(/.test(rhtml) && /location\.replace/.test(rhtml) && /www\.youtube\.com\/watch/.test(rhtml));
-// Prefiere la APP de YouTube: esquema youtube:// en iPhone y App Link https en Android, con respaldo web.
-ok('r.html: intenta abrir la app de YouTube (youtube:// + App Link) con respaldo a la web', /youtube:\/\/watch/.test(rhtml) && /Android/.test(rhtml) && /function ytApp/.test(rhtml) && /function ytWeb/.test(rhtml));
+// Prefiere la APP de YouTube: esquema youtube:// en iPhone e intent:// (paquete + fallback) en Android.
+ok('r.html: intenta abrir la app de YouTube (youtube:// + intent:// Android) con respaldo a la web', /youtube:\/\/watch/.test(rhtml) && /intent:\/\//.test(rhtml) && /com\.google\.android\.youtube/.test(rhtml) && /browser_fallback_url/.test(rhtml) && /function ytWeb/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));

@@ -78,8 +78,12 @@
       var id = reveal.video_id, t = reveal.start_seconds || 0, web = ytWeb(id, t);
       var ua = navigator.userAgent || "";
       if (/Android/i.test(ua)) {
-        // App Link verificado: abre la app de YouTube si está; si no, la web.
-        window.location.replace(web);
+        // Un enlace https lanzado por JS (sin toque) NO activa el App Link: Chrome
+        // lo abriría en el navegador. Para abrir la APP se usa una URL intent://
+        // con el paquete de YouTube; browser_fallback_url cae a la web si no está
+        // instalada (sin diálogos de error).
+        var intent = "intent://www.youtube.com/watch?v=" + id + "&t=" + t + "s#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+        window.location.replace(intent);
       } else {
         // iPhone y demás: intenta la app por su esquema; si no abre (no instalada),
         // un respaldo breve carga la web. Si la app abre, la página se oculta y se

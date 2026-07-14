@@ -20,15 +20,21 @@
   .m { font-size: 15px; opacity: .82; max-width: 20em; line-height: 1.5; letter-spacing: .01em; }
   @keyframes p { 0%, 100% { opacity: .22; transform: scale(.8); } 50% { opacity: .7; transform: scale(1.18); } }
   @media (prefers-reduced-motion: reduce) { .d { animation: none; } }
-  /* Capa-enlace: al llegar la señal cubre la pantalla y convierte el primer
-     toque del espectador en un clic de enlace real a YouTube. */
-  #go { position: fixed; inset: 0; z-index: 40; display: none; -webkit-tap-highlight-color: transparent; }
+  /* Reproductor a pantalla completa (se reproduce en esta misma página; el móvil
+     está boca abajo, así que no se ve). La capa "cover" lo tapa hasta la señal. */
+  #yt { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 5; }
+  .cover { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+           align-items: center; justify-content: center; gap: 18px; text-align: center;
+           padding: 32px; background: #0b0b0d; }
+  body.reveal .cover { display: none; }
 </style>
 </head>
 <body>
-  <div class="d" id="d" aria-hidden="true"></div>
-  <div class="m" id="m">Preparando…</div>
-  <a id="go" aria-hidden="true"></a>
+  <div id="yt"></div>
+  <div class="cover" id="cover">
+    <div class="d" id="d" aria-hidden="true"></div>
+    <div class="m" id="m">Preparando…</div>
+  </div>
   <script>
   /* Página temporal del espectador. Deliberadamente aislada de la app:
      - sin app.js/styles.css, sin service worker, sin marca ni menú
@@ -61,54 +67,73 @@
     }
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
-    var pending = null, revealing = false;
-    function go(reveal, rev) {
-      if (done || !reveal || !reveal.youtube_url) return;
-      done = true; stop();
-      // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume:
-      // al volver a entrar en el enlace, el truco puede repetirse.
-      rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      pending = reveal;
-      armReveal(reveal);
-    }
-    // Estrategia (clave para el SONIDO): el primer TOQUE del espectador es un
-    // CLIC DE ENLACE REAL a YouTube. Un clic genuino, dentro del gesto:
-    //   · abre la APP de YouTube si está instalada (Universal Links en iOS /
-    //     App Links en Android) — efecto máximo;
-    //   · si no, carga la WEB de YouTube reproduciendo CON SONIDO, porque la
-    //     activación del toque autoriza el audio (sin que el espectador tenga que
-    //     desmutear) y sin dejar rastro de nuestra página.
-    // El audio sin gesto es imposible (política del navegador): el toque manda.
-    function webUrl(id, t) {
-      return "https://m.youtube.com/watch?v=" + id + "&t=" + t + "s";
-    }
-    function armReveal(reveal) {
-      var id = reveal.video_id || "", t = reveal.start_seconds || 0;
-      var a = document.getElementById("go");
-      if (!a) return;
-      a.href = webUrl(id, t);          // iOS/otros: Universal Link → app, o web con sonido
-      a.style.display = "block";       // cubre la pantalla: cualquier toque = clic del enlace
-      neutral("Toca la pantalla");
-      a.addEventListener("click", function (e) {
-        if (revealing) return; revealing = true;
-        // Android: intent DENTRO del mismo gesto → abre la app y, si no está, su
-        // propia web de respaldo (browser_fallback_url), también activada → con sonido.
-        if (/Android/i.test(navigator.userAgent || "")) {
-          e.preventDefault();
-          try {
-            window.location.href = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
-              "#Intent;scheme=https;package=com.google.android.youtube;" +
-              "S.browser_fallback_url=" + encodeURIComponent(webUrl(id, t)) + ";end";
-          } catch (err) { window.location.href = a.href; }
+    var revealing = false, pendingReveal = null;
+
+    /* --- Audio ---
+       El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. El vídeo se
+       reproduce en un reproductor de YouTube incrustado en ESTA página (no se ve:
+       el móvil está boca abajo) con el audio activado (no silenciado por software).
+       Como el volumen físico está al mínimo, no se oye nada… hasta que se sube el
+       volumen físico: ese es el efecto. Para poder sonar sin tocar la pantalla en
+       ese momento, el audio se "desbloquea" con el toque del mago durante la
+       preparación: un vídeo arranca SILENCIADO desde el inicio (permitido sin
+       gesto) y el toque lo pasa a NO silenciado (permitido dentro de un gesto).
+       Al llegar la señal se cambia a la canción, ya en modo no silenciado. */
+    var player = null, apiReady = false, playerReady = false, unlocked = false;
+    (function loadYT() {
+      try { var s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(s); } catch (e) {}
+    })();
+    window.onYouTubeIframeAPIReady = function () { apiReady = true; buildPlayer(); };
+    function buildPlayer() {
+      if (player || !apiReady || !window.YT || !YT.Player) return;
+      player = new YT.Player("yt", {
+        width: "100%", height: "100%",
+        videoId: "jNQXAC9IVRw",   // marcador estable; se sustituye al llegar la señal
+        playerVars: { playsinline: 1, controls: 1, rel: 0, modestbranding: 1, fs: 1, autoplay: 0, loop: 1, playlist: "jNQXAC9IVRw" },
+        events: {
+          onReady: function () {
+            playerReady = true;
+            try { player.mute(); player.playVideo(); } catch (e) {}   // arranca SILENCIADO (sin gesto)
+            if (unlocked) doUnlock();
+            if (pendingReveal) fire(pendingReveal);
+          }
         }
-        // iOS y resto: se deja la navegación por defecto del enlace (app o web con sonido).
       });
+    }
+    // Desbloqueo con el toque del mago (preparación): pasa a NO silenciado dentro
+    // del gesto. El volumen físico al mínimo lo mantiene inaudible.
+    function unlock() { if (unlocked) return; unlocked = true; doUnlock(); }
+    function doUnlock() { if (!playerReady) return; try { player.unMute(); player.setVolume(100); } catch (e) {} }
+    document.addEventListener("pointerdown", unlock, { passive: true });
+    document.addEventListener("touchstart", unlock, { passive: true });
+    document.addEventListener("click", unlock);
+    document.addEventListener("keydown", unlock);
+
+    function go(reveal, rev) {
+      if (done || !reveal || !reveal.video_id) return;
+      done = true; stop();
+      // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
+      rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
+      fire(reveal);
+    }
+    // Cambia a la canción real y la reproduce CON audio (no silenciado). El volumen
+    // físico bajo la mantiene inaudible hasta que el espectador lo sube.
+    function fire(reveal) {
+      if (revealing) return;
+      if (!playerReady) { pendingReveal = reveal; return; }
+      revealing = true;
+      var id = reveal.video_id || "", t = reveal.start_seconds || 0;
+      try {
+        player.loadVideoById({ videoId: id, startSeconds: t });
+        player.unMute(); player.setVolume(100); player.playVideo();
+      } catch (e) {}
+      try { document.body.classList.add("reveal"); } catch (e) {}
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {
         if (!p) { tries++; if (tries > 40) gone(); return; } // fallo de red transitorio: reintenta
         tries = 0;
-        if (p.ok && p.reveal && p.reveal.youtube_url) { go(p.reveal, p.rev); return; }
+        if (p.ok && p.reveal && p.reveal.video_id) { go(p.reveal, p.rev); return; }
         // p.ok sin señal nueva → sigue esperando (siempre disponible).
         if (!p.ok && p.reason === "not_found") { gone(); return; }
       });

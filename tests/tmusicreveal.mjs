@@ -25,11 +25,12 @@ ok('vercel: reescribe la carpeta /m/:code a /r', (vercel.rewrites || []).some(r 
 
 // --- Estáticos: r.html es neutra, ligera y aislada ---
 ok('r.html: título neutro', /<title>\s*Preparando/i.test(rhtml));
-ok('r.html: sin <script src> (sin app.js ni libs externas)', !/<script[^>]+src=/i.test(rhtml));
+ok('r.html: sin <script src> (no carga app.js ni nuestras libs)', !/<script[^>]+src=/i.test(rhtml) && !/\.src\s*=\s*["'][^"']*(app\.js|cloud\.js|supabase\.js|styles\.css)/.test(rhtml));
+ok('r.html: única dependencia externa, la API de YouTube (cargada bajo demanda)', /\.src\s*=\s*["'][^"']*iframe_api/.test(rhtml));
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: el toque es un clic de enlace real a YouTube (sin reproductor propio)', /id="go"/.test(rhtml) && /a\.href\s*=\s*webUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && !/youtube\.com\/embed\//.test(rhtml));
+ok('r.html: reproductor de YouTube incrustado (móvil boca abajo, no se ve)', /new YT\.Player/.test(rhtml) && /loadVideoById/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -42,10 +43,10 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
-ok('r.html: abre la app vía enlace real (iOS Universal Link / Android intent) o la web de YouTube', /a\.href\s*=\s*webUrl/.test(rhtml) && /intent:\/\//.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
-ok('r.html: el fallback de Android usa browser_fallback_url dentro del mismo gesto', /browser_fallback_url/.test(rhtml) && /addEventListener\("click"/.test(rhtml));
-ok('r.html: el sonido depende del gesto — clic de enlace, no autoplay sin interacción', /preventDefault/.test(rhtml) && !/autoplay=1/.test(rhtml));
-ok('r.html: no incrusta ningún reproductor de YouTube en nuestra página', !/youtube\.com\/embed\//.test(rhtml) && !/<iframe[^>]*id="yt"/.test(rhtml));
+ok('r.html: arranca SILENCIADO (autoplay sin gesto) y se desbloquea con el toque del mago', /player\.mute\(\)/.test(rhtml) && /function unlock\(/.test(rhtml) && /player\.unMute\(\)/.test(rhtml));
+ok('r.html: al llegar la señal reproduce la canción CON audio (no silenciado)', /loadVideoById/.test(rhtml) && /setVolume\(100\)/.test(rhtml) && /playVideo\(\)/.test(rhtml));
+ok('r.html: la revelación es el volumen físico — no navega fuera ni abre la app', !/location\.href\s*=\s*"(youtube:|intent:)/.test(rhtml) && !/browser_fallback_url/.test(rhtml));
+ok('r.html: el reproductor vive en nuestra página, tapado por la capa neutra hasta la señal', /id="yt"/.test(rhtml) && /class="cover"/.test(rhtml) && /body\.reveal \.cover/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

@@ -1817,7 +1817,8 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mrg-spill { background: #fff; box-shadow: 0 2px 11px rgba(60,64,67,.17); height: 52px; display: flex; align-items: center; flex: 0 0 auto; }
 .mrg-spill.snav, .mrg-spill.smore { width: 52px; border-radius: 50%; justify-content: center; }
 .mrg-spill.saddr { flex: 1; border-radius: 26px; padding: 0 18px; gap: 12px; }
-.mrg-spill.saddr .dom { flex: 1; text-align: center; font-size: 17px; color: #1c1c1e; }
+.mrg-spill.saddr .dom { flex: 1; text-align: center; font-size: 17px; color: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif; letter-spacing: -.01em; }
 .mrg-spill .sbtn { color: #1c1c1e; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .mrg-spill .sbtn .i, .mrg-spill .sbtn svg { width: 26px; height: 26px; }
+.mrg-spill .sbtn .i { stroke-width: 2; }
 .mrg-spill .sbtn.sm .i, .mrg-spill .sbtn.sm svg { width: 23px; height: 23px; }

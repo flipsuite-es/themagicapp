@@ -3410,7 +3410,8 @@
   };
   // Iconos del buscador moderno (gris, minimalistas).
   var MR_SVG = {
-    mon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="10.5" rx="2.5"/><path d="M5 17.5h9M5 20.5h6"/></svg>',
+    mon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="9" rx="2.4"/><path d="M6 16.5h9M6 19.5h5.5"/></svg>',
+    reload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18.7 8.5A7 7 0 1 0 20 12.5"/><path d="M18.7 3.4v5.1h-5.1"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>',
     lens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>',
     labs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="5.5"/><path d="M20 20l-5.3-5.3"/><path d="M10.5 7.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" fill="currentColor" stroke="none"/></svg>'
@@ -3462,7 +3463,7 @@
         // Barra inferior flotante de Safari actual (tres pastillas redondeadas)
         '<div class="mrg-sbar">' +
           '<div class="mrg-spill snav"><span class="sbtn" id="mrgBack">' + icon("back") + "</span></div>" +
-          '<div class="mrg-spill saddr"><span class="sbtn sm">' + MR_SVG.mon + '</span><span class="dom">google.com</span><span class="sbtn sm">' + icon("refresh") + "</span></div>" +
+          '<div class="mrg-spill saddr"><span class="sbtn sm">' + MR_SVG.mon + '</span><span class="dom">google.com</span><span class="sbtn sm">' + MR_SVG.reload + "</span></div>" +
           '<div class="mrg-spill smore"><span class="sbtn">' + icon("dots") + "</span></div>" +
         "</div>" +
       "</div>";

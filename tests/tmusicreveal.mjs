@@ -64,22 +64,26 @@ ok('app: confirma el recibo con el acuse del espectador', /awaitRev/.test(app) &
 // El monitor del mago sondea rápido (1 s) para detectar presencia y entrega.
 ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 
-// --- Teclado oculto: buscador estilo Google que capta el artista a ciegas ---
+// --- Teclado oculto: navegador + Google recreados, teclado NATIVO, captura a ciegas ---
 const styles = readFileSync(ROOT + 'styles.css', 'utf8');
-// Buscador propio estilo Google con teclado en pantalla (obligatorio: el del sistema no vale).
-ok('app: buscador encubierto estilo Google con teclado propio', /function mrOpenSearch/.test(app) && /function mrRenderSearchScreen/.test(app) && /MR_KB/.test(app));
-// A ciegas: ANTES de "qq" la barra escribe la frase inocente (forzada), no lo tecleado.
-ok('app: a ciegas — antes de qq se escribe la frase inocente (forzada)', /function mrComputeVisible/.test(app) && /inn\.slice\(0, ?raw\.length\)/.test(app));
-// Delimitador "qq": el artista es todo lo pulsado antes de "qq" (indexOf).
-ok('app: "qq" corta la captura (artista = lo pulsado antes de qq)', /raw\.indexOf\("qq"\)/.test(app) && /raw\.slice\(0, ?i\)/.test(app));
-// Después de "qq" para la escritura forzada y pasa a escritura REAL (literal).
-ok('app: tras "qq" escritura real (literal) para terminar la frase inocente', /inn\.slice\(0, ?i\)\s*\+\s*raw\.slice\(i \+ 2\)/.test(app));
+// Se recrea la interfaz completa del navegador con el dominio falso "google.com".
+ok('app: recrea el navegador + Google (dominio falso google.com)', /function mrOpenSearch/.test(app) && /function mrRenderSearchScreen/.test(app) && /google\.com<\/span>/.test(app) && /mrg-addr/.test(app));
+// Teclado NATIVO del dispositivo: un campo real que se enfoca (abre el teclado del sistema).
+ok('app: teclado nativo — campo real que se enfoca', /id="mrgInput"/.test(app) && /\binp\.focus\(\)/.test(app) && /addEventListener\("beforeinput"/.test(app));
+// Correcciones DESACTIVADAS mientras se teclea a ciegas (no filtra el secreto).
+ok('app: correcciones off durante el texto oculto', /autocorrect="off"/.test(app) && /spellcheck="false"/.test(app));
+// A ciegas: ANTES de "qq" se escribe la frase inocente (forzada), no lo tecleado.
+ok('app: a ciegas — antes de qq se escribe la frase inocente (forzada)', /s\.innocent\.slice\(0, ?s\.raw\.length\)/.test(app) && /e\.preventDefault\(\)/.test(app));
+// Delimitador "qq": corta la captura (artista = lo pulsado antes de qq) y para lo forzado.
+ok('app: "qq" corta la captura y para la escritura forzada', /s\.raw\.indexOf\("qq"\)/.test(app) && /s\.raw\.slice\(0, ?i\)/.test(app) && /phase = "real"/.test(app));
+// Tras "qq": escritura REAL (teclado nativo normal) y correcciones ACTIVADAS.
+ok('app: tras "qq" escritura real y correcciones activadas', /function mrEnableCorrections/.test(app) && /autocorrect", ?"on"/.test(app) && /s\.phase === "real"/.test(app));
 // Al pulsar Buscar sale a Google de verdad con la frase inocente.
 ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\?q="\s*\+\s*encodeURIComponent\(s\.innocent\)/.test(app));
 // El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.
 ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
-// Estilos propios del buscador (pantalla a color fijo, ajena al tema de la app).
-ok('styles: estilos del buscador Google (teclado y barra)', /\.mrg-key/.test(styles) && /\.mrg-pill/.test(styles));
+// Estilos propios recreando Safari + Google (pantalla a color fijo, ajena al tema).
+ok('styles: recreación de Safari + Google (barra de dirección y buscador)', /\.mrg-addr/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-gobtn/.test(styles));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

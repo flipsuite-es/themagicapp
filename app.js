@@ -3334,124 +3334,104 @@
     }, 1000);
   }
 
-  /* ---- Buscador encubierto estilo Google (teclado oculto) ----
-     El mago teclea A CIEGAS el nombre del artista mientras en la barra se escribe
-     sola la frase inocente (una letra por toque). Al teclear "qq" se cierra la
-     captura del artista (todo lo pulsado ANTES de "qq") y los toques siguientes
-     solo terminan de rellenar la frase inocente. Al pulsar Buscar se sale a Google
-     de verdad con la frase inocente (con la IA y la API de YouTube —pasos 2 y 3—
-     se enviará además la predicción al espectador en ese momento). */
+  /* ---- Buscador encubierto: navegador + Google recreados (teclado NATIVO) ----
+     Se recrea la interfaz COMPLETA del navegador (barra con el dominio falso
+     "google.com" y la home de Google idéntica). El teclado es el NATIVO del
+     dispositivo (un campo real). Interceptamos la escritura:
+       · ANTES de "qq": escritura FORZADA (a ciegas) — se ve la frase inocente, una
+         letra por toque; lo pulsado es el artista; SIN correcciones (no filtra).
+       · "qq" corta la captura y PARA la escritura forzada.
+       · DESPUÉS de "qq": escritura REAL (teclado nativo normal, con correcciones)
+         para terminar de escribir la frase inocente de verdad. */
   var mrSearch = null;
-  var MR_KB = {
-    abc: [
-      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-      ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ"],
-      ["shift", "z", "x", "c", "v", "b", "n", "m", "back"],
-      ["num", "space", "search"]
-    ],
-    num: [
-      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-      ["-", "/", ":", ";", "(", ")", "&", "@", "€"],
-      ["abc", ".", ",", "?", "!", "+", "back"],
-      ["space", "search"]
-    ]
-  };
   function mrOpenSearch(practice) {
     clearTabbar(); teardownMusicReveal();
     var innocent = mrState.innocent || "";
     try { if (!innocent) innocent = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
     if (!innocent) innocent = "restaurantes italianos cerca de mí";
-    mrSearch = { innocent: innocent, raw: "", artist: "", practice: !!practice, layer: "abc", caps: false };
+    mrSearch = { innocent: innocent, raw: "", artist: "", phase: "secret", practice: !!practice };
     mrRenderSearchScreen();
-    mrKeepAwake();
   }
-  function mrKbHtml() {
-    var rows = MR_KB[mrSearch.layer] || MR_KB.abc, html = "";
-    for (var r = 0; r < rows.length; r++) {
-      html += '<div class="mrg-krow">';
-      for (var i = 0; i < rows[r].length; i++) {
-        var k = rows[r][i], cls = "mrg-key", label = k, attr;
-        if (k === "space") { cls += " sp"; label = ""; attr = 'data-act="space"'; }
-        else if (k === "back") { cls += " fn"; label = "⌫"; attr = 'data-act="back"'; }
-        else if (k === "shift") { cls += " fn" + (mrSearch.caps ? " on" : ""); label = "⇧"; attr = 'data-act="shift"'; }
-        else if (k === "num") { cls += " fn"; label = "?123"; attr = 'data-act="layer" data-layer="num"'; }
-        else if (k === "abc") { cls += " fn"; label = "ABC"; attr = 'data-act="layer" data-layer="abc"'; }
-        else if (k === "search") { cls += " go"; label = "Buscar"; attr = 'data-act="search"'; }
-        else { attr = 'data-k="' + esc(k) + '"'; label = (mrSearch.caps && /[a-zñ]/.test(k)) ? k.toUpperCase() : k; }
-        html += '<button type="button" class="' + cls + '" ' + attr + '>' + esc(label) + "</button>";
-      }
-      html += "</div>";
-    }
-    return html;
-  }
-  function mrSugHtml(q) {
-    q = q || "";
-    if (!q) return "";
-    var sug = [q, q + " opiniones", q + " cerca"], h = "";
-    for (var i = 0; i < sug.length; i++) {
-      h += '<div class="mrg-sug"><span class="mrg-sic">' + icon("search", "i-sm") + "</span><span>" + esc(sug[i]) + "</span></div>";
-    }
-    return h;
-  }
+  function mrDots() { var h = ""; for (var i = 0; i < 9; i++) h += "<i></i>"; return h; }
   function mrRenderSearchScreen() {
-    var q = mrComputeVisible().visible;
     view.innerHTML =
       '<div class="mrg" id="mrg">' +
-      '<div class="mrg-bar">' +
-      '<button type="button" class="mrg-back" data-act="exit" aria-label="Volver">' + icon("back") + "</button>" +
-      '<div class="mrg-pill"><span class="mrg-q" id="mrgText">' + esc(q) + '<i class="mrg-cur"></i></span>' +
-      '<span class="mrg-ic">🎤</span><span class="mrg-ic">📷</span></div>' +
-      "</div>" +
-      '<div class="mrg-sugs" id="mrgSug">' + mrSugHtml(q) + "</div>" +
-      '<div class="mrg-kb" id="mrgKb">' + mrKbHtml() + "</div>" +
+        '<div class="mrg-top"><div class="mrg-addr">' +
+          '<span class="mrg-lock">' + icon("lock", "i-sm") + "</span>" +
+          '<span class="mrg-dom">google.com</span>' +
+          '<span class="mrg-rel">' + icon("refresh", "i-sm") + "</span></div></div>" +
+        '<div class="mrg-page">' +
+          '<div class="mrg-nav">' +
+            '<span class="mrg-ham"><i></i><i></i><i></i></span>' +
+            '<span class="mrg-tab on">ALL</span><span class="mrg-tab">IMAGES</span>' +
+            '<span class="mrg-grow"></span>' +
+            '<span class="mrg-apps">' + mrDots() + "</span>" +
+            '<span class="mrg-signin">Sign In</span>' +
+          "</div>" +
+          '<div class="mrg-logo"><b style="color:#4285F4">G</b><b style="color:#EA4335">o</b><b style="color:#FBBC05">o</b><b style="color:#4285F4">g</b><b style="color:#34A853">l</b><b style="color:#EA4335">e</b></div>' +
+          '<div class="mrg-searchrow">' +
+            '<input id="mrgInput" class="mrg-input" type="text" inputmode="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Buscar">' +
+            '<button type="button" class="mrg-gobtn" id="mrgGo" aria-label="Buscar">' + icon("search") + "</button>" +
+          "</div>" +
+        "</div>" +
+        '<div class="mrg-foot"><span>Settings</span><span>Privacy</span><span>Terms</span></div>' +
+        '<div class="mrg-bot">' +
+          '<span class="mrg-bic" id="mrgBack">' + icon("back") + "</span>" +
+          '<span class="mrg-bic dim">' + icon("back") + "</span>" +
+          '<span class="mrg-bic">' + icon("share") + "</span>" +
+          '<span class="mrg-bic">' + icon("book") + "</span>" +
+          '<span class="mrg-bic"><b class="mrg-tabs"></b></span>' +
+        "</div>" +
       "</div>";
-    var g = document.getElementById("mrg");
-    if (g) g.addEventListener("click", mrgTap);
+    var inp = document.getElementById("mrgInput");
+    if (inp) {
+      inp.addEventListener("beforeinput", mrSearchInput);
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mrSearchGo(); } });
+      try { inp.focus(); } catch (e) {}   // abre el teclado NATIVO (dentro del gesto)
+    }
+    var go = document.getElementById("mrgGo"); if (go) go.addEventListener("click", function () { mrSearchGo(); });
+    var back = document.getElementById("mrgBack"); if (back) back.addEventListener("click", function () { mrSearch = null; mrRenderSession(); });
   }
-  function mrgTap(e) {
-    var el = e.target;
-    while (el && el.nodeType === 1 && !el.hasAttribute("data-k") && !el.hasAttribute("data-act")) el = el.parentNode;
-    if (!el || el.nodeType !== 1) return;
-    if (el.hasAttribute("data-k")) { mrSearchKey(el.getAttribute("data-k")); return; }
-    var act = el.getAttribute("data-act");
-    if (act === "space") mrSearchKey(" ");
-    else if (act === "back") mrSearchBack();
-    else if (act === "shift") { mrSearch.caps = !mrSearch.caps; mrRefreshKb(); }
-    else if (act === "layer") { mrSearch.layer = el.getAttribute("data-layer"); mrRefreshKb(); }
-    else if (act === "search") mrSearchGo();
-    else if (act === "exit") { mrSearch = null; mrRenderSession(); }
+  function mrSetPos(inp) { try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }
+  // Al pasar a escritura real, se reactivan las correcciones del teclado nativo.
+  function mrEnableCorrections(inp) {
+    try {
+      inp.setAttribute("autocorrect", "on");
+      inp.setAttribute("autocapitalize", "sentences");
+      inp.setAttribute("spellcheck", "true");
+      inp.setAttribute("autocomplete", "on");
+    } catch (e) {}
   }
-  // Reconstruye lo visible a partir de lo realmente pulsado (raw):
-  //  · ANTES de "qq" → escritura FORZADA: se muestra la frase inocente, una letra
-  //    por toque (a ciegas); lo pulsado es el artista.
-  //  · "qq" corta la captura y PARA la escritura forzada.
-  //  · DESPUÉS de "qq" → escritura REAL: se muestra literalmente lo que se teclea,
-  //    para terminar de escribir la frase inocente de verdad.
-  function mrComputeVisible() {
-    var raw = mrSearch.raw, inn = mrSearch.innocent, i = raw.indexOf("qq");
-    if (i === -1) return { artist: raw, visible: inn.slice(0, raw.length) };
-    return { artist: raw.slice(0, i), visible: inn.slice(0, i) + raw.slice(i + 2) };
-  }
-  function mrSearchKey(ch) {
+  function mrSearchInput(e) {
     var s = mrSearch; if (!s) return;
-    s.raw += (s.caps && /[a-zñ]/.test(ch)) ? ch.toUpperCase() : ch;
-    mrUpdateSearchBar();
+    if (s.phase === "real") return; // escritura real: teclado nativo normal (con correcciones)
+    var inp = e.target, it = e.inputType || "";
+    if (it.indexOf("insert") === 0) {
+      // FORZADA: lo pulsado (artista) no se muestra; se revela la frase inocente.
+      e.preventDefault();
+      s.raw += (e.data || "");
+      var i = s.raw.indexOf("qq");
+      if (i >= 0) {
+        // "qq": corta la captura, para la escritura forzada, activa correcciones.
+        s.artist = s.raw.slice(0, i); s.phase = "real";
+        inp.value = s.innocent.slice(0, i);   // deja el prefijo real ya escrito
+        mrEnableCorrections(inp);
+      } else {
+        s.artist = s.raw;
+        inp.value = s.innocent.slice(0, s.raw.length);
+      }
+      mrSetPos(inp);
+    } else if (it.indexOf("delete") === 0) {
+      e.preventDefault();
+      if (s.raw.length) s.raw = s.raw.slice(0, -1);
+      inp.value = s.innocent.slice(0, s.raw.length);
+      mrSetPos(inp);
+    } else { e.preventDefault(); }
   }
-  function mrSearchBack() {
-    var s = mrSearch; if (!s) return;
-    if (s.raw.length) s.raw = s.raw.slice(0, -1);
-    mrUpdateSearchBar();
-  }
-  function mrUpdateSearchBar() {
-    var v = mrComputeVisible();
-    mrSearch.artist = v.artist;
-    var t = document.getElementById("mrgText"); if (t) t.innerHTML = esc(v.visible) + '<i class="mrg-cur"></i>';
-    var sug = document.getElementById("mrgSug"); if (sug) sug.innerHTML = mrSugHtml(v.visible);
-  }
-  function mrRefreshKb() { var kb = document.getElementById("mrgKb"); if (kb) kb.innerHTML = mrKbHtml(); }
   function mrSearchGo() {
     var s = mrSearch; if (!s) return;
-    var artist = (mrComputeVisible().artist || "").trim();
+    var i = s.raw.indexOf("qq");
+    var artist = ((i >= 0 ? s.raw.slice(0, i) : (s.artist || s.raw)) || "").trim();
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }

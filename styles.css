@@ -1775,26 +1775,40 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mr-linkfull { font-size: 13px; color: var(--ink-faint); font-family: var(--ui); word-break: break-all; margin-bottom: 4px; }
 .mr-linkalt { font-size: 11.5px; color: var(--ink-faint); font-family: var(--ui); opacity: .8; margin-bottom: 4px; }
 
-/* Buscador encubierto estilo Google (teclado oculto del truco). Pantalla propia
-   a color fijo, ajena al tema de la app (imita Google móvil). */
-.mrg { position: fixed; inset: 0; z-index: 60; background: #fff; color: #202124; display: flex; flex-direction: column; font-family: Arial, "Roboto", -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
-.mrg-bar { display: flex; align-items: center; gap: 4px; padding: 8px 12px 8px 4px; padding-top: calc(8px + env(safe-area-inset-top)); }
-.mrg-back { background: none; border: 0; color: #5f6368; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; }
-.mrg-back .i { width: 22px; height: 22px; }
-.mrg-pill { flex: 1; display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dfe1e5; border-radius: 999px; padding: 10px 15px; box-shadow: 0 1px 5px rgba(32,33,36,.14); min-width: 0; }
-.mrg-q { flex: 1; font-size: 16px; line-height: 20px; color: #202124; white-space: nowrap; overflow: hidden; }
-.mrg-cur { display: inline-block; width: 2px; height: 18px; background: #4285f4; vertical-align: -3px; margin-left: 1px; animation: mrgblink 1s step-end infinite; }
-@keyframes mrgblink { 50% { opacity: 0; } }
-.mrg-ic { font-size: 17px; flex: 0 0 auto; opacity: .9; }
-.mrg-sugs { flex: 1; overflow-y: auto; }
-.mrg-sug { display: flex; align-items: center; gap: 18px; padding: 12px 20px; color: #202124; font-size: 16px; border-bottom: 1px solid #f1f3f4; }
-.mrg-sic { color: #9aa0a6; display: flex; } .mrg-sic .i { width: 20px; height: 20px; }
-.mrg-kb { background: #e8eaed; padding: 6px 3px calc(8px + env(safe-area-inset-bottom)); user-select: none; -webkit-user-select: none; }
-.mrg-krow { display: flex; justify-content: center; gap: 5px; margin: 4px 4px; }
-.mrg-key { flex: 1; min-width: 0; height: 44px; background: #fff; border: 0; border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,.28); font-size: 18px; color: #202124; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
-.mrg-key:active { background: #d3d6db; }
-.mrg-key.fn { background: #c5c9cf; font-size: 13px; flex: 1.35; }
-.mrg-key.fn.on { background: #7c828a; color: #fff; }
-.mrg-key.sp { flex: 5; }
-.mrg-key.go { background: #4285f4; color: #fff; flex: 2.2; font-size: 15px; font-weight: 600; }
-.mrg-key.go:active { background: #3574e0; }
+/* Buscador encubierto: navegador + Google recreados (teclado del truco). Pantalla
+   propia a color fijo, ajena al tema de la app; imita Safari + Google en móvil. */
+.mrg { position: fixed; inset: 0; z-index: 60; background: #fff; color: #202124; display: flex; flex-direction: column; font-family: Arial, "Roboto", -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+/* Barra de Safari (arriba) con el dominio falso */
+.mrg-top { background: #4b4b4b; padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top)); }
+.mrg-addr { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; background: #6d6d6d; border-radius: 9px; height: 38px; color: #fff; font-size: 15px; }
+.mrg-addr .mrg-lock .i { width: 13px; height: 13px; }
+.mrg-dom { font-size: 15px; letter-spacing: .01em; }
+.mrg-rel { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); opacity: .95; }
+.mrg-rel .i { width: 18px; height: 18px; }
+/* Página de Google */
+.mrg-page { flex: 1; background: #fff; position: relative; min-height: 0; display: flex; flex-direction: column; }
+.mrg-nav { display: flex; align-items: center; gap: 16px; padding: 16px 16px 0; font-size: 14px; }
+.mrg-ham { display: inline-flex; flex-direction: column; gap: 4px; width: 22px; }
+.mrg-ham i { height: 2px; background: #5f6368; border-radius: 2px; }
+.mrg-tab { color: #5f6368; font-weight: 500; letter-spacing: .04em; padding-bottom: 8px; }
+.mrg-tab.on { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
+.mrg-grow { flex: 1; }
+.mrg-apps { display: grid; grid-template-columns: repeat(3, 4px); grid-auto-rows: 4px; gap: 3px; }
+.mrg-apps i { width: 4px; height: 4px; background: #5f6368; border-radius: 1px; }
+.mrg-signin { border: 1px solid #dadce0; border-radius: 4px; padding: 7px 13px; color: #3c4043; font-size: 14px; font-weight: 500; }
+.mrg-logo { text-align: center; margin-top: 56px; font-size: 52px; font-weight: 500; letter-spacing: -1px; font-family: Arial, sans-serif; }
+.mrg-logo b { font-weight: 500; }
+.mrg-searchrow { position: relative; width: 88%; max-width: 560px; margin: 30px auto 0; }
+.mrg-input { width: 100%; height: 46px; box-sizing: border-box; border: 1px solid #dfe1e5; border-radius: 999px; padding: 0 74px 0 20px; font-size: 16px; color: #202124; outline: none; background: #fff; box-shadow: 0 1px 4px rgba(32,33,36,.10); -webkit-appearance: none; }
+.mrg-gobtn { position: absolute; right: -1px; top: 0; height: 46px; width: 64px; border: 0; border-radius: 999px; background: #4285f4; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.mrg-gobtn .i { width: 22px; height: 22px; }
+.mrg-gobtn:active { background: #3574e0; }
+/* Pie de Google */
+.mrg-foot { margin-top: auto; background: #f2f2f2; padding: 15px; display: flex; justify-content: center; gap: 28px; color: #70757a; font-size: 14px; }
+/* Barra de Safari (abajo) */
+.mrg-bot { background: #4b4b4b; color: #fff; display: flex; align-items: center; justify-content: space-around; padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); }
+.mrg-bic { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.mrg-bic .i { width: 24px; height: 24px; }
+.mrg-bic.dim { opacity: .4; transform: scaleX(-1); }
+.mrg-tabs { display: inline-block; width: 16px; height: 18px; border: 2px solid #fff; border-radius: 3px; position: relative; }
+.mrg-tabs::before { content: ""; position: absolute; left: 3px; top: -4px; width: 16px; height: 18px; border: 2px solid #fff; border-radius: 3px; background: #4b4b4b; }

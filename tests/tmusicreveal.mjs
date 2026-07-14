@@ -66,8 +66,13 @@ ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 
 // --- Teclado oculto: navegador + Google recreados, teclado NATIVO, captura a ciegas ---
 const styles = readFileSync(ROOT + 'styles.css', 'utf8');
-// Se recrea la interfaz completa del navegador con el dominio falso "google.com".
-ok('app: recrea el navegador + Google (dominio falso google.com)', /function mrOpenSearch/.test(app) && /function mrRenderSearchScreen/.test(app) && /google\.com<\/span>/.test(app) && /mrg-addr/.test(app));
+// Se recrea la interfaz completa del navegador (Safari actual) con dominio falso.
+ok('app: recrea Safari actual + Google (banner de app, dominio falso abajo)', /function mrRenderSearchScreen/.test(app) && /mrg-banner/.test(app) && /mrg-saddr/.test(app) && /google\.com<\/span>/.test(app));
+// Textos localizados según el idioma del móvil (español / inglés).
+ok('app: textos según el idioma del móvil (navigator.language)', /function mrLang/.test(app) && /navigator\.language/.test(app) && /MR_L10N/.test(app) && /"TODO"/.test(app) && /"IMÁGENES"/.test(app));
+// Sin noticias/tendencias en la pantalla del buscador (evita contenido que caduque).
+const mrgSrc = app.slice(app.indexOf('function mrRenderSearchScreen'), app.indexOf('function mrSetPos'));
+ok('app: el buscador no muestra noticias/tendencias (no caducan)', mrgSrc.length > 0 && !/Tendencias|[Tt]rending/.test(mrgSrc));
 // Teclado NATIVO del dispositivo: un campo real que se enfoca (abre el teclado del sistema).
 ok('app: teclado nativo — campo real que se enfoca', /id="mrgInput"/.test(app) && /\binp\.focus\(\)/.test(app) && /addEventListener\("beforeinput"/.test(app));
 // Correcciones DESACTIVADAS mientras se teclea a ciegas (no filtra el secreto).
@@ -83,7 +88,7 @@ ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\
 // El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.
 ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
 // Estilos propios recreando Safari + Google (pantalla a color fijo, ajena al tema).
-ok('styles: recreación de Safari + Google (barra de dirección y buscador)', /\.mrg-addr/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-gobtn/.test(styles));
+ok('styles: recreación de Safari actual + Google (banner, buscador y barra inferior)', /\.mrg-banner/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-saddr/.test(styles));
 // Logo REAL de Google incrustado (imagen), no texto de colores aproximado.
 ok('styles: logo real de Google incrustado en .mrg-logo', /\.mrg-logo \{[^}]*url\(data:image\/png;base64,/.test(styles));
 

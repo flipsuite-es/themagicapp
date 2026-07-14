@@ -3353,34 +3353,66 @@
     mrRenderSearchScreen();
   }
   function mrDots() { var h = ""; for (var i = 0; i < 9; i++) h += "<i></i>"; return h; }
+  // Textos según el idioma del móvil (navigator.language). Español o inglés.
+  function mrLang() {
+    var l = "en";
+    try { l = (navigator.language || (navigator.languages && navigator.languages[0]) || "en").toLowerCase(); } catch (e) {}
+    return l.indexOf("es") === 0 ? "es" : "en";
+  }
+  var MR_L10N = {
+    es: { openApp: "ABRIR", bannerSub: "Ábrelo en la app Google", all: "TODO", images: "IMÁGENES",
+          offered: "Ofrecido por Google en:", langs: ["català", "galego", "euskara"],
+          country: "España", darkOff: "Tema oscuro: desactivado", settings: "Configuración", privacy: "Privacidad", terms: "Términos" },
+    en: { openApp: "OPEN", bannerSub: "Open in the Google app", all: "ALL", images: "IMAGES",
+          offered: "", langs: [], country: "", darkOff: "Dark theme: off", settings: "Settings", privacy: "Privacy", terms: "Terms" }
+  };
+  // Iconos del buscador moderno (gris, minimalistas).
+  var MR_SVG = {
+    mon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 20h8M12 17v3"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>',
+    lens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>'
+  };
   function mrRenderSearchScreen() {
+    var L = MR_L10N[mrLang()], i, offered = "";
+    if (L.langs.length) {
+      var links = "";
+      for (i = 0; i < L.langs.length; i++) links += '<a href="#" onclick="return false">' + esc(L.langs[i]) + "</a>";
+      offered = '<div class="mrg-offered">' + esc(L.offered) + " " + links + "</div>";
+    }
     view.innerHTML =
       '<div class="mrg" id="mrg">' +
-        '<div class="mrg-top"><div class="mrg-addr">' +
-          '<span class="mrg-lock">' + icon("lock", "i-sm") + "</span>" +
-          '<span class="mrg-dom">google.com</span>' +
-          '<span class="mrg-rel">' + icon("refresh", "i-sm") + "</span></div></div>" +
+        // Smart App Banner de iOS ("Ábrelo en la app Google")
+        '<div class="mrg-banner">' +
+          '<span class="mrg-bg-logo"><b>G</b></span>' +
+          '<span class="mrg-bg-txt"><b>Google</b><span>' + esc(L.bannerSub) + "</span></span>" +
+          '<button type="button" class="mrg-bg-open" onclick="return false">' + esc(L.openApp) + "</button>" +
+        "</div>" +
         '<div class="mrg-page">' +
           '<div class="mrg-nav">' +
-            '<span class="mrg-ham"><i></i><i></i><i></i></span>' +
-            '<span class="mrg-tab on">ALL</span><span class="mrg-tab">IMAGES</span>' +
+            '<span class="mrg-tab on">' + esc(L.all) + "</span>" +
+            '<span class="mrg-tab">' + esc(L.images) + "</span>" +
             '<span class="mrg-grow"></span>' +
+            '<span class="mrg-bell">' + icon("bell", "i-sm") + "</span>" +
             '<span class="mrg-apps">' + mrDots() + "</span>" +
-            '<span class="mrg-signin">Sign In</span>' +
+            '<span class="mrg-avatar">' + icon("user", "i-sm") + "</span>" +
           "</div>" +
           '<div class="mrg-logo" role="img" aria-label="Google"></div>' +
-          '<div class="mrg-searchrow">' +
+          '<form class="mrg-searchrow" id="mrgForm" onsubmit="return false">' +
+            '<span class="mrg-srch-ic">' + icon("search", "i-sm") + "</span>" +
             '<input id="mrgInput" class="mrg-input" type="text" inputmode="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Buscar">' +
-            '<button type="button" class="mrg-gobtn" id="mrgGo" aria-label="Buscar">' + icon("search") + "</button>" +
-          "</div>" +
+            '<span class="mrg-rights"><span class="ric">' + MR_SVG.mic + '</span><span class="ric">' + MR_SVG.lens + "</span></span>" +
+          "</form>" +
+          offered +
         "</div>" +
-        '<div class="mrg-foot"><span>Settings</span><span>Privacy</span><span>Terms</span></div>' +
-        '<div class="mrg-bot">' +
-          '<span class="mrg-bic" id="mrgBack">' + icon("back") + "</span>" +
-          '<span class="mrg-bic dim">' + icon("back") + "</span>" +
-          '<span class="mrg-bic">' + icon("share") + "</span>" +
-          '<span class="mrg-bic">' + icon("book") + "</span>" +
-          '<span class="mrg-bic"><b class="mrg-tabs"></b></span>' +
+        '<div class="mrg-foot">' + (L.country ? '<span class="cty">' + esc(L.country) + "</span>" : "") +
+          '<span class="lnks"><span>' + esc(L.darkOff) + "</span><span>" + esc(L.settings) + "</span><span>" + esc(L.privacy) + "</span><span>" + esc(L.terms) + "</span></span></div>" +
+        // Barra inferior flotante de Safari (iOS actual)
+        '<div class="mrg-sbar">' +
+          '<span class="mrg-sbtn" id="mrgBack">' + icon("back") + "</span>" +
+          '<span class="mrg-sbtn">' + MR_SVG.mon + "</span>" +
+          '<span class="mrg-saddr">google.com</span>' +
+          '<span class="mrg-sbtn">' + icon("refresh") + "</span>" +
+          '<span class="mrg-sbtn">' + icon("dots") + "</span>" +
         "</div>" +
       "</div>";
     var inp = document.getElementById("mrgInput");
@@ -3389,7 +3421,7 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mrSearchGo(); } });
       try { inp.focus(); } catch (e) {}   // abre el teclado NATIVO (dentro del gesto)
     }
-    var go = document.getElementById("mrgGo"); if (go) go.addEventListener("click", function () { mrSearchGo(); });
+    var form = document.getElementById("mrgForm"); if (form) form.addEventListener("submit", function (e) { e.preventDefault(); mrSearchGo(); });
     var back = document.getElementById("mrgBack"); if (back) back.addEventListener("click", function () { mrSearch = null; mrRenderSession(); });
   }
   function mrSetPos(inp) { try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }

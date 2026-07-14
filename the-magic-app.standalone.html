@@ -1819,17 +1819,16 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mrg-foot .cty { padding: 15px 20px 13px; color: #70757a; font-size: 15px; border-bottom: 1px solid #e2e2e2; }
 .mrg-foot .lnks { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 26px; padding: 15px 20px 6px; color: #70757a; }
 .mrg-foot .lnks2 { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 26px; padding: 6px 20px 14px; color: #9aa0a6; }
-/* Barra inferior flotante de Safari actual (tres pastillas redondeadas) */
-.mrg-sbar { display: flex; align-items: center; gap: 8px; padding: 9px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; }
-.mrg-spill { background: #fff; border-radius: 23px; box-shadow: 0 1px 8px rgba(60,64,67,.18); height: 46px; display: flex; align-items: center; flex: 0 0 auto; }
-.mrg-spill.snav { padding: 0 4px; gap: 0; }
-.mrg-spill.saddr { flex: 1; padding: 0 12px; gap: 8px; }
-.mrg-spill.saddr .dom { flex: 1; text-align: center; font-size: 16px; color: #1c1c1e; letter-spacing: .01em; }
-.mrg-spill.smore { padding: 0 4px; }
-.mrg-spill .sbtn { color: #1c1c1e; display: flex; align-items: center; justify-content: center; width: 40px; height: 44px; cursor: pointer; }
-.mrg-spill .sbtn.sm { width: 28px; }
-.mrg-spill .sbtn .i, .mrg-spill .sbtn svg { width: 23px; height: 23px; }
-.mrg-spill .sbtn.fwd { transform: scaleX(-1); }
+/* Barra inferior flotante de Safari actual (iPhone): dos círculos (atrás y ···)
+   y una pastilla central con página/lector · google.com · recargar. */
+.mrg-sbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: #fff; }
+.mrg-spill { background: #fff; box-shadow: 0 2px 11px rgba(60,64,67,.17); height: 52px; display: flex; align-items: center; flex: 0 0 auto; }
+.mrg-spill.snav, .mrg-spill.smore { width: 52px; border-radius: 50%; justify-content: center; }
+.mrg-spill.saddr { flex: 1; border-radius: 26px; padding: 0 18px; gap: 12px; }
+.mrg-spill.saddr .dom { flex: 1; text-align: center; font-size: 17px; color: #1c1c1e; }
+.mrg-spill .sbtn { color: #1c1c1e; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.mrg-spill .sbtn .i, .mrg-spill .sbtn svg { width: 26px; height: 26px; }
+.mrg-spill .sbtn.sm .i, .mrg-spill .sbtn.sm svg { width: 23px; height: 23px; }
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -5709,7 +5708,7 @@ window.Cloud = (function () {
   };
   // Iconos del buscador moderno (gris, minimalistas).
   var MR_SVG = {
-    mon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 20h8M12 17v3"/></svg>',
+    mon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="10.5" rx="2.5"/><path d="M5 17.5h9M5 20.5h6"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>',
     lens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></svg>',
     labs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="5.5"/><path d="M20 20l-5.3-5.3"/><path d="M10.5 7.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" fill="currentColor" stroke="none"/></svg>'
@@ -5760,7 +5759,7 @@ window.Cloud = (function () {
           '<div class="lnks2"><span>' + esc(L.adv) + "</span><span>" + esc(L.biz) + "</span><span>" + esc(L.about) + "</span></div></div>" +
         // Barra inferior flotante de Safari actual (tres pastillas redondeadas)
         '<div class="mrg-sbar">' +
-          '<div class="mrg-spill snav"><span class="sbtn" id="mrgBack">' + icon("back") + '</span><span class="sbtn fwd">' + icon("back") + "</span></div>" +
+          '<div class="mrg-spill snav"><span class="sbtn" id="mrgBack">' + icon("back") + "</span></div>" +
           '<div class="mrg-spill saddr"><span class="sbtn sm">' + MR_SVG.mon + '</span><span class="dom">google.com</span><span class="sbtn sm">' + icon("refresh") + "</span></div>" +
           '<div class="mrg-spill smore"><span class="sbtn">' + icon("dots") + "</span></div>" +
         "</div>" +

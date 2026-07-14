@@ -58,23 +58,38 @@
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
 
-    /* --- Salida a YouTube (sin ningún toque) ---
+    /* --- Salida a YouTube (sin ningún toque), PREFIRIENDO LA APP ---
        El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Al llegar la
-       señal, la página SALE a YouTube mediante una navegación normal (no es abrir
-       una app "a la fuerza", que sí exigiría un toque): sencillamente se carga la
-       URL del vídeo. En Android eso abre la APP de YouTube (App Link); en iPhone y
-       demás abre la WEB de YouTube. YouTube arranca la canción con sonido; como el
-       volumen físico está al mínimo, no se oye… hasta que el espectador sube el
-       botón físico de volumen (ese es el efecto). Al coger el móvil ya está en
-       YouTube de verdad: puede mover el vídeo o hacer lo que quiera, sin rastro de
-       esta página (usamos replace, así ni queda en el historial). */
-    function ytUrl(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
+       señal, la página sale a YouTube. Si el espectador tiene la APP de YouTube,
+       se intenta abrir EN LA APP a toda costa: en Android el enlace https es un
+       App Link verificado (abre la app si está, si no la web, sin diálogos); en
+       iPhone y demás se prueba el esquema propio de la app (youtube://) y, si no
+       está instalada, un respaldo breve cae a la web. YouTube arranca la canción
+       con sonido; como el volumen físico está al mínimo, no se oye… hasta que el
+       espectador sube el botón físico de volumen (ese es el efecto). Al coger el
+       móvil ya está en YouTube de verdad, sin rastro de esta página (replace). */
+    function ytWeb(id, t) { return "https://www.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
+    function ytApp(id, t) { return "youtube://watch?v=" + id + "&t=" + (t || 0); }
     function go(reveal, rev) {
       if (done || !reveal || !reveal.video_id) return;
       done = true; stop();
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      window.location.replace(ytUrl(reveal.video_id, reveal.start_seconds));
+      var id = reveal.video_id, t = reveal.start_seconds || 0, web = ytWeb(id, t);
+      var ua = navigator.userAgent || "";
+      if (/Android/i.test(ua)) {
+        // App Link verificado: abre la app de YouTube si está; si no, la web.
+        window.location.replace(web);
+      } else {
+        // iPhone y demás: intenta la app por su esquema; si no abre (no instalada),
+        // un respaldo breve carga la web. Si la app abre, la página se oculta y se
+        // cancela ese respaldo para no interrumpirla.
+        var fb = setTimeout(function () { window.location.replace(web); }, 1200);
+        var cancel = function () { if (fb) { clearTimeout(fb); fb = null; } };
+        document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
+        window.addEventListener("pagehide", cancel);
+        try { window.location.replace(ytApp(id, t)); } catch (e) { cancel(); window.location.replace(web); }
+      }
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {

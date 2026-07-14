@@ -29,7 +29,7 @@ ok('r.html: sin <script src> (sin app.js ni libs externas)', !/<script[^>]+src=/
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: abre la app (esquema) o sale a la web de YouTube (sin reproductor propio)', /location\.href\s*=\s*"youtube:/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && !/youtube\.com\/embed\//.test(rhtml));
+ok('r.html: el toque es un clic de enlace real a YouTube (sin reproductor propio)', /id="go"/.test(rhtml) && /a\.href\s*=\s*webUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && !/youtube\.com\/embed\//.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -42,8 +42,9 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
-ok('r.html: abre la app (iOS youtube:// / Android intent) y, si no, la web de YouTube', /youtube:\/\//.test(rhtml) && /intent:\/\//.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
-ok('r.html: el fallback web de Android usa browser_fallback_url y sale sin rastro (location.replace)', /browser_fallback_url/.test(rhtml) && /location\.replace/.test(rhtml));
+ok('r.html: abre la app vía enlace real (iOS Universal Link / Android intent) o la web de YouTube', /a\.href\s*=\s*webUrl/.test(rhtml) && /intent:\/\//.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
+ok('r.html: el fallback de Android usa browser_fallback_url dentro del mismo gesto', /browser_fallback_url/.test(rhtml) && /addEventListener\("click"/.test(rhtml));
+ok('r.html: el sonido depende del gesto — clic de enlace, no autoplay sin interacción', /preventDefault/.test(rhtml) && !/autoplay=1/.test(rhtml));
 ok('r.html: no incrusta ningún reproductor de YouTube en nuestra página', !/youtube\.com\/embed\//.test(rhtml) && !/<iframe[^>]*id="yt"/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 

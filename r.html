@@ -20,11 +20,15 @@
   .m { font-size: 15px; opacity: .82; max-width: 20em; line-height: 1.5; letter-spacing: .01em; }
   @keyframes p { 0%, 100% { opacity: .22; transform: scale(.8); } 50% { opacity: .7; transform: scale(1.18); } }
   @media (prefers-reduced-motion: reduce) { .d { animation: none; } }
+  /* Capa-enlace: al llegar la señal cubre la pantalla y convierte el primer
+     toque del espectador en un clic de enlace real a YouTube. */
+  #go { position: fixed; inset: 0; z-index: 40; display: none; -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body>
   <div class="d" id="d" aria-hidden="true"></div>
   <div class="m" id="m">Preparando…</div>
+  <a id="go" aria-hidden="true"></a>
   <script>
   /* Página temporal del espectador. Deliberadamente aislada de la app:
      - sin app.js/styles.css, sin service worker, sin marca ni menú
@@ -57,7 +61,7 @@
     }
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
-    var pending = null, armed = false, revealing = false;
+    var pending = null, revealing = false;
     function go(reveal, rev) {
       if (done || !reveal || !reveal.youtube_url) return;
       done = true; stop();
@@ -65,62 +69,40 @@
       // al volver a entrar en el enlace, el truco puede repetirse.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
       pending = reveal;
-      armGesture();          // el primer toque abrirá app o reproductor (sonido)
-      openAppAuto(reveal);   // intento automático de abrir la app (sin gesto)
+      armReveal(reveal);
     }
-    // Estrategia: abrir la APP nativa de YouTube (efecto máximo) y, si no está o
-    // no abre, salir a la WEB de YouTube (m.youtube.com) — nunca un reproductor
-    // dentro de nuestra página: el espectador no debe ver rastro de ella.
-    // El sonido web necesita un gesto (política del navegador); por eso el primer
-    // toque del espectador (coger/voltear el móvil) dispara la apertura.
+    // Estrategia (clave para el SONIDO): el primer TOQUE del espectador es un
+    // CLIC DE ENLACE REAL a YouTube. Un clic genuino, dentro del gesto:
+    //   · abre la APP de YouTube si está instalada (Universal Links en iOS /
+    //     App Links en Android) — efecto máximo;
+    //   · si no, carga la WEB de YouTube reproduciendo CON SONIDO, porque la
+    //     activación del toque autoriza el audio (sin que el espectador tenga que
+    //     desmutear) y sin dejar rastro de nuestra página.
+    // El audio sin gesto es imposible (política del navegador): el toque manda.
     function webUrl(id, t) {
-      // Web móvil de YouTube: reproduce el vídeo con sonido en su marca de tiempo.
       return "https://m.youtube.com/watch?v=" + id + "&t=" + t + "s";
     }
-    function armGesture() {
-      if (armed) return; armed = true;
-      var h = function () { if (pending && !revealing) doReveal(pending); };
-      document.addEventListener("pointerdown", h, { passive: true });
-      document.addEventListener("touchstart", h, { passive: true });
-      document.addEventListener("click", h);
-      document.addEventListener("keydown", h);
-    }
-    function openAppAuto(reveal) {
-      var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
-      // iOS: esquema no destructivo (si no hay app, no pasa nada; esperamos el gesto).
-      if (/iPhone|iPad|iPod/i.test(ua)) { window.location.href = "youtube://watch?v=" + id + "&t=" + t; }
-      // Android: iframe oculto con el intent (no navega la página si no hay app).
-      else if (/Android/i.test(ua)) { fireAndroidIntent(id, t); }
-    }
-    function fireAndroidIntent(id, t) {
-      try {
-        var ifr = document.createElement("iframe"); ifr.style.display = "none";
-        ifr.src = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
-          "#Intent;scheme=https;package=com.google.android.youtube;end";
-        document.body.appendChild(ifr);
-      } catch (e) {}
-    }
-    function doReveal(reveal) {
-      if (revealing) return; revealing = true;
-      var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
-      var web = webUrl(id, t);
-      if (/Android/i.test(ua)) {
-        // Un solo salto: el intent abre la APP si está instalada; si no, el propio
-        // sistema navega a la WEB de YouTube (browser_fallback_url). En ningún caso
-        // se queda en nuestra página.
-        try {
-          window.location.href = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
-            "#Intent;scheme=https;package=com.google.android.youtube;" +
-            "S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
-        } catch (e) { window.location.replace(web); }
-        // Salvavidas: si el intent no llegó a navegar (navegador sin soporte), a la web.
-        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
-      } else {
-        // iOS y resto: intenta la APP; si no abre, sale a la WEB de YouTube.
-        window.location.href = "youtube://watch?v=" + id + "&t=" + t;
-        // location.replace: nuestra página no queda ni en el historial (sin rastro).
-        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
-      }
+    function armReveal(reveal) {
+      var id = reveal.video_id || "", t = reveal.start_seconds || 0;
+      var a = document.getElementById("go");
+      if (!a) return;
+      a.href = webUrl(id, t);          // iOS/otros: Universal Link → app, o web con sonido
+      a.style.display = "block";       // cubre la pantalla: cualquier toque = clic del enlace
+      neutral("Toca la pantalla");
+      a.addEventListener("click", function (e) {
+        if (revealing) return; revealing = true;
+        // Android: intent DENTRO del mismo gesto → abre la app y, si no está, su
+        // propia web de respaldo (browser_fallback_url), también activada → con sonido.
+        if (/Android/i.test(navigator.userAgent || "")) {
+          e.preventDefault();
+          try {
+            window.location.href = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+              "#Intent;scheme=https;package=com.google.android.youtube;" +
+              "S.browser_fallback_url=" + encodeURIComponent(webUrl(id, t)) + ";end";
+          } catch (err) { window.location.href = a.href; }
+        }
+        // iOS y resto: se deja la navegación por defecto del enlace (app o web con sonido).
+      });
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {

@@ -29,11 +29,12 @@ ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: al llegar la señal sale a YouTube (intento automático), con respaldo web', /function go\(/.test(rhtml) && /function openAppAuto/.test(rhtml) && /location\.replace\(web\)/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
-// La APP se lanza con location.href (location.replace NO lanza apps): youtube:// (iOS) e intent:// (Android).
-ok('r.html: lanza la app con location.href (no replace): youtube:// e intent://', /location\.href = "youtube:\/\/watch/.test(rhtml) && /location\.href = "intent:\/\//.test(rhtml) && /com\.google\.android\.youtube/.test(rhtml) && /browser_fallback_url/.test(rhtml));
-// Refuerzo: al coger el móvil (gesto), se garantiza la apertura de la app.
-ok('r.html: refuerza la apertura de la app con el gesto de coger el móvil (armGesture)', /function armGesture/.test(rhtml) && /pointerdown/.test(rhtml) && /function doReveal/.test(rhtml));
+ok('r.html: al llegar la señal sale a YouTube sin ningún toque (navegación directa)', /function go\(/.test(rhtml) && /location\.replace\(ytUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
+// En Android, el App Link https de m.youtube.com abre la APP de YouTube sin gesto (los esquemas
+// youtube:// e intent:// exigen toque en Chrome, por eso NO se usan aquí).
+ok('r.html: abre YouTube por App Link https (sin youtube:// ni intent://, que exigen toque)', !/youtube:\/\//.test(rhtml) && !/intent:\/\//.test(rhtml));
+// La revelación no depende de ningún toque ni gesto del espectador.
+ok('r.html: no depende de ningún toque del espectador para revelar', !/addEventListener\("(pointerdown|touchstart|click)"/.test(rhtml.replace(/visibilitychange/g, '')) && !/armGesture/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -48,10 +49,9 @@ ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
 ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
-// El intento de abrir la app se dispara AUTOMÁTICAMENTE al llegar la señal (go -> openAppAuto),
-// sin depender del toque. El gesto de coger el móvil solo REFUERZA la apertura en la app
-// (necesario porque Android Chrome bloquea el intent:// lanzado sin gesto y caería a la web).
-ok('r.html: el intento de abrir la app es automático al llegar la señal', /openAppAuto\(reveal\)/.test(rhtml) && /armGesture\(\)/.test(rhtml));
+// La salida a YouTube (y la apertura de la app en Android por App Link) es automática al
+// llegar la señal, dentro de go(), sin ningún gesto ni temporizador de respaldo.
+ok('r.html: la salida a YouTube es automática dentro de go()', /window\.location\.replace\(ytUrl/.test(rhtml) && !/setTimeout\([^)]*location/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

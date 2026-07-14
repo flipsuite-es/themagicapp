@@ -55,8 +55,11 @@
         body: JSON.stringify(body), cache: "no-store", credentials: "omit", keepalive: !!keepalive
       }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
     }
-    var done = false, timer = null, tries = 0, baseline = 0;
-    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    var done = false, timer = null, tries = 0, baseline = 0, wakeTimer = null;
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (wakeTimer) { clearInterval(wakeTimer); wakeTimer = null; }
+    }
 
     /* --- Salida a YouTube (sin ningún toque) ---
        El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Al llegar la
@@ -95,17 +98,27 @@
       // así el mago sabe que hay alguien mirando y puede enviar).
       timer = setInterval(poll, 400);
     });
-    // Mantiene la pantalla del espectador encendida mientras espera (Wake Lock).
-    // El SO lo suelta al ocultar/bloquear, así que se vuelve a pedir al regresar.
+    // Mantiene la pantalla del espectador ENCENDIDA mientras espera (Wake Lock).
+    // Se pide de forma insistente: si el primer intento se rechaza o el sistema lo
+    // suelta (al ocultar/volver de segundo plano), se vuelve a pedir en bucle cada
+    // 2 s. Así la pantalla NO se apaga ni se bloquea mientras se espera la señal
+    // (un bloqueo cortaría el sondeo y el truco no funcionaría).
     var wl = null;
     function keepAwake() {
+      if (done || document.hidden) return;
       try {
-        if (navigator.wakeLock && navigator.wakeLock.request) {
-          navigator.wakeLock.request("screen").then(function (w) { wl = w; }).catch(function () {});
+        if (navigator.wakeLock && navigator.wakeLock.request && !wl) {
+          navigator.wakeLock.request("screen").then(function (w) {
+            wl = w;
+            // Si el sistema lo suelta, se marca para volver a pedirlo en el bucle.
+            try { w.addEventListener("release", function () { wl = null; }); } catch (e) {}
+          }).catch(function () { wl = null; });
         }
-      } catch (e) {}
+      } catch (e) { wl = null; }
     }
     keepAwake();
+    // Reintento continuo mientras espera: cubre el rechazo inicial y las sueltas del SO.
+    wakeTimer = setInterval(keepAwake, 2000);
     // Recupera sondeo y Wake Lock al volver a primer plano (bloqueo/desbloqueo, 2º plano)
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && !done) { poll(); keepAwake(); }

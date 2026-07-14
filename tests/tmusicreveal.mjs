@@ -45,7 +45,7 @@ ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
 ok('r.html: arranca SILENCIADO (autoplay sin gesto) y se desbloquea con el toque del mago', /player\.mute\(\)/.test(rhtml) && /function unlock\(/.test(rhtml) && /player\.unMute\(\)/.test(rhtml));
 ok('r.html: al llegar la señal reproduce la canción CON audio (no silenciado)', /loadVideoById/.test(rhtml) && /setVolume\(100\)/.test(rhtml) && /playVideo\(\)/.test(rhtml));
-ok('r.html: la revelación es el volumen físico — no navega fuera ni abre la app', !/location\.href\s*=\s*"(youtube:|intent:)/.test(rhtml) && !/browser_fallback_url/.test(rhtml));
+ok('r.html: fase 2 — al coger y tocar el móvil salta a YouTube real en el segundo actual (sin rastro)', /function armHandoff/.test(rhtml) && /getCurrentTime/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && /intent:\/\//.test(rhtml));
 ok('r.html: el reproductor vive en nuestra página, tapado por la capa neutra hasta la señal', /id="yt"/.test(rhtml) && /class="cover"/.test(rhtml) && /body\.reveal \.cover/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 

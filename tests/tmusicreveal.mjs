@@ -91,6 +91,10 @@ ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastAr
 ok('styles: recreación de Safari actual + Google (banner, buscador y barra inferior)', /\.mrg-banner/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-saddr/.test(styles));
 // Logo REAL de Google incrustado (imagen), no texto de colores aproximado.
 ok('styles: logo real de Google incrustado en .mrg-logo', /\.mrg-logo \{[^}]*url\(data:image\/png;base64,/.test(styles));
+// Logo G real (multicolor) incrustado en el banner de la app.
+ok('styles: logo G real de Google en el banner', /\.mrg-bg-logo \{[^}]*url\(data:image\/png;base64,/.test(styles));
+// El avatar muestra la inicial del nombre real puesto en la app (display_name).
+ok('app: avatar con la inicial del nombre real (display_name)', /myProfile && myProfile\.display_name/.test(app) && /mrg-av-in/.test(app));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

@@ -3374,6 +3374,9 @@
   };
   function mrRenderSearchScreen() {
     var L = MR_L10N[mrLang()], i, offered = "";
+    // Avatar de cuenta: inicial del nombre real puesto en nuestra app.
+    var ini = ((myProfile && myProfile.display_name) || "").trim().charAt(0).toUpperCase();
+    var avIn = ini ? esc(ini) : icon("user", "i-sm");
     if (L.langs.length) {
       var links = "";
       for (i = 0; i < L.langs.length; i++) links += '<a href="#" onclick="return false">' + esc(L.langs[i]) + "</a>";
@@ -3383,7 +3386,7 @@
       '<div class="mrg" id="mrg">' +
         // Smart App Banner de iOS ("Ábrelo en la app Google")
         '<div class="mrg-banner">' +
-          '<span class="mrg-bg-logo"><b>G</b></span>' +
+          '<span class="mrg-bg-logo"></span>' +
           '<span class="mrg-bg-txt"><b>Google</b><span>' + esc(L.bannerSub) + "</span></span>" +
           '<button type="button" class="mrg-bg-open" onclick="return false">' + esc(L.openApp) + "</button>" +
         "</div>" +
@@ -3394,7 +3397,7 @@
             '<span class="mrg-grow"></span>' +
             '<span class="mrg-bell">' + icon("bell", "i-sm") + "</span>" +
             '<span class="mrg-apps">' + mrDots() + "</span>" +
-            '<span class="mrg-avatar">' + icon("user", "i-sm") + "</span>" +
+            '<span class="mrg-avatar"><b class="mrg-av-in">' + avIn + "</b></span>" +
           "</div>" +
           '<div class="mrg-logo" role="img" aria-label="Google"></div>' +
           '<form class="mrg-searchrow" id="mrgForm" onsubmit="return false">' +

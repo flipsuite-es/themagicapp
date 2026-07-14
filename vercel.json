@@ -3,7 +3,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/:code([a-z0-9]{1,10})", "destination": "/r" }
+    { "source": "/m/:code", "destination": "/r" }
   ],
   "headers": [
     {
@@ -15,7 +15,7 @@
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     },
     {
-      "source": "/:code([a-z0-9]{1,10})",
+      "source": "/m/:code",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     }
   ]

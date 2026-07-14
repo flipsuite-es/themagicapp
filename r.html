@@ -68,11 +68,15 @@
       armGesture();          // el primer toque abrirá app o reproductor (sonido)
       openAppAuto(reveal);   // intento automático de abrir la app (sin gesto)
     }
-    // Estrategia "las dos": abrir la APP nativa (efecto máximo) y, si no está o
-    // no abre, un reproductor de YouTube embebido a pantalla completa que —al
-    // crearse DENTRO del gesto del espectador— reproduce CON SONIDO siempre.
-    // El sonido web sin gesto es imposible (política del navegador); por eso el
-    // primer toque del espectador (coger/voltear el móvil) dispara todo.
+    // Estrategia: abrir la APP nativa de YouTube (efecto máximo) y, si no está o
+    // no abre, salir a la WEB de YouTube (m.youtube.com) — nunca un reproductor
+    // dentro de nuestra página: el espectador no debe ver rastro de ella.
+    // El sonido web necesita un gesto (política del navegador); por eso el primer
+    // toque del espectador (coger/voltear el móvil) dispara la apertura.
+    function webUrl(id, t) {
+      // Web móvil de YouTube: reproduce el vídeo con sonido en su marca de tiempo.
+      return "https://m.youtube.com/watch?v=" + id + "&t=" + t + "s";
+    }
     function armGesture() {
       if (armed) return; armed = true;
       var h = function () { if (pending && !revealing) doReveal(pending); };
@@ -99,23 +103,24 @@
     function doReveal(reveal) {
       if (revealing) return; revealing = true;
       var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
-      // Reproductor embebido creado DENTRO del gesto (para poder sonar). Oculto
-      // hasta saber si la app abre; si la app gana, se elimina.
-      var f = document.createElement("iframe"); f.id = "yt";
-      f.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture; fullscreen");
-      f.setAttribute("allowfullscreen", "");
-      f.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:30;background:#000;opacity:0;transition:opacity .2s";
-      f.src = "https://www.youtube.com/embed/" + id + "?autoplay=1&start=" + t + "&playsinline=1&rel=0&modestbranding=1";
-      document.body.appendChild(f);
-      function showEmbed() { f.style.opacity = "1"; }
-      function killEmbed() { try { f.parentNode && f.parentNode.removeChild(f); } catch (e) {} }
-      // Si la app pasa a primer plano, ganó: quitamos el reproductor.
-      document.addEventListener("visibilitychange", function () { if (document.hidden) killEmbed(); });
-      // Intenta la app (con gesto es mucho más fiable). No destructivo:
-      if (/iPhone|iPad|iPod/i.test(ua)) window.location.href = "youtube://watch?v=" + id + "&t=" + t;
-      else if (/Android/i.test(ua)) fireAndroidIntent(id, t);
-      // Si en ~0,9 s no se abrió la app, mostramos el reproductor (ya sonando).
-      window.setTimeout(function () { if (!document.hidden) showEmbed(); }, 900);
+      var web = webUrl(id, t);
+      if (/Android/i.test(ua)) {
+        // Un solo salto: el intent abre la APP si está instalada; si no, el propio
+        // sistema navega a la WEB de YouTube (browser_fallback_url). En ningún caso
+        // se queda en nuestra página.
+        try {
+          window.location.href = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+            "#Intent;scheme=https;package=com.google.android.youtube;" +
+            "S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+        } catch (e) { window.location.replace(web); }
+        // Salvavidas: si el intent no llegó a navegar (navegador sin soporte), a la web.
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
+      } else {
+        // iOS y resto: intenta la APP; si no abre, sale a la WEB de YouTube.
+        window.location.href = "youtube://watch?v=" + id + "&t=" + t;
+        // location.replace: nuestra página no queda ni en el historial (sin rastro).
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
+      }
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline }).then(function (p) {

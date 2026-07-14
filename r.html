@@ -57,33 +57,48 @@
     }
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    var pending = null, armed = false;
     function go(reveal, rev) {
       if (done || !reveal || !reveal.youtube_url) return;
       done = true; stop();
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume:
       // al volver a entrar en el enlace, el truco puede repetirse.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      openReal(reveal);
+      pending = reveal;
+      armGesture();          // el primer toque del espectador abrirá la app (sonido)
+      openReal(reveal, false); // e intento automático inmediato
     }
-    // Abre YouTube REAL prefiriendo la APP (reproduce con sonido, sin la
-    // restricción de autoplay silenciado del navegador). Si la app no está,
-    // cae a la web (que arrancará en mudo por política del navegador).
-    function openReal(reveal) {
+    // El sonido solo está garantizado si abre la APP de YouTube (la web arranca
+    // en mudo por política del navegador). La app se abre de forma MUCHO más
+    // fiable con un gesto real, así que el primer toque del espectador (al coger
+    // o voltear el móvil) reintenta la apertura de la app.
+    function armGesture() {
+      if (armed) return; armed = true;
+      var h = function () { if (pending) openReal(pending, true); };
+      document.addEventListener("pointerdown", h, { passive: true });
+      document.addEventListener("touchstart", h, { passive: true });
+      document.addEventListener("click", h);
+      document.addEventListener("keydown", h);
+    }
+    function openReal(reveal, gesture) {
       var web = reveal.youtube_url, id = reveal.video_id || "", t = reveal.start_seconds || 0;
       var ua = navigator.userAgent || "";
       if (id && /Android/i.test(ua)) {
-        // Intent con fallback nativo al navegador si la app no está instalada.
+        // Intent con fallback nativo: si la app está, abre la app (suena) incluso
+        // de forma automática; si no está, cae al navegador. El gesto refuerza la apertura.
         window.location.replace("intent://www.youtube.com/watch?v=" + id + "&t=" + t +
           "#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=" +
           encodeURIComponent(web) + ";end");
         return;
       }
       if (id && /iPhone|iPad|iPod/i.test(ua)) {
-        // Intenta la app de YouTube (suena). Si en ~1,4 s no nos hemos ido, no
-        // estaba instalada → abre la web.
-        var wentToApp = false;
-        document.addEventListener("visibilitychange", function () { if (document.hidden) wentToApp = true; });
-        window.setTimeout(function () { if (!wentToApp) window.location.replace(web); }, 1400);
+        // Intenta la app de YouTube (suena). Solo TRAS un gesto forzamos el
+        // fallback a la web si la app no está: así no perdemos el toque.
+        if (gesture) {
+          var wentToApp = false;
+          document.addEventListener("visibilitychange", function () { if (document.hidden) wentToApp = true; });
+          window.setTimeout(function () { if (!wentToApp) window.location.replace(web); }, 1500);
+        }
         window.location.href = "youtube://watch?v=" + id + "&t=" + t;
         return;
       }

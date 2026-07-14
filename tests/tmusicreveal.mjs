@@ -84,6 +84,8 @@ ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\
 ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
 // Estilos propios recreando Safari + Google (pantalla a color fijo, ajena al tema).
 ok('styles: recreación de Safari + Google (barra de dirección y buscador)', /\.mrg-addr/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-gobtn/.test(styles));
+// Logo REAL de Google incrustado (imagen), no texto de colores aproximado.
+ok('styles: logo real de Google incrustado en .mrg-logo', /\.mrg-logo \{[^}]*url\(data:image\/png;base64,/.test(styles));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

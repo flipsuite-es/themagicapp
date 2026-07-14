@@ -3368,7 +3368,7 @@
             '<span class="mrg-apps">' + mrDots() + "</span>" +
             '<span class="mrg-signin">Sign In</span>' +
           "</div>" +
-          '<div class="mrg-logo"><b style="color:#4285F4">G</b><b style="color:#EA4335">o</b><b style="color:#FBBC05">o</b><b style="color:#4285F4">g</b><b style="color:#34A853">l</b><b style="color:#EA4335">e</b></div>' +
+          '<div class="mrg-logo" role="img" aria-label="Google"></div>' +
           '<div class="mrg-searchrow">' +
             '<input id="mrgInput" class="mrg-input" type="text" inputmode="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Buscar">' +
             '<button type="button" class="mrg-gobtn" id="mrgGo" aria-label="Buscar">' + icon("search") + "</button>" +

@@ -46,6 +46,23 @@ ok('r.html: abre la app (iOS youtube:// / Android intent) y, si no, reproductor 
 ok('r.html: el reproductor embebido arranca con autoplay dentro del gesto', /autoplay=1/.test(rhtml) && /allow[^>]*autoplay/i.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
+// --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---
+// r.html sondea rápido (400 ms): entrega casi instantánea + latido de presencia.
+ok('r.html: sondeo rápido de 400 ms (entrega y presencia)', /setInterval\(poll,\s*400\)/.test(rhtml));
+// El botón de enviar se bloquea sin espectador y muestra la espera.
+ok('app: el botón de enviar se bloquea sin espectador', /mrState\.canSend/.test(app) && /Esperando al espectador/.test(app));
+ok('app: sincroniza el botón según la presencia del espectador', /function mrSyncSendBtn/.test(app));
+// Si el servidor responde no_spectator, NO se declara éxito.
+ok('app: gestiona la respuesta no_spectator del servidor', /"no_spectator"|'no_spectator'/.test(app) && /No hay ning/.test(app));
+// Solo se considera enviado si el servidor confirma ok:true.
+ok('app: solo declara enviado con res.ok del servidor', /res\.ok/.test(app));
+// Reintento automático ante fallo de red transitorio (no ante entrada inválida).
+ok('app: reintenta el envío ante fallo de red', /function mrSendWithRetry/.test(app) && /attempt\s*<\s*3/.test(app));
+// Confirmación de recibo: el mago ve el acuse del móvil del espectador (delivered_rev).
+ok('app: confirma el recibo con el acuse del espectador', /awaitRev/.test(app) && /delivered_rev/.test(app));
+// El monitor del mago sondea rápido (1 s) para detectar presencia y entrega.
+ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
+
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

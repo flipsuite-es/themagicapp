@@ -5351,8 +5351,8 @@ window.Cloud = (function () {
     var inp = document.getElementById("mrLink"); if (inp) inp.value = url;
     var codeEl = document.getElementById("mrCodeBig"); if (codeEl) codeEl.textContent = mrState.code || "…";
     var shortEl = document.getElementById("mrLinkShort"); if (shortEl) shortEl.textContent = url ? url.replace(/^https?:\/\//, "") : "…";
-    var alt = document.getElementById("mrLinkAlt");
-    if (alt) alt.textContent = mrState.code ? ("Si no abre, usa: " + mrSpectatorUrlSafe().replace(/^https?:\/\//, "")) : "";
+    // Solo se muestra el enlace corto /m/<código> (lo más limpio y memorizable).
+    // El respaldo /r?c= sigue funcionando (mrSpectatorUrlSafe), pero no se enseña.
   }
   var MR_INNOCENT_KEY = "magic_mr_innocent";
 
@@ -5390,7 +5390,7 @@ window.Cloud = (function () {
       '<p class="subtitle">Configura la frase inocente y prepara el truco. Tu enlace es permanente: el espectador lo abre cuando quieras y se puede repetir tantas veces como haga falta, sin caducidad.</p>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
       '<div class="mr-code">/m/<b id="mrCodeBig">…</b></div>' +
-      '<div class="mr-linkfull" id="mrLinkShort">…</div><div class="mr-linkalt" id="mrLinkAlt"></div>' +
+      '<div class="mr-linkfull" id="mrLinkShort">…</div>' +
       '<p class="hint">Es siempre tu enlace, para cualquier momento. Memorízalo y podrás actuar sin mirar el móvil: el espectador lo abre y espera tu revelación.</p></div>' +
       '<div class="field"><label for="mrInnocent">Texto inocente</label>' +
       '<input id="mrInnocent" type="text" value="' + esc(saved) + '" placeholder="restaurantes italianos cerca de mí">' +
@@ -5429,12 +5429,13 @@ window.Cloud = (function () {
   }
   function mrRenderSession() {
     mrState.diag = { sentAt: 0, saved: false, spectator: false, sentRev: 0, deliveredRev: 0, err: "" };
+    mrState.canSend = false; mrState.sending = false; mrState.sentOnce = false; mrState.awaitRev = 0;
     view.innerHTML =
       '<div class="screen">' +
       '<div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Truco preparado</h1></div>' +
       '<div class="panel mr-linkcard"><div class="sec-label">Tu enlace fijo (no cambia nunca)</div>' +
       '<div class="mr-code">/m/<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
-      '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + '</div><div class="mr-linkalt" id="mrLinkAlt"></div>' +
+      '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + '</div>' +
       '<p class="hint">Es siempre el mismo, para cualquier momento. El espectador lo abre y espera; al enviar la revelación, su móvil abre YouTube. Se puede repetir cuantas veces quieras, incluso si vuelve a entrar en el enlace.</p>' +
       '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
       '<div class="row" style="margin-top:10px"><button class="btn" id="mrCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
@@ -5445,7 +5446,8 @@ window.Cloud = (function () {
       '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para comprobar en móviles reales que el móvil del espectador abre YouTube solo. Puedes enviarla las veces que quieras (con cada espectador). Con el teclado y las APIs, esto será automático.</p>' +
       '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…"></div>' +
       '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
-      '<button class="btn" id="mrReveal">' + icon("play", "i-sm") + " Enviar revelación</button></div>" +
+      '<button class="btn" id="mrReveal" disabled>' + icon("refresh", "i-sm") + " Esperando al espectador…</button>" +
+      '<p class="hint" id="mrSendHint">El botón se activa cuando el espectador abre tu enlace. Si no hay nadie conectado, la revelación no se envía.</p></div>' +
       '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div></details>' +
       "</div>";
     document.getElementById("mrCopy").addEventListener("click", function () {
@@ -5454,23 +5456,14 @@ window.Cloud = (function () {
     });
     var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: mrSpectatorUrl() }).catch(function () {}); });
     document.getElementById("mrReveal").addEventListener("click", function () {
+      if (mrState.sending || !mrState.canSend) return; // sin espectador no se envía nada
       var raw = (document.getElementById("mrVid").value || "").trim();
       if (!raw) { toast("Pega un enlace o ID de YouTube"); return; }
       var start = Math.max(0, parseInt(document.getElementById("mrStart").value, 10) || 0);
-      var btn = document.getElementById("mrReveal"); btn.disabled = true; btn.textContent = "Enviando…";
+      mrState.sending = true; mrSyncSendBtn();
       mrState.diag.sentAt = Date.now(); mrState.diag.err = ""; mrRenderDiag();
-      // El servidor valida y construye la URL canónica; el cliente nunca la controla.
-      Cloud.mrSendRevealLive(raw, start).then(function (res) {
-        if (res && res.rev) mrState.diag.sentRev = res.rev;
-        mrState.diag.saved = true; mrRenderDiag();
-        mrSetStatus(icon("check", "i-sm"), "Revelación enviada (nº " + (res && res.rev ? res.rev : "") + "). El móvil del espectador debería abrir YouTube.");
-        // Repetible: el botón vuelve a estar disponible para el siguiente espectador
-        btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar de nuevo";
-      }).catch(function (e) {
-        mrState.diag.err = (e && e.message) ? String(e.message) : "invalid"; mrRenderDiag();
-        btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Enviar revelación";
-        toast("Enlace o ID de YouTube no válido");
-      });
+      mrSetStatus(icon("refresh", "i-sm"), "Enviando la revelación…");
+      mrSendWithRetry(raw, start, 0);
     });
     mrMonitor();
     mrKeepAwake(); // la pantalla del mago no se apaga mientras prepara/actúa
@@ -5481,6 +5474,65 @@ window.Cloud = (function () {
     var line = document.getElementById("mrStatusLine");
     if (line) line.innerHTML = iconHtml + " <span>" + esc(text) + "</span>";
   }
+  // El botón de enviar solo se activa cuando hay un espectador mirando el enlace.
+  // Así una revelación nunca se manda "al vacío": si no hay móvil conectado, no se envía.
+  function mrSyncSendBtn() {
+    var btn = document.getElementById("mrReveal"); if (!btn) return;
+    if (mrState.sending) { btn.disabled = true; btn.innerHTML = icon("refresh", "i-sm") + " Enviando…"; return; }
+    if (mrState.canSend) {
+      btn.disabled = false;
+      btn.innerHTML = icon("play", "i-sm") + " " + (mrState.sentOnce ? "Enviar de nuevo" : "Enviar revelación");
+    } else {
+      btn.disabled = true;
+      btn.innerHTML = icon("refresh", "i-sm") + " Esperando al espectador…";
+    }
+  }
+  // Envío fiable: el servidor valida y construye la URL (el cliente nunca la controla),
+  // rechaza el envío si no hay espectador, y ante un fallo de red se reintenta solo.
+  function mrSendWithRetry(raw, start, attempt) {
+    Cloud.mrSendRevealLive(raw, start).then(function (res) {
+      // El servidor NO lanza en estos casos: devuelve {ok:false, reason:...}.
+      if (res && res.ok) {
+        mrState.sending = false; mrState.sentOnce = true; mrState.diag.saved = true;
+        if (res.rev) { mrState.diag.sentRev = res.rev; mrState.awaitRev = res.rev; }
+        mrRenderDiag(); mrSyncSendBtn();
+        mrSetStatus(icon("check", "i-sm"), "Revelación enviada (nº " + (res.rev || "") + "). Confirmando la entrega en el móvil del espectador…");
+        return;
+      }
+      var reason = res && res.reason ? res.reason : "invalid";
+      if (reason === "no_spectator") {
+        // Se marchó justo antes de enviar: no se ha mandado nada. Se reactivará solo.
+        mrState.sending = false; mrState.canSend = false; mrState.diag.spectator = false;
+        mrState.diag.err = "sin espectador"; mrRenderDiag(); mrSyncSendBtn();
+        mrSetStatus(icon("refresh", "i-sm"), "No hay ningún espectador conectado; no se ha enviado. Se enviará en cuanto abra tu enlace.");
+        toast("No hay espectador conectado");
+        return;
+      }
+      // Entrada no válida (URL/ID de YouTube): el mago corrige y reintenta a mano.
+      mrState.sending = false; mrState.diag.err = reason; mrRenderDiag(); mrSyncSendBtn();
+      mrSetStatus(icon("x", "i-sm"), "El enlace o ID de YouTube no es válido.");
+      toast("Enlace o ID de YouTube no válido");
+    }).catch(function (e) {
+      // Distinguimos un fallo de red (reintentable) de un error del servidor
+      // (entrada no válida: el servidor lanza con código, no se debe reintentar).
+      var code = e && (e.code || e.status);
+      var msg = (e && e.message) ? String(e.message) : "";
+      var network = !code && /fetch|network|failed|conexi|timeout|load|abort/i.test(msg);
+      if (network && attempt < 3) {
+        mrState.diag.err = "reintentando (" + (attempt + 1) + ")"; mrRenderDiag();
+        setTimeout(function () { mrSendWithRetry(raw, start, attempt + 1); }, 500 * (attempt + 1));
+        return;
+      }
+      mrState.sending = false; mrState.diag.err = msg || String(code || "error"); mrRenderDiag(); mrSyncSendBtn();
+      if (network) {
+        mrSetStatus(icon("x", "i-sm"), "No se pudo enviar (problema de conexión). Inténtalo de nuevo.");
+        toast("Sin conexión. Reintenta");
+      } else {
+        mrSetStatus(icon("x", "i-sm"), "El enlace o ID de YouTube no es válido.");
+        toast("Enlace o ID de YouTube no válido");
+      }
+    });
+  }
   function mrDiagRow(label, value) {
     return '<div class="mr-drow"><span>' + esc(label) + '</span><b>' + esc(value) + "</b></div>";
   }
@@ -5489,7 +5541,7 @@ window.Cloud = (function () {
     var d = mrState.diag;
     b.innerHTML =
       mrDiagRow("Espectador mirando", d.spectator ? "sí" : "no") +
-      mrDiagRow("Sondeo de estado", mrState.poll ? "activo (2 s)" : "inactivo") +
+      mrDiagRow("Sondeo de estado", mrState.poll ? "activo (1 s)" : "inactivo") +
       mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
       mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
       mrDiagRow("Enlace permanente", "/m/" + (mrState.code || "…") + " · sin caducidad") +
@@ -5497,27 +5549,35 @@ window.Cloud = (function () {
   }
   function mrMonitor() {
     teardownMusicReveal();
-    // Fuente de la verdad: el servidor. Sondeo del estado en vivo cada 2 s.
+    // Fuente de la verdad: el servidor. Sondeo del estado en vivo cada 1 s para
+    // detectar rápido la presencia del espectador y confirmar la entrega.
     mrState.poll = setInterval(function () {
       if (!Cloud.mrLiveStatus) return;
       Cloud.mrLiveStatus().then(function (st) {
         if (!st || !st.ok || !mrState.diag) return;
-        mrState.diag.spectator = !!st.spectator_seen;
+        var seen = !!st.spectator_seen;
+        mrState.diag.spectator = seen;
+        // Habilita/inhabilita el botón según haya o no espectador (nunca durante un envío).
+        if (mrState.canSend !== seen) { mrState.canSend = seen; if (!mrState.sending) mrSyncSendBtn(); }
         mrState.diag.saved = mrState.diag.saved || !!st.reveal_saved;
         if (typeof st.rev === "number") mrState.diag.sentRev = st.rev;
         if (typeof st.delivered_rev === "number") mrState.diag.deliveredRev = st.delivered_rev;
-        if (st.delivered_rev && st.delivered_rev >= st.rev && st.reveal_saved) {
-          mrSetStatus(icon("check", "i-sm"), "Revelación entregada al espectador (debería estar abriendo YouTube).");
-        } else if (st.reveal_saved) {
-          mrSetStatus(icon("check", "i-sm"), "Revelación enviada. Esperando a que el móvil del espectador la reciba…");
-        } else if (st.spectator_seen) {
-          mrSetStatus(icon("check", "i-sm"), "Espectador mirando el enlace. Todo preparado.");
+        // Confirmación de recibo: el móvil del espectador acusa la revelación (delivered_rev).
+        var delivered = mrState.awaitRev && st.delivered_rev >= mrState.awaitRev;
+        if (mrState.sending) {
+          // durante el envío no tocamos la línea de estado (la controla mrSendWithRetry)
+        } else if (delivered) {
+          mrSetStatus(icon("check", "i-sm"), "Revelación recibida por el espectador (nº " + mrState.awaitRev + "). Su móvil abre YouTube.");
+        } else if (mrState.awaitRev && st.reveal_saved) {
+          mrSetStatus(icon("refresh", "i-sm"), "Revelación enviada (nº " + mrState.awaitRev + "). Esperando el acuse de su móvil…");
+        } else if (seen) {
+          mrSetStatus(icon("check", "i-sm"), "Espectador mirando el enlace. Listo para enviar.");
         } else {
           mrSetStatus(icon("refresh", "i-sm"), "Esperando a que el espectador abra tu enlace…");
         }
         mrRenderDiag();
       }).catch(function () {});
-    }, 2000);
+    }, 1000);
   }
 
   /* La página del espectador vive en r.html (aparte, neutra, fuera del SW).
@@ -6319,5 +6379,4 @@ window.Cloud = (function () {
   initSoundTouch();
   initHFades();
 })();
-
 </script>

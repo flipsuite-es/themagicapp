@@ -131,7 +131,10 @@
       if (!s || (s.ok === false && s.reason === "not_found")) { gone(); return; }
       baseline = (s && typeof s.rev === "number") ? s.rev : 0;
       poll();
-      timer = setInterval(poll, 1000);
+      // Sondeo rápido (400 ms): entrega casi instantánea y, a la vez, sirve de
+      // latido de presencia (cada sondeo marca spectator_seen_at en el servidor,
+      // así el mago sabe que hay alguien mirando y puede enviar).
+      timer = setInterval(poll, 400);
     });
     // Mantiene la pantalla del espectador encendida mientras espera (Wake Lock).
     // El SO lo suelta al ocultar/bloquear, así que se vuelve a pedir al regresar.

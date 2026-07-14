@@ -55,10 +55,12 @@
         body: JSON.stringify(body), cache: "no-store", credentials: "omit", keepalive: !!keepalive
       }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
     }
-    var done = false, timer = null, tries = 0, baseline = 0, wakeTimer = null;
+    var done = false, timer = null, tries = 0, baseline = 0, wakeTimer = null, kaVideo = null, kaDraw = null;
     function stop() {
       if (timer) { clearInterval(timer); timer = null; }
       if (wakeTimer) { clearInterval(wakeTimer); wakeTimer = null; }
+      if (kaDraw) { clearInterval(kaDraw); kaDraw = null; }
+      if (kaVideo) { try { kaVideo.pause(); if (kaVideo.parentNode) kaVideo.parentNode.removeChild(kaVideo); } catch (e) {} kaVideo = null; }
     }
 
     /* --- Salida a YouTube (sin ningún toque) ---
@@ -116,9 +118,38 @@
         }
       } catch (e) { wl = null; }
     }
+    // Respaldo para iOS Safari (donde el Wake Lock exige un gesto que aquí no hay):
+    // un VÍDEO MUDO EN BUCLE reproduciéndose impide que la pantalla se apague. El
+    // autoplay mudo SÍ está permitido sin gesto. El vídeo se genera desde un canvas
+    // diminuto (sin archivos externos) y es invisible (1px, transparente).
+    function startNoSleepVideo() {
+      if (kaVideo) return;
+      try {
+        var c = document.createElement("canvas"); c.width = 2; c.height = 2;
+        var ctx = c.getContext("2d"); if (!ctx || !c.captureStream) return;
+        var on = false;
+        kaDraw = setInterval(function () { on = !on; ctx.fillStyle = on ? "#000001" : "#010000"; ctx.fillRect(0, 0, 2, 2); }, 300);
+        var stream = c.captureStream(3);
+        var v = document.createElement("video");
+        v.muted = true; v.defaultMuted = true;
+        v.setAttribute("muted", ""); v.setAttribute("autoplay", "");
+        v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", "");
+        v.setAttribute("loop", "");
+        v.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;";
+        try { v.srcObject = stream; } catch (e) {}
+        document.body.appendChild(v);
+        kaVideo = v;
+        var p = v.play(); if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+    }
     keepAwake();
+    startNoSleepVideo();
     // Reintento continuo mientras espera: cubre el rechazo inicial y las sueltas del SO.
-    wakeTimer = setInterval(keepAwake, 2000);
+    // Reintenta también reproducir el vídeo por si iOS lo pausó al volver de 2º plano.
+    wakeTimer = setInterval(function () {
+      keepAwake();
+      if (kaVideo && kaVideo.paused && !done) { var p = kaVideo.play(); if (p && p.catch) p.catch(function () {}); }
+    }, 2000);
     // Recupera sondeo y Wake Lock al volver a primer plano (bloqueo/desbloqueo, 2º plano)
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && !done) { poll(); keepAwake(); }

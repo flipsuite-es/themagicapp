@@ -46,7 +46,9 @@ ok('cloud: expone mrMyHandle (código permanente)', /mrMyHandle/.test(cloud));
 ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \+ mrState\.code/.test(app));
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
-ok('r.html: mantiene la pantalla encendida con Wake Lock insistente (reintento + re-solicitud)', /wakeLock/.test(rhtml) && /setInterval\(keepAwake/.test(rhtml) && /"release"/.test(rhtml));
+ok('r.html: Wake Lock insistente (reintento en bucle + re-solicitud al soltarlo)', /wakeLock/.test(rhtml) && /wakeTimer = setInterval/.test(rhtml) && /"release"/.test(rhtml));
+// Respaldo iOS Safari (Wake Lock exige gesto): vídeo mudo en bucle (autoplay sin gesto) que evita el apagado.
+ok('r.html: respaldo iOS con vídeo mudo (canvas captureStream, autoplay) para no apagar la pantalla', /startNoSleepVideo/.test(rhtml) && /captureStream/.test(rhtml) && /muted/.test(rhtml) && /playsinline/.test(rhtml));
 ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al

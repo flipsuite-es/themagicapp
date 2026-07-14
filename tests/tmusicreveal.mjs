@@ -91,6 +91,14 @@ ok('app: tras "qq" escritura real y correcciones activadas', /function mrEnableC
 ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\?q="\s*\+\s*encodeURIComponent\(s\.innocent\)/.test(app));
 // El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.
 ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
+// Paso 2-3: al pulsar Buscar dispara la resolución+envío (IA + YouTube) antes de navegar.
+ok('app: Buscar dispara la resolución+envío en segundo plano', /Cloud\.mrResolveSong/.test(app) && /mrOnArtistCaptured\(artist\)/.test(app));
+// La navegación a Google no espera la respuesta: sale en cuanto se despacha (tope 400 ms).
+ok('app: navega tras despachar (no espera la respuesta del servidor)', /p\.then\(go, go\)/.test(app) && /setTimeout\(go, 400\)/.test(app));
+// La capa de nube llama a la Edge Function mr-resolve con keepalive (sobrevive a la navegación).
+ok('cloud: mrResolveSong llama a la Edge Function mr-resolve con keepalive', /function mrResolveSong/.test(cloud) && /functions\/v1\/mr-resolve/.test(cloud) && /keepalive:\s*true/.test(cloud));
+// El servidor resuelve la canción más popular EN VIVO y no fía la popularidad a la caché indefinida.
+ok('cloud: mrResolveSong envía el artista y usa el token de sesión', /JSON\.stringify\(\{ artist:/.test(cloud) && /access_token/.test(cloud));
 // Estilos propios recreando Safari + Google (pantalla a color fijo, ajena al tema).
 ok('styles: recreación de Safari actual + Google (banner, buscador y barra inferior)', /\.mrg-banner/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-spill/.test(styles) && /\.mrg-foot \.lnks2/.test(styles));
 // Logo REAL de Google incrustado (imagen), no texto de colores aproximado.

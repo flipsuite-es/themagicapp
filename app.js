@@ -3519,13 +3519,26 @@
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }
-    mrOnArtistCaptured(artist);
-    // Sale a Google DE VERDAD con la frase inocente (búsqueda real).
-    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
+    // Sale a Google DE VERDAD con la frase inocente (búsqueda real). Antes de
+    // navegar, dispara la resolución+envío en segundo plano; navegamos en
+    // cuanto la petición se ha despachado (tope de 400 ms para no notar demora).
+    var target = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
+    var done = false;
+    function go() { if (done) return; done = true; window.location.href = target; }
+    var p = mrOnArtistCaptured(artist);
+    if (p && p.then) { p.then(go, go); } else { go(); }
+    setTimeout(go, 400);
   }
-  // Enganche para los pasos 2-3: artista -> canción (IA) -> vídeo (YouTube) -> envío.
-  // De momento solo se guarda el artista captado (para verificar el teclado oculto).
-  function mrOnArtistCaptured(artist) { mrState.lastArtist = artist; }
+  // Pasos 2-3: artista -> (IA + web search) canción más popular en vivo ->
+  // vídeo de YouTube -> se envía al espectador. Todo en el servidor; aquí solo
+  // se dispara (keepalive). Devuelve la promesa del despacho para poder navegar.
+  function mrOnArtistCaptured(artist) {
+    mrState.lastArtist = artist;
+    if (artist && window.Cloud && Cloud.mrResolveSong) {
+      try { return Cloud.mrResolveSong(artist); } catch (e) {}
+    }
+    return null;
+  }
   function mrShowCaptured(artist) {
     view.innerHTML =
       '<div class="screen"><div class="pagehead"><h1>Prueba del teclado oculto</h1></div>' +

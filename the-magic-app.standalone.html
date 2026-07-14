@@ -1830,6 +1830,7 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mrg-spill .sbtn .i, .mrg-spill .sbtn svg { width: 26px; height: 26px; }
 .mrg-spill .sbtn .i { stroke-width: 2; }
 .mrg-spill .sbtn.sm .i, .mrg-spill .sbtn.sm svg { width: 23px; height: 23px; }
+
 </style>
 <div class="app"><div id="view"></div></div>
 <script>
@@ -2116,6 +2117,31 @@ window.Cloud = (function () {
   function mrLiveStatus() {
     return sb.rpc("mr_live_status").then(function (r) { if (r.error) throw r.error; return r.data; });
   }
+  // Paso 2-3: artista -> (IA + web search) canción más popular en vivo -> vídeo
+  // de YouTube -> se envía al espectador. Todo el trabajo lento ocurre en el
+  // servidor (Edge Function), así el mago puede salir a Google al instante.
+  // keepalive: la petición se completa aunque la página navegue justo después.
+  function mrResolveSong(artist) {
+    if (!sb) return Promise.resolve(false);
+    return sb.auth.getSession().then(function (r) {
+      var s = r && r.data && r.data.session;
+      var token = s ? s.access_token : null;
+      // Despacha la petición (keepalive) y resuelve al instante: NO espera la
+      // respuesta, para que el mago pueda salir a Google sin demora. El
+      // servidor completa la búsqueda y el envío aunque la página navegue.
+      fetch(URL + "/functions/v1/mr-resolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": KEY,
+          "Authorization": "Bearer " + (token || KEY)
+        },
+        body: JSON.stringify({ artist: artist || "" }),
+        keepalive: true
+      }).catch(function () {});
+      return true;
+    }).catch(function () { return false; });
+  }
 
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
@@ -2270,7 +2296,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
-    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
@@ -2295,6 +2321,7 @@ window.Cloud = (function () {
     block: block, unblock: unblock, report: report
   };
 })();
+
 </script>
 <script>
 /* ==========================================================================
@@ -5818,13 +5845,26 @@ window.Cloud = (function () {
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }
-    mrOnArtistCaptured(artist);
-    // Sale a Google DE VERDAD con la frase inocente (búsqueda real).
-    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
+    // Sale a Google DE VERDAD con la frase inocente (búsqueda real). Antes de
+    // navegar, dispara la resolución+envío en segundo plano; navegamos en
+    // cuanto la petición se ha despachado (tope de 400 ms para no notar demora).
+    var target = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
+    var done = false;
+    function go() { if (done) return; done = true; window.location.href = target; }
+    var p = mrOnArtistCaptured(artist);
+    if (p && p.then) { p.then(go, go); } else { go(); }
+    setTimeout(go, 400);
   }
-  // Enganche para los pasos 2-3: artista -> canción (IA) -> vídeo (YouTube) -> envío.
-  // De momento solo se guarda el artista captado (para verificar el teclado oculto).
-  function mrOnArtistCaptured(artist) { mrState.lastArtist = artist; }
+  // Pasos 2-3: artista -> (IA + web search) canción más popular en vivo ->
+  // vídeo de YouTube -> se envía al espectador. Todo en el servidor; aquí solo
+  // se dispara (keepalive). Devuelve la promesa del despacho para poder navegar.
+  function mrOnArtistCaptured(artist) {
+    mrState.lastArtist = artist;
+    if (artist && window.Cloud && Cloud.mrResolveSong) {
+      try { return Cloud.mrResolveSong(artist); } catch (e) {}
+    }
+    return null;
+  }
   function mrShowCaptured(artist) {
     view.innerHTML =
       '<div class="screen"><div class="pagehead"><h1>Prueba del teclado oculto</h1></div>' +
@@ -6635,4 +6675,5 @@ window.Cloud = (function () {
   initSoundTouch();
   initHFades();
 })();
+
 </script>

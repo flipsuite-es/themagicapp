@@ -271,6 +271,31 @@ window.Cloud = (function () {
   function mrLiveStatus() {
     return sb.rpc("mr_live_status").then(function (r) { if (r.error) throw r.error; return r.data; });
   }
+  // Paso 2-3: artista -> (IA + web search) canción más popular en vivo -> vídeo
+  // de YouTube -> se envía al espectador. Todo el trabajo lento ocurre en el
+  // servidor (Edge Function), así el mago puede salir a Google al instante.
+  // keepalive: la petición se completa aunque la página navegue justo después.
+  function mrResolveSong(artist) {
+    if (!sb) return Promise.resolve(false);
+    return sb.auth.getSession().then(function (r) {
+      var s = r && r.data && r.data.session;
+      var token = s ? s.access_token : null;
+      // Despacha la petición (keepalive) y resuelve al instante: NO espera la
+      // respuesta, para que el mago pueda salir a Google sin demora. El
+      // servidor completa la búsqueda y el envío aunque la página navegue.
+      fetch(URL + "/functions/v1/mr-resolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": KEY,
+          "Authorization": "Bearer " + (token || KEY)
+        },
+        body: JSON.stringify({ artist: artist || "" }),
+        keepalive: true
+      }).catch(function () {});
+      return true;
+    }).catch(function () { return false; });
+  }
 
   /* ===================== comunidad / mercado ===================== */
   function publicUrl(path) { if (!path) return null; try { return sb.storage.from("social").getPublicUrl(path).data.publicUrl; } catch (e) { return null; } }
@@ -425,7 +450,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
-    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,

@@ -275,14 +275,41 @@ window.Cloud = (function () {
   // de YouTube -> se envía al espectador. Todo el trabajo lento ocurre en el
   // servidor (Edge Function), así el mago puede salir a Google al instante.
   // keepalive: la petición se completa aunque la página navegue justo después.
-  function mrResolveSong(artist) {
-    if (!sb) return Promise.resolve(false);
+  // Token de sesión cacheado para poder despachar el envío de forma SÍNCRONA
+  // (dentro del gesto del usuario). iOS bloquea la navegación externa si esta
+  // no ocurre dentro del gesto, así que no podemos esperar a getSession antes
+  // de salir a Google: preparamos el token de antemano (mrPrimeToken).
+  var _mrTok = null;
+  function mrPrimeToken() {
+    if (!sb) return Promise.resolve(null);
     return sb.auth.getSession().then(function (r) {
       var s = r && r.data && r.data.session;
-      var token = s ? s.access_token : null;
-      // Despacha la petición (keepalive) y resuelve al instante: NO espera la
-      // respuesta, para que el mago pueda salir a Google sin demora. El
-      // servidor completa la búsqueda y el envío aunque la página navegue.
+      _mrTok = s ? s.access_token : null;
+      return _mrTok;
+    }).catch(function () { return null; });
+  }
+  // Lee el token de sesión de localStorage de forma SÍNCRONA (respaldo por si
+  // no se preparó antes). Clave estándar de supabase-js v2: sb-<ref>-auth-token.
+  function mrTokenSync() {
+    if (_mrTok) return _mrTok;
+    try {
+      var host = URL.replace(/^https?:\/\//, "");
+      var ref = host.split(".")[0];
+      var raw = localStorage.getItem("sb-" + ref + "-auth-token");
+      if (raw) {
+        var o = JSON.parse(raw);
+        _mrTok = (o && (o.access_token || (o.currentSession && o.currentSession.access_token))) || null;
+      }
+    } catch (e) {}
+    return _mrTok;
+  }
+  // Despacha la resolución+envío de forma SÍNCRONA (sin await), con keepalive
+  // para que la petición se complete aunque la página navegue a Google acto
+  // seguido. Todo el trabajo lento (IA + YouTube + envío) ocurre en el servidor.
+  function mrResolveSong(artist) {
+    if (!sb) return false;
+    var token = mrTokenSync();
+    try {
       fetch(URL + "/functions/v1/mr-resolve", {
         method: "POST",
         headers: {
@@ -293,8 +320,8 @@ window.Cloud = (function () {
         body: JSON.stringify({ artist: artist || "" }),
         keepalive: true
       }).catch(function () {});
-      return true;
-    }).catch(function () { return false; });
+    } catch (e) {}
+    return true;
   }
 
   /* ===================== comunidad / mercado ===================== */
@@ -450,7 +477,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
-    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong, mrPrimeToken: mrPrimeToken,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,

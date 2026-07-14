@@ -2121,14 +2121,41 @@ window.Cloud = (function () {
   // de YouTube -> se envía al espectador. Todo el trabajo lento ocurre en el
   // servidor (Edge Function), así el mago puede salir a Google al instante.
   // keepalive: la petición se completa aunque la página navegue justo después.
-  function mrResolveSong(artist) {
-    if (!sb) return Promise.resolve(false);
+  // Token de sesión cacheado para poder despachar el envío de forma SÍNCRONA
+  // (dentro del gesto del usuario). iOS bloquea la navegación externa si esta
+  // no ocurre dentro del gesto, así que no podemos esperar a getSession antes
+  // de salir a Google: preparamos el token de antemano (mrPrimeToken).
+  var _mrTok = null;
+  function mrPrimeToken() {
+    if (!sb) return Promise.resolve(null);
     return sb.auth.getSession().then(function (r) {
       var s = r && r.data && r.data.session;
-      var token = s ? s.access_token : null;
-      // Despacha la petición (keepalive) y resuelve al instante: NO espera la
-      // respuesta, para que el mago pueda salir a Google sin demora. El
-      // servidor completa la búsqueda y el envío aunque la página navegue.
+      _mrTok = s ? s.access_token : null;
+      return _mrTok;
+    }).catch(function () { return null; });
+  }
+  // Lee el token de sesión de localStorage de forma SÍNCRONA (respaldo por si
+  // no se preparó antes). Clave estándar de supabase-js v2: sb-<ref>-auth-token.
+  function mrTokenSync() {
+    if (_mrTok) return _mrTok;
+    try {
+      var host = URL.replace(/^https?:\/\//, "");
+      var ref = host.split(".")[0];
+      var raw = localStorage.getItem("sb-" + ref + "-auth-token");
+      if (raw) {
+        var o = JSON.parse(raw);
+        _mrTok = (o && (o.access_token || (o.currentSession && o.currentSession.access_token))) || null;
+      }
+    } catch (e) {}
+    return _mrTok;
+  }
+  // Despacha la resolución+envío de forma SÍNCRONA (sin await), con keepalive
+  // para que la petición se complete aunque la página navegue a Google acto
+  // seguido. Todo el trabajo lento (IA + YouTube + envío) ocurre en el servidor.
+  function mrResolveSong(artist) {
+    if (!sb) return false;
+    var token = mrTokenSync();
+    try {
       fetch(URL + "/functions/v1/mr-resolve", {
         method: "POST",
         headers: {
@@ -2139,8 +2166,8 @@ window.Cloud = (function () {
         body: JSON.stringify({ artist: artist || "" }),
         keepalive: true
       }).catch(function () {});
-      return true;
-    }).catch(function () { return false; });
+    } catch (e) {}
+    return true;
   }
 
   /* ===================== comunidad / mercado ===================== */
@@ -2296,7 +2323,7 @@ window.Cloud = (function () {
     uploadVideo: uploadVideo, uploadPhoto: uploadPhoto, signedUrl: signedUrl, signedUrlLong: signedUrlLong, removeVideo: removeVideo, extract: extract,
     mrCreateSession: mrCreateSession, mrSendReveal: mrSendReveal, mrStatus: mrStatus, mrCancel: mrCancel,
     mrSpectatorJoin: mrSpectatorJoin, mrSpectatorPoll: mrSpectatorPoll, mrChannel: mrChannel, mrMyHandle: mrMyHandle,
-    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong,
+    mrPrepare: mrPrepare, mrSendRevealLive: mrSendRevealLive, mrLiveStatus: mrLiveStatus, mrResolveSong: mrResolveSong, mrPrimeToken: mrPrimeToken,
     createShare: createShare, getShare: getShare, listShares: listShares, deleteShare: deleteShare,
     pushKey: pushKey, savePushSub: savePushSub, deletePushSub: deletePushSub,
     getReminderPref: getReminderPref, saveReminderPref: saveReminderPref,
@@ -5687,6 +5714,9 @@ window.Cloud = (function () {
     try { if (!innocent) innocent = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
     if (!innocent) innocent = "restaurantes italianos cerca de mí";
     mrSearch = { innocent: innocent, raw: "", artist: "", phase: "secret", practice: !!practice };
+    // Prepara el token de sesión ya, para poder despachar el envío de forma
+    // síncrona al pulsar Buscar (dentro del gesto, sin esperar a getSession).
+    if (!practice && window.Cloud && Cloud.mrPrimeToken) { try { Cloud.mrPrimeToken(); } catch (e) {} }
     mrRenderSearchScreen();
     mrNotchWhite(true); // el buscador de Google va sobre fondo blanco: notch blanco
   }
@@ -5845,19 +5875,16 @@ window.Cloud = (function () {
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }
-    // Sale a Google DE VERDAD con la frase inocente (búsqueda real). Antes de
-    // navegar, dispara la resolución+envío en segundo plano; navegamos en
-    // cuanto la petición se ha despachado (tope de 400 ms para no notar demora).
-    var target = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
-    var done = false;
-    function go() { if (done) return; done = true; window.location.href = target; }
-    var p = mrOnArtistCaptured(artist);
-    if (p && p.then) { p.then(go, go); } else { go(); }
-    setTimeout(go, 400);
+    // Dispara la resolución+envío de forma SÍNCRONA (keepalive) y sale a Google
+    // en el MISMO gesto: iOS bloquea la navegación externa si esta ocurre fuera
+    // del gesto del usuario, así que no esperamos nada antes de navegar. El
+    // servidor completa la búsqueda y el envío aunque la página ya haya salido.
+    mrOnArtistCaptured(artist);
+    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
   }
   // Pasos 2-3: artista -> (IA + web search) canción más popular en vivo ->
   // vídeo de YouTube -> se envía al espectador. Todo en el servidor; aquí solo
-  // se dispara (keepalive). Devuelve la promesa del despacho para poder navegar.
+  // se dispara de forma síncrona (keepalive), justo antes de salir a Google.
   function mrOnArtistCaptured(artist) {
     mrState.lastArtist = artist;
     if (artist && window.Cloud && Cloud.mrResolveSong) {

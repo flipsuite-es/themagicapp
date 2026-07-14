@@ -3361,6 +3361,9 @@
     try { if (!innocent) innocent = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
     if (!innocent) innocent = "restaurantes italianos cerca de mí";
     mrSearch = { innocent: innocent, raw: "", artist: "", phase: "secret", practice: !!practice };
+    // Prepara el token de sesión ya, para poder despachar el envío de forma
+    // síncrona al pulsar Buscar (dentro del gesto, sin esperar a getSession).
+    if (!practice && window.Cloud && Cloud.mrPrimeToken) { try { Cloud.mrPrimeToken(); } catch (e) {} }
     mrRenderSearchScreen();
     mrNotchWhite(true); // el buscador de Google va sobre fondo blanco: notch blanco
   }
@@ -3519,19 +3522,16 @@
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }
-    // Sale a Google DE VERDAD con la frase inocente (búsqueda real). Antes de
-    // navegar, dispara la resolución+envío en segundo plano; navegamos en
-    // cuanto la petición se ha despachado (tope de 400 ms para no notar demora).
-    var target = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
-    var done = false;
-    function go() { if (done) return; done = true; window.location.href = target; }
-    var p = mrOnArtistCaptured(artist);
-    if (p && p.then) { p.then(go, go); } else { go(); }
-    setTimeout(go, 400);
+    // Dispara la resolución+envío de forma SÍNCRONA (keepalive) y sale a Google
+    // en el MISMO gesto: iOS bloquea la navegación externa si esta ocurre fuera
+    // del gesto del usuario, así que no esperamos nada antes de navegar. El
+    // servidor completa la búsqueda y el envío aunque la página ya haya salido.
+    mrOnArtistCaptured(artist);
+    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
   }
   // Pasos 2-3: artista -> (IA + web search) canción más popular en vivo ->
   // vídeo de YouTube -> se envía al espectador. Todo en el servidor; aquí solo
-  // se dispara (keepalive). Devuelve la promesa del despacho para poder navegar.
+  // se dispara de forma síncrona (keepalive), justo antes de salir a Google.
   function mrOnArtistCaptured(artist) {
     mrState.lastArtist = artist;
     if (artist && window.Cloud && Cloud.mrResolveSong) {

@@ -64,6 +64,21 @@ ok('app: confirma el recibo con el acuse del espectador', /awaitRev/.test(app) &
 // El monitor del mago sondea rápido (1 s) para detectar presencia y entrega.
 ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 
+// --- Teclado oculto: buscador estilo Google que capta el artista a ciegas ---
+const styles = readFileSync(ROOT + 'styles.css', 'utf8');
+// Buscador propio estilo Google con teclado en pantalla (obligatorio: el del sistema no vale).
+ok('app: buscador encubierto estilo Google con teclado propio', /function mrOpenSearch/.test(app) && /function mrRenderSearchScreen/.test(app) && /MR_KB/.test(app));
+// A ciegas: en la barra se escribe la frase inocente, nunca lo que teclea el mago.
+ok('app: a ciegas — la barra muestra la frase inocente (innocent.slice), no lo tecleado', /innocent\.slice\(0, ?mrSearch\.ptr\)|s\.innocent\.slice\(0, ?s\.ptr\)/.test(app));
+// Delimitador "qq": el artista es todo lo pulsado antes de "qq".
+ok('app: "qq" cierra la captura del artista (lo pulsado antes de qq)', /"qq"/.test(app) && /slice\(0, ?-2\)/.test(app) && /phase = "real"/.test(app));
+// Al pulsar Buscar sale a Google de verdad con la frase inocente.
+ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\?q="\s*\+\s*encodeURIComponent\(s\.innocent\)/.test(app));
+// El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.
+ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
+// Estilos propios del buscador (pantalla a color fijo, ajena al tema de la app).
+ok('styles: estilos del buscador Google (teclado y barra)', /\.mrg-key/.test(styles) && /\.mrg-pill/.test(styles));
+
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

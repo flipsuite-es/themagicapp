@@ -3168,7 +3168,7 @@
       try { localStorage.setItem(MR_INNOCENT_KEY, innocent); } catch (e) {}
       var btn = document.getElementById("mrPrepare"); btn.disabled = true; btn.textContent = "Preparando…";
       Cloud.mrPrepare(innocent, "qq", mode, custom).then(function (s) {
-        mrState.ready = true; mrState.startMode = mode; mrState.custom = custom;
+        mrState.ready = true; mrState.startMode = mode; mrState.custom = custom; mrState.innocent = innocent;
         if (s && s.code) mrState.code = s.code;
         mrRenderSession();
       }).catch(function () { btn.disabled = false; btn.innerHTML = icon("play", "i-sm") + " Preparar truco"; toast("No se pudo preparar el truco"); });
@@ -3189,19 +3189,25 @@
       (navigator.share ? '<button class="btn ghost" id="mrShare">' + icon("share", "i-sm") + " Compartir…</button>" : "") + "</div></div>" +
       '<div class="panel" id="mrStatusPanel"><div class="sec-label">Estado</div>' +
       '<div class="mr-status" id="mrStatusLine">' + icon("refresh", "i-sm") + " <span>Esperando al espectador…</span></div></div>" +
+      '<div class="panel"><div class="sec-label">Actuar</div>' +
+      '<p class="hint">Abre el buscador de Google. Teclea <b>a ciegas</b> el nombre del artista y termina con <b>qq</b>; después sigue tocando para completar la frase inocente. Al pulsar Buscar sales a Google de verdad con la frase inocente.</p>' +
+      '<button class="btn" id="mrAct">' + icon("search", "i-sm") + " Buscar en Google</button></div>" +
       '<div class="panel"><div class="sec-label">Revelación (manual)</div>' +
       '<p class="hint">Paso 1: pega un enlace o ID de YouTube y el segundo de inicio para comprobar en móviles reales que el móvil del espectador abre YouTube solo. Puedes enviarla las veces que quieras (con cada espectador). Con el teclado y las APIs, esto será automático.</p>' +
       '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…"></div>' +
       '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
       '<button class="btn" id="mrReveal" disabled>' + icon("refresh", "i-sm") + " Esperando al espectador…</button>" +
       '<p class="hint" id="mrSendHint">El botón se activa cuando el espectador abre tu enlace. Si no hay nadie conectado, la revelación no se envía.</p></div>' +
-      '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div></details>' +
+      '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div>' +
+      '<button class="btn ghost small" id="mrPractice" style="margin-top:8px">Probar teclado oculto (sin salir a Google)</button></details>' +
       "</div>";
     document.getElementById("mrCopy").addEventListener("click", function () {
       var u = mrSpectatorUrl(); var inp = document.getElementById("mrLink"); if (inp) try { inp.select(); } catch (e) {}
       copyText(u).then(function (ok) { toast(ok ? "Enlace copiado" : "Selecciónalo y copia"); });
     });
     var sh = document.getElementById("mrShare"); if (sh) sh.addEventListener("click", function () { navigator.share({ url: mrSpectatorUrl() }).catch(function () {}); });
+    var act = document.getElementById("mrAct"); if (act) act.addEventListener("click", function () { mrOpenSearch(false); });
+    var prac = document.getElementById("mrPractice"); if (prac) prac.addEventListener("click", function () { mrOpenSearch(true); });
     document.getElementById("mrReveal").addEventListener("click", function () {
       if (mrState.sending || !mrState.canSend) return; // sin espectador no se envía nada
       var raw = (document.getElementById("mrVid").value || "").trim();
@@ -3292,6 +3298,7 @@
       mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
       mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
       mrDiagRow("Enlace permanente", "/m/" + (mrState.code || "…") + " · sin caducidad") +
+      mrDiagRow("Último artista captado", mrState.lastArtist || "—") +
       mrDiagRow("Último error", d.err || "—");
   }
   function mrMonitor() {
@@ -3325,6 +3332,140 @@
         mrRenderDiag();
       }).catch(function () {});
     }, 1000);
+  }
+
+  /* ---- Buscador encubierto estilo Google (teclado oculto) ----
+     El mago teclea A CIEGAS el nombre del artista mientras en la barra se escribe
+     sola la frase inocente (una letra por toque). Al teclear "qq" se cierra la
+     captura del artista (todo lo pulsado ANTES de "qq") y los toques siguientes
+     solo terminan de rellenar la frase inocente. Al pulsar Buscar se sale a Google
+     de verdad con la frase inocente (con la IA y la API de YouTube —pasos 2 y 3—
+     se enviará además la predicción al espectador en ese momento). */
+  var mrSearch = null;
+  var MR_KB = {
+    abc: [
+      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+      ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ"],
+      ["shift", "z", "x", "c", "v", "b", "n", "m", "back"],
+      ["num", "space", "search"]
+    ],
+    num: [
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+      ["-", "/", ":", ";", "(", ")", "&", "@", "€"],
+      ["abc", ".", ",", "?", "!", "+", "back"],
+      ["space", "search"]
+    ]
+  };
+  function mrOpenSearch(practice) {
+    clearTabbar(); teardownMusicReveal();
+    var innocent = mrState.innocent || "";
+    try { if (!innocent) innocent = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
+    if (!innocent) innocent = "restaurantes italianos cerca de mí";
+    mrSearch = { innocent: innocent, ptr: 0, raw: "", artist: "", phase: "secret", practice: !!practice, layer: "abc", caps: false };
+    mrRenderSearchScreen();
+    mrKeepAwake();
+  }
+  function mrKbHtml() {
+    var rows = MR_KB[mrSearch.layer] || MR_KB.abc, html = "";
+    for (var r = 0; r < rows.length; r++) {
+      html += '<div class="mrg-krow">';
+      for (var i = 0; i < rows[r].length; i++) {
+        var k = rows[r][i], cls = "mrg-key", label = k, attr;
+        if (k === "space") { cls += " sp"; label = ""; attr = 'data-act="space"'; }
+        else if (k === "back") { cls += " fn"; label = "⌫"; attr = 'data-act="back"'; }
+        else if (k === "shift") { cls += " fn" + (mrSearch.caps ? " on" : ""); label = "⇧"; attr = 'data-act="shift"'; }
+        else if (k === "num") { cls += " fn"; label = "?123"; attr = 'data-act="layer" data-layer="num"'; }
+        else if (k === "abc") { cls += " fn"; label = "ABC"; attr = 'data-act="layer" data-layer="abc"'; }
+        else if (k === "search") { cls += " go"; label = "Buscar"; attr = 'data-act="search"'; }
+        else { attr = 'data-k="' + esc(k) + '"'; label = (mrSearch.caps && /[a-zñ]/.test(k)) ? k.toUpperCase() : k; }
+        html += '<button type="button" class="' + cls + '" ' + attr + '>' + esc(label) + "</button>";
+      }
+      html += "</div>";
+    }
+    return html;
+  }
+  function mrSugHtml() {
+    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
+    if (!q) return "";
+    var sug = [q, q + " opiniones", q + " cerca"], h = "";
+    for (var i = 0; i < sug.length; i++) {
+      h += '<div class="mrg-sug"><span class="mrg-sic">' + icon("search", "i-sm") + "</span><span>" + esc(sug[i]) + "</span></div>";
+    }
+    return h;
+  }
+  function mrRenderSearchScreen() {
+    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
+    view.innerHTML =
+      '<div class="mrg" id="mrg">' +
+      '<div class="mrg-bar">' +
+      '<button type="button" class="mrg-back" data-act="exit" aria-label="Volver">' + icon("back") + "</button>" +
+      '<div class="mrg-pill"><span class="mrg-q" id="mrgText">' + esc(q) + '<i class="mrg-cur"></i></span>' +
+      '<span class="mrg-ic">🎤</span><span class="mrg-ic">📷</span></div>' +
+      "</div>" +
+      '<div class="mrg-sugs" id="mrgSug">' + mrSugHtml() + "</div>" +
+      '<div class="mrg-kb" id="mrgKb">' + mrKbHtml() + "</div>" +
+      "</div>";
+    var g = document.getElementById("mrg");
+    if (g) g.addEventListener("click", mrgTap);
+  }
+  function mrgTap(e) {
+    var el = e.target;
+    while (el && el.nodeType === 1 && !el.hasAttribute("data-k") && !el.hasAttribute("data-act")) el = el.parentNode;
+    if (!el || el.nodeType !== 1) return;
+    if (el.hasAttribute("data-k")) { mrSearchKey(el.getAttribute("data-k")); return; }
+    var act = el.getAttribute("data-act");
+    if (act === "space") mrSearchKey(" ");
+    else if (act === "back") mrSearchBack();
+    else if (act === "shift") { mrSearch.caps = !mrSearch.caps; mrRefreshKb(); }
+    else if (act === "layer") { mrSearch.layer = el.getAttribute("data-layer"); mrRefreshKb(); }
+    else if (act === "search") mrSearchGo();
+    else if (act === "exit") { mrSearch = null; mrRenderSession(); }
+  }
+  function mrSearchKey(ch) {
+    var s = mrSearch; if (!s) return;
+    var real = (s.caps && /[a-zñ]/.test(ch)) ? ch.toUpperCase() : ch;
+    if (s.phase === "secret") {
+      s.raw += real; s.ptr++;
+      // "qq" cierra la captura: el artista es todo lo pulsado antes de las dos q.
+      if (s.raw.length >= 2 && s.raw.slice(-2).toLowerCase() === "qq") { s.artist = s.raw.slice(0, -2); s.phase = "real"; }
+    } else { s.ptr++; }
+    if (s.ptr > s.innocent.length) s.ptr = s.innocent.length;
+    mrUpdateSearchBar();
+  }
+  function mrSearchBack() {
+    var s = mrSearch; if (!s) return;
+    if (s.phase === "secret" && s.raw.length) s.raw = s.raw.slice(0, -1);
+    if (s.ptr > 0) s.ptr--;
+    mrUpdateSearchBar();
+  }
+  function mrUpdateSearchBar() {
+    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
+    var t = document.getElementById("mrgText"); if (t) t.innerHTML = esc(q) + '<i class="mrg-cur"></i>';
+    var sug = document.getElementById("mrgSug"); if (sug) sug.innerHTML = mrSugHtml();
+  }
+  function mrRefreshKb() { var kb = document.getElementById("mrgKb"); if (kb) kb.innerHTML = mrKbHtml(); }
+  function mrSearchGo() {
+    var s = mrSearch; if (!s) return;
+    var artist = (s.phase === "secret" ? s.raw : s.artist).replace(/qq$/i, "").trim();
+    mrState.lastArtist = artist;
+    try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
+    if (s.practice) { mrShowCaptured(artist); return; }
+    mrOnArtistCaptured(artist);
+    // Sale a Google DE VERDAD con la frase inocente (búsqueda real).
+    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(s.innocent);
+  }
+  // Enganche para los pasos 2-3: artista -> canción (IA) -> vídeo (YouTube) -> envío.
+  // De momento solo se guarda el artista captado (para verificar el teclado oculto).
+  function mrOnArtistCaptured(artist) { mrState.lastArtist = artist; }
+  function mrShowCaptured(artist) {
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><h1>Prueba del teclado oculto</h1></div>' +
+      '<div class="panel"><div class="sec-label">Artista captado</div>' +
+      '<div class="mr-code" style="font-size:22px">' + (artist ? esc(artist) : "(vacío)") + "</div>" +
+      '<p class="hint">Es lo que se tecleó a ciegas antes de <b>qq</b>. En la actuación real no se muestra: se sale a Google (y, con la IA y la API de YouTube, se enviará la canción al espectador).</p>' +
+      '<button class="btn" id="mrBackSess">Volver</button></div></div>';
+    var b = document.getElementById("mrBackSess");
+    if (b) b.addEventListener("click", function () { mrSearch = null; mrRenderSession(); });
   }
 
   /* La página del espectador vive en r.html (aparte, neutra, fuera del SW).

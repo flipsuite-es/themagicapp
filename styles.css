@@ -1774,3 +1774,27 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mr-code b { background: var(--foil); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; padding: 0 0.06em; }
 .mr-linkfull { font-size: 13px; color: var(--ink-faint); font-family: var(--ui); word-break: break-all; margin-bottom: 4px; }
 .mr-linkalt { font-size: 11.5px; color: var(--ink-faint); font-family: var(--ui); opacity: .8; margin-bottom: 4px; }
+
+/* Buscador encubierto estilo Google (teclado oculto del truco). Pantalla propia
+   a color fijo, ajena al tema de la app (imita Google móvil). */
+.mrg { position: fixed; inset: 0; z-index: 60; background: #fff; color: #202124; display: flex; flex-direction: column; font-family: Arial, "Roboto", -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+.mrg-bar { display: flex; align-items: center; gap: 4px; padding: 8px 12px 8px 4px; padding-top: calc(8px + env(safe-area-inset-top)); }
+.mrg-back { background: none; border: 0; color: #5f6368; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; }
+.mrg-back .i { width: 22px; height: 22px; }
+.mrg-pill { flex: 1; display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dfe1e5; border-radius: 999px; padding: 10px 15px; box-shadow: 0 1px 5px rgba(32,33,36,.14); min-width: 0; }
+.mrg-q { flex: 1; font-size: 16px; line-height: 20px; color: #202124; white-space: nowrap; overflow: hidden; }
+.mrg-cur { display: inline-block; width: 2px; height: 18px; background: #4285f4; vertical-align: -3px; margin-left: 1px; animation: mrgblink 1s step-end infinite; }
+@keyframes mrgblink { 50% { opacity: 0; } }
+.mrg-ic { font-size: 17px; flex: 0 0 auto; opacity: .9; }
+.mrg-sugs { flex: 1; overflow-y: auto; }
+.mrg-sug { display: flex; align-items: center; gap: 18px; padding: 12px 20px; color: #202124; font-size: 16px; border-bottom: 1px solid #f1f3f4; }
+.mrg-sic { color: #9aa0a6; display: flex; } .mrg-sic .i { width: 20px; height: 20px; }
+.mrg-kb { background: #e8eaed; padding: 6px 3px calc(8px + env(safe-area-inset-bottom)); user-select: none; -webkit-user-select: none; }
+.mrg-krow { display: flex; justify-content: center; gap: 5px; margin: 4px 4px; }
+.mrg-key { flex: 1; min-width: 0; height: 44px; background: #fff; border: 0; border-radius: 6px; box-shadow: 0 1px 0 rgba(0,0,0,.28); font-size: 18px; color: #202124; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.mrg-key:active { background: #d3d6db; }
+.mrg-key.fn { background: #c5c9cf; font-size: 13px; flex: 1.35; }
+.mrg-key.fn.on { background: #7c828a; color: #fff; }
+.mrg-key.sp { flex: 5; }
+.mrg-key.go { background: #4285f4; color: #fff; flex: 2.2; font-size: 15px; font-weight: 600; }
+.mrg-key.go:active { background: #3574e0; }

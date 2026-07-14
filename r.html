@@ -73,7 +73,7 @@
        lanza apps), y location.replace solo para el respaldo web (sin dejar rastro).
        YouTube arranca con sonido; como el volumen está al mínimo, no se oye hasta
        que el espectador sube el botón físico de volumen (ese es el efecto). */
-    var pending = null, armed = false, revealing = false;
+    var pending = null, armed = false, revealing = false, webFallback = null;
     function ytWeb(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
     function go(reveal, rev) {
       if (done || !reveal || !reveal.video_id) return;
@@ -81,8 +81,14 @@
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
       pending = reveal;
-      armGesture();          // el primer contacto (coger el móvil) abre la app
-      openAppAuto(reveal);   // intento automático de abrir la app (sin gesto)
+      armGesture();          // un toque en la pantalla abre la APP de YouTube (Android exige gesto)
+      openAppAuto(reveal);   // intento automático (iOS suele abrir la app sin tocar; Android no)
+      // Sin ningún toque, Android no puede abrir la app: como respaldo, a los 8 s
+      // se sale a la WEB de YouTube para que nunca se quede colgado (la canción
+      // igualmente suena y se revela). Un toque antes de eso abre la APP al instante.
+      webFallback = window.setTimeout(function () {
+        if (!revealing) { revealing = true; window.location.replace(ytWeb(reveal.video_id, reveal.start_seconds)); }
+      }, 8000);
     }
     // Al coger el móvil, el primer gesto garantiza abrir la app (o, si no, la web).
     function armGesture() {
@@ -110,6 +116,7 @@
     // está instalada, cae a la WEB de YouTube (nunca se queda en esta página).
     function doReveal(reveal) {
       if (revealing) return; revealing = true;
+      if (webFallback) { clearTimeout(webFallback); webFallback = null; }  // hubo toque: cancela el respaldo web
       var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
       var web = ytWeb(id, t);
       if (/Android/i.test(ua)) {

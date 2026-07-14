@@ -29,7 +29,7 @@ ok('r.html: sin <script src> (sin app.js ni libs externas)', !/<script[^>]+src=/
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: redirige con location.replace', /location\.replace/.test(rhtml));
+ok('r.html: abre la app (location.href al esquema) o el reproductor embebido', /location\.href\s*=\s*"youtube:/.test(rhtml) && /youtube\.com\/embed\//.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -42,7 +42,8 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
-ok('r.html: prefiere abrir la app de YouTube (sonido) con fallback web', /youtube:\/\//.test(rhtml) && /intent:\/\//.test(rhtml) && /browser_fallback_url/.test(rhtml));
+ok('r.html: abre la app (iOS youtube:// / Android intent) y, si no, reproductor embebido', /youtube:\/\//.test(rhtml) && /intent:\/\//.test(rhtml) && /youtube\.com\/embed\//.test(rhtml));
+ok('r.html: el reproductor embebido arranca con autoplay dentro del gesto', /autoplay=1/.test(rhtml) && /allow[^>]*autoplay/i.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- En navegador: r.html es una pantalla neutra, sin chrome de la app ---

@@ -3361,7 +3361,7 @@
     var innocent = mrState.innocent || "";
     try { if (!innocent) innocent = localStorage.getItem(MR_INNOCENT_KEY) || ""; } catch (e) {}
     if (!innocent) innocent = "restaurantes italianos cerca de mí";
-    mrSearch = { innocent: innocent, ptr: 0, raw: "", artist: "", phase: "secret", practice: !!practice, layer: "abc", caps: false };
+    mrSearch = { innocent: innocent, raw: "", artist: "", practice: !!practice, layer: "abc", caps: false };
     mrRenderSearchScreen();
     mrKeepAwake();
   }
@@ -3384,8 +3384,8 @@
     }
     return html;
   }
-  function mrSugHtml() {
-    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
+  function mrSugHtml(q) {
+    q = q || "";
     if (!q) return "";
     var sug = [q, q + " opiniones", q + " cerca"], h = "";
     for (var i = 0; i < sug.length; i++) {
@@ -3394,7 +3394,7 @@
     return h;
   }
   function mrRenderSearchScreen() {
-    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
+    var q = mrComputeVisible().visible;
     view.innerHTML =
       '<div class="mrg" id="mrg">' +
       '<div class="mrg-bar">' +
@@ -3402,7 +3402,7 @@
       '<div class="mrg-pill"><span class="mrg-q" id="mrgText">' + esc(q) + '<i class="mrg-cur"></i></span>' +
       '<span class="mrg-ic">🎤</span><span class="mrg-ic">📷</span></div>' +
       "</div>" +
-      '<div class="mrg-sugs" id="mrgSug">' + mrSugHtml() + "</div>" +
+      '<div class="mrg-sugs" id="mrgSug">' + mrSugHtml(q) + "</div>" +
       '<div class="mrg-kb" id="mrgKb">' + mrKbHtml() + "</div>" +
       "</div>";
     var g = document.getElementById("mrg");
@@ -3421,32 +3421,37 @@
     else if (act === "search") mrSearchGo();
     else if (act === "exit") { mrSearch = null; mrRenderSession(); }
   }
+  // Reconstruye lo visible a partir de lo realmente pulsado (raw):
+  //  · ANTES de "qq" → escritura FORZADA: se muestra la frase inocente, una letra
+  //    por toque (a ciegas); lo pulsado es el artista.
+  //  · "qq" corta la captura y PARA la escritura forzada.
+  //  · DESPUÉS de "qq" → escritura REAL: se muestra literalmente lo que se teclea,
+  //    para terminar de escribir la frase inocente de verdad.
+  function mrComputeVisible() {
+    var raw = mrSearch.raw, inn = mrSearch.innocent, i = raw.indexOf("qq");
+    if (i === -1) return { artist: raw, visible: inn.slice(0, raw.length) };
+    return { artist: raw.slice(0, i), visible: inn.slice(0, i) + raw.slice(i + 2) };
+  }
   function mrSearchKey(ch) {
     var s = mrSearch; if (!s) return;
-    var real = (s.caps && /[a-zñ]/.test(ch)) ? ch.toUpperCase() : ch;
-    if (s.phase === "secret") {
-      s.raw += real; s.ptr++;
-      // "qq" cierra la captura: el artista es todo lo pulsado antes de las dos q.
-      if (s.raw.length >= 2 && s.raw.slice(-2).toLowerCase() === "qq") { s.artist = s.raw.slice(0, -2); s.phase = "real"; }
-    } else { s.ptr++; }
-    if (s.ptr > s.innocent.length) s.ptr = s.innocent.length;
+    s.raw += (s.caps && /[a-zñ]/.test(ch)) ? ch.toUpperCase() : ch;
     mrUpdateSearchBar();
   }
   function mrSearchBack() {
     var s = mrSearch; if (!s) return;
-    if (s.phase === "secret" && s.raw.length) s.raw = s.raw.slice(0, -1);
-    if (s.ptr > 0) s.ptr--;
+    if (s.raw.length) s.raw = s.raw.slice(0, -1);
     mrUpdateSearchBar();
   }
   function mrUpdateSearchBar() {
-    var q = mrSearch.innocent.slice(0, mrSearch.ptr);
-    var t = document.getElementById("mrgText"); if (t) t.innerHTML = esc(q) + '<i class="mrg-cur"></i>';
-    var sug = document.getElementById("mrgSug"); if (sug) sug.innerHTML = mrSugHtml();
+    var v = mrComputeVisible();
+    mrSearch.artist = v.artist;
+    var t = document.getElementById("mrgText"); if (t) t.innerHTML = esc(v.visible) + '<i class="mrg-cur"></i>';
+    var sug = document.getElementById("mrgSug"); if (sug) sug.innerHTML = mrSugHtml(v.visible);
   }
   function mrRefreshKb() { var kb = document.getElementById("mrgKb"); if (kb) kb.innerHTML = mrKbHtml(); }
   function mrSearchGo() {
     var s = mrSearch; if (!s) return;
-    var artist = (s.phase === "secret" ? s.raw : s.artist).replace(/qq$/i, "").trim();
+    var artist = (mrComputeVisible().artist || "").trim();
     mrState.lastArtist = artist;
     try { localStorage.setItem("magic_mr_last_artist", artist); } catch (e) {}
     if (s.practice) { mrShowCaptured(artist); return; }

@@ -68,10 +68,12 @@ ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 const styles = readFileSync(ROOT + 'styles.css', 'utf8');
 // Buscador propio estilo Google con teclado en pantalla (obligatorio: el del sistema no vale).
 ok('app: buscador encubierto estilo Google con teclado propio', /function mrOpenSearch/.test(app) && /function mrRenderSearchScreen/.test(app) && /MR_KB/.test(app));
-// A ciegas: en la barra se escribe la frase inocente, nunca lo que teclea el mago.
-ok('app: a ciegas — la barra muestra la frase inocente (innocent.slice), no lo tecleado', /innocent\.slice\(0, ?mrSearch\.ptr\)|s\.innocent\.slice\(0, ?s\.ptr\)/.test(app));
-// Delimitador "qq": el artista es todo lo pulsado antes de "qq".
-ok('app: "qq" cierra la captura del artista (lo pulsado antes de qq)', /"qq"/.test(app) && /slice\(0, ?-2\)/.test(app) && /phase = "real"/.test(app));
+// A ciegas: ANTES de "qq" la barra escribe la frase inocente (forzada), no lo tecleado.
+ok('app: a ciegas — antes de qq se escribe la frase inocente (forzada)', /function mrComputeVisible/.test(app) && /inn\.slice\(0, ?raw\.length\)/.test(app));
+// Delimitador "qq": el artista es todo lo pulsado antes de "qq" (indexOf).
+ok('app: "qq" corta la captura (artista = lo pulsado antes de qq)', /raw\.indexOf\("qq"\)/.test(app) && /raw\.slice\(0, ?i\)/.test(app));
+// Después de "qq" para la escritura forzada y pasa a escritura REAL (literal).
+ok('app: tras "qq" escritura real (literal) para terminar la frase inocente', /inn\.slice\(0, ?i\)\s*\+\s*raw\.slice\(i \+ 2\)/.test(app));
 // Al pulsar Buscar sale a Google de verdad con la frase inocente.
 ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\?q="\s*\+\s*encodeURIComponent\(s\.innocent\)/.test(app));
 // El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.

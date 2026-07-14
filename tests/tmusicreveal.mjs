@@ -25,12 +25,11 @@ ok('vercel: reescribe la carpeta /m/:code a /r', (vercel.rewrites || []).some(r 
 
 // --- Estáticos: r.html es neutra, ligera y aislada ---
 ok('r.html: título neutro', /<title>\s*Preparando/i.test(rhtml));
-ok('r.html: sin <script src> (no carga app.js ni nuestras libs)', !/<script[^>]+src=/i.test(rhtml) && !/\.src\s*=\s*["'][^"']*(app\.js|cloud\.js|supabase\.js|styles\.css)/.test(rhtml));
-ok('r.html: única dependencia externa, la API de YouTube (cargada bajo demanda)', /\.src\s*=\s*["'][^"']*iframe_api/.test(rhtml));
+ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]+src=/i.test(rhtml) && !/\.src\s*=/.test(rhtml));
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: reproductor de YouTube incrustado (móvil boca abajo, no se ve)', /new YT\.Player/.test(rhtml) && /loadVideoById/.test(rhtml));
+ok('r.html: al llegar la señal sale a YouTube con una navegación normal (sin ningún toque)', /function go\(/.test(rhtml) && /location\.replace\(ytUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -43,10 +42,9 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: mantiene la pantalla encendida (Wake Lock)', /wakeLock/.test(rhtml));
-ok('r.html: arranca SILENCIADO (autoplay sin gesto) y se desbloquea con el toque del mago', /player\.mute\(\)/.test(rhtml) && /function unlock\(/.test(rhtml) && /player\.unMute\(\)/.test(rhtml));
-ok('r.html: al llegar la señal reproduce la canción CON audio (no silenciado)', /loadVideoById/.test(rhtml) && /setVolume\(100\)/.test(rhtml) && /playVideo\(\)/.test(rhtml));
-ok('r.html: fase 2 — al coger y tocar el móvil salta a YouTube real en el segundo actual (sin rastro)', /function armHandoff/.test(rhtml) && /getCurrentTime/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && /intent:\/\//.test(rhtml));
-ok('r.html: el reproductor vive en nuestra página, tapado por la capa neutra hasta la señal', /id="yt"/.test(rhtml) && /class="cover"/.test(rhtml) && /body\.reveal \.cover/.test(rhtml));
+ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
+ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
+ok('r.html: no depende de ningún toque del espectador para revelar', !/armHandoff/.test(rhtml) && !/addEventListener\("(pointerdown|touchstart|click)"/.test(rhtml.replace(/visibilitychange/g, '')));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

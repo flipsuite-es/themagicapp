@@ -70,6 +70,8 @@ const styles = readFileSync(ROOT + 'styles.css', 'utf8');
 ok('app: recrea Safari actual + Google (banner de app, dominio falso abajo)', /function mrRenderSearchScreen/.test(app) && /mrg-banner/.test(app) && /mrg-saddr/.test(app) && /google\.com<\/span>/.test(app));
 // Textos localizados según el idioma del móvil (español / inglés).
 ok('app: textos según el idioma del móvil (navigator.language)', /function mrLang/.test(app) && /navigator\.language/.test(app) && /MR_L10N/.test(app) && /"TODO"/.test(app) && /"IMÁGENES"/.test(app));
+// "Ofrecido por Google en:" varía por PAÍS e idioma (oculta el idioma del móvil).
+ok('app: "Ofrecido por Google en:" varía por país e idioma', /function mrLocale/.test(app) && /MR_CC_LANGS/.test(app) && /català/.test(app) && /ccl\[i\]\[0\] !== loc\.lang/.test(app));
 // Sin noticias/tendencias en la pantalla del buscador (evita contenido que caduque).
 const mrgSrc = app.slice(app.indexOf('function mrRenderSearchScreen'), app.indexOf('function mrSetPos'));
 ok('app: el buscador no muestra noticias/tendencias (no caducan)', mrgSrc.length > 0 && !/Tendencias|[Tt]rending/.test(mrgSrc));

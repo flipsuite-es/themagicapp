@@ -5653,10 +5653,38 @@ window.Cloud = (function () {
   }
   var MR_L10N = {
     es: { openApp: "ABRIR", bannerSub: "Ábrelo en la app Google", all: "TODO", images: "IMÁGENES",
-          offered: "Ofrecido por Google en:", langs: ["català", "galego", "euskara"],
-          country: "España", darkOff: "Tema oscuro: desactivado", settings: "Configuración", privacy: "Privacidad", terms: "Términos" },
+          darkOff: "Tema oscuro: desactivado", settings: "Configuración", privacy: "Privacidad", terms: "Términos" },
     en: { openApp: "OPEN", bannerSub: "Open in the Google app", all: "ALL", images: "IMAGES",
-          offered: "", langs: [], country: "", darkOff: "Dark theme: off", settings: "Settings", privacy: "Privacy", terms: "Terms" }
+          darkOff: "Dark theme: off", settings: "Settings", privacy: "Privacy", terms: "Terms" }
+  };
+  // Idioma + país del dispositivo (p. ej. "es-ES" -> {lang:"es", region:"ES"}).
+  function mrLocale() {
+    var s = "en-US";
+    try { s = navigator.language || (navigator.languages && navigator.languages[0]) || "en-US"; } catch (e) {}
+    var p = (s || "en-US").split("-");
+    return { lang: (p[0] || "en").toLowerCase(), region: (p[p.length - 1] || "").toUpperCase() };
+  }
+  // "Ofrecido por Google en:" — idiomas cooficiales por PAÍS (se muestran los que
+  // NO usa ya el móvil). Como en Google real, varía según país e idioma.
+  var MR_CC_LANGS = {
+    ES: [["es", "español"], ["ca", "català"], ["gl", "galego"], ["eu", "euskara"]],
+    CH: [["de", "Deutsch"], ["fr", "Français"], ["it", "Italiano"], ["rm", "Rumantsch"]],
+    BE: [["nl", "Nederlands"], ["fr", "Français"], ["de", "Deutsch"]],
+    CA: [["en", "English"], ["fr", "Français"]],
+    LU: [["fr", "Français"], ["de", "Deutsch"], ["lb", "Lëtzebuergesch"]],
+    IE: [["en", "English"], ["ga", "Gaeilge"]],
+    PY: [["es", "español"], ["gn", "avañe'ẽ"]],
+    IN: [["hi", "हिन्दी"], ["en", "English"], ["bn", "বাংলা"], ["te", "తెలుగు"], ["mr", "मराठी"], ["ta", "தமிழ்"]],
+    ZA: [["en", "English"], ["af", "Afrikaans"], ["zu", "isiZulu"]]
+  };
+  var MR_OFFERED = { es: "Ofrecido por Google en:", ca: "Oferit per Google en:", gl: "Ofrecido por Google en:", eu: "Google hemen eskaintzen da:", en: "Google offered in:", fr: "Google proposé en :", de: "Google angeboten auf:", it: "Google offerto in:", nl: "Google aangeboden in:", pt: "Oferecido pelo Google em:" };
+  // Nombre del país para el pie (en el idioma del móvil cuando lo sabemos).
+  var MR_CC_NAME = {
+    ES: { es: "España", en: "Spain" }, CH: { de: "Schweiz", fr: "Suisse", it: "Svizzera", en: "Switzerland" },
+    BE: { nl: "België", fr: "Belgique", de: "Belgien", en: "Belgium" }, CA: { fr: "Canada", en: "Canada" },
+    US: { es: "Estados Unidos", en: "United States" }, MX: { es: "México", en: "Mexico" }, AR: { es: "Argentina", en: "Argentina" },
+    GB: { en: "United Kingdom" }, FR: { fr: "France", en: "France" }, DE: { de: "Deutschland", en: "Germany" },
+    IT: { it: "Italia", en: "Italy" }, PT: { pt: "Portugal", en: "Portugal" }, IE: { en: "Ireland" }
   };
   // Iconos del buscador moderno (gris, minimalistas).
   var MR_SVG = {
@@ -5666,14 +5694,20 @@ window.Cloud = (function () {
   };
   function mrRenderSearchScreen() {
     var L = MR_L10N[mrLang()], i, offered = "";
+    var loc = mrLocale();
     // Avatar de cuenta: inicial del nombre real puesto en nuestra app.
     var ini = ((myProfile && myProfile.display_name) || "").trim().charAt(0).toUpperCase();
     var avIn = ini ? esc(ini) : icon("user", "i-sm");
-    if (L.langs.length) {
-      var links = "";
-      for (i = 0; i < L.langs.length; i++) links += '<a href="#" onclick="return false">' + esc(L.langs[i]) + "</a>";
-      offered = '<div class="mrg-offered">' + esc(L.offered) + " " + links + "</div>";
+    // "Ofrecido por Google en:" según el país; oculta el idioma que ya usa el móvil.
+    var ccl = MR_CC_LANGS[loc.region] || [], oLangs = [];
+    for (i = 0; i < ccl.length; i++) { if (ccl[i][0] !== loc.lang) oLangs.push(ccl[i][1]); }
+    if (oLangs.length) {
+      var label = MR_OFFERED[loc.lang] || MR_OFFERED.en, links = "";
+      for (i = 0; i < oLangs.length; i++) links += '<a href="#" onclick="return false">' + esc(oLangs[i]) + "</a>";
+      offered = '<div class="mrg-offered">' + esc(label) + " " + links + "</div>";
     }
+    // Nombre del país para el pie (varía por región/idioma).
+    var ccn = MR_CC_NAME[loc.region], country = ccn ? (ccn[loc.lang] || ccn.en || "") : "";
     view.innerHTML =
       '<div class="mrg" id="mrg">' +
         // Smart App Banner de iOS ("Ábrelo en la app Google")
@@ -5699,7 +5733,7 @@ window.Cloud = (function () {
           "</form>" +
           offered +
         "</div>" +
-        '<div class="mrg-foot">' + (L.country ? '<span class="cty">' + esc(L.country) + "</span>" : "") +
+        '<div class="mrg-foot">' + (country ? '<span class="cty">' + esc(country) + "</span>" : "") +
           '<span class="lnks"><span>' + esc(L.darkOff) + "</span><span>" + esc(L.settings) + "</span><span>" + esc(L.privacy) + "</span><span>" + esc(L.terms) + "</span></span></div>" +
         // Barra inferior flotante de Safari (iOS actual)
         '<div class="mrg-sbar">' +

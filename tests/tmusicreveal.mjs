@@ -67,7 +67,7 @@ ok('app: el monitor del mago sondea cada 1 s', /}, 1000\);/.test(app));
 // --- Teclado oculto: navegador + Google recreados, teclado NATIVO, captura a ciegas ---
 const styles = readFileSync(ROOT + 'styles.css', 'utf8');
 // Se recrea la interfaz completa del navegador (Safari actual) con dominio falso.
-ok('app: recrea Safari actual + Google (banner de app, dominio falso abajo)', /function mrRenderSearchScreen/.test(app) && /mrg-banner/.test(app) && /mrg-saddr/.test(app) && /google\.com<\/span>/.test(app));
+ok('app: recrea Safari actual + Google (banner de app, barra inferior con dominio falso)', /function mrRenderSearchScreen/.test(app) && /mrg-banner/.test(app) && /mrg-spill saddr/.test(app) && /google\.com<\/span>/.test(app));
 // Textos localizados según el idioma del móvil (español / inglés).
 ok('app: textos según el idioma del móvil (navigator.language)', /function mrLang/.test(app) && /navigator\.language/.test(app) && /MR_L10N/.test(app) && /"TODO"/.test(app) && /"IMÁGENES"/.test(app));
 // "Ofrecido por Google en:" varía por PAÍS e idioma (oculta el idioma del móvil).
@@ -90,7 +90,7 @@ ok('app: Buscar sale a Google real con la frase inocente', /google\.com\/search\
 // El artista captado queda disponible para los pasos 2-3 (IA/YouTube) y para verificar.
 ok('app: guarda el artista captado (enganche para IA/YouTube)', /mrState\.lastArtist/.test(app) && /function mrOnArtistCaptured/.test(app));
 // Estilos propios recreando Safari + Google (pantalla a color fijo, ajena al tema).
-ok('styles: recreación de Safari actual + Google (banner, buscador y barra inferior)', /\.mrg-banner/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-saddr/.test(styles));
+ok('styles: recreación de Safari actual + Google (banner, buscador y barra inferior)', /\.mrg-banner/.test(styles) && /\.mrg-input/.test(styles) && /\.mrg-spill/.test(styles) && /\.mrg-foot \.lnks2/.test(styles));
 // Logo REAL de Google incrustado (imagen), no texto de colores aproximado.
 ok('styles: logo real de Google incrustado en .mrg-logo', /\.mrg-logo \{[^}]*url\(data:image\/png;base64,/.test(styles));
 // Logo G real (multicolor) incrustado en el banner de la app.

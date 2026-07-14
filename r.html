@@ -58,41 +58,74 @@
     var done = false, timer = null, tries = 0, baseline = 0;
     function stop() { if (timer) { clearInterval(timer); timer = null; } }
 
-    /* --- Salida a YouTube (sin ningún toque), PREFIRIENDO LA APP ---
+    /* --- Salida a YouTube PREFIRIENDO LA APP (a toda costa) ---
        El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Al llegar la
-       señal, la página sale a YouTube. Si el espectador tiene la APP de YouTube,
-       se intenta abrir EN LA APP a toda costa: en Android el enlace https es un
-       App Link verificado (abre la app si está, si no la web, sin diálogos); en
-       iPhone y demás se prueba el esquema propio de la app (youtube://) y, si no
-       está instalada, un respaldo breve cae a la web. YouTube arranca la canción
-       con sonido; como el volumen físico está al mínimo, no se oye… hasta que el
-       espectador sube el botón físico de volumen (ese es el efecto). Al coger el
-       móvil ya está en YouTube de verdad, sin rastro de esta página (replace). */
-    function ytWeb(id, t) { return "https://www.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
-    function ytApp(id, t) { return "youtube://watch?v=" + id + "&t=" + (t || 0); }
+       señal se intenta abrir la APP de YouTube de dos formas que se refuerzan:
+       1) AUTOMÁTICO (sin tocar nada): iOS abre el esquema youtube://; Android
+          dispara un intent oculto con el paquete de YouTube. Es NO destructivo:
+          si no hay app, no pasa nada (no navega) y esperamos.
+       2) AL COGER EL MÓVIL: ese primer contacto (voltear/tocar) cuenta como gesto
+          y garantiza la apertura definitiva de la APP con location.href (el gesto
+          es lo que permite lanzar la app con fiabilidad). Si no hay app instalada,
+          el propio intent/temporizador cae a la WEB de YouTube (m/www), nunca a un
+          reproductor propio: el espectador no ve rastro de esta página.
+       Importante: se usa location.href para lanzar la app (location.replace NO
+       lanza apps), y location.replace solo para el respaldo web (sin dejar rastro).
+       YouTube arranca con sonido; como el volumen está al mínimo, no se oye hasta
+       que el espectador sube el botón físico de volumen (ese es el efecto). */
+    var pending = null, armed = false, revealing = false;
+    function ytWeb(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
     function go(reveal, rev) {
       if (done || !reveal || !reveal.video_id) return;
       done = true; stop();
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      var id = reveal.video_id, t = reveal.start_seconds || 0, web = ytWeb(id, t);
-      var ua = navigator.userAgent || "";
+      pending = reveal;
+      armGesture();          // el primer contacto (coger el móvil) abre la app
+      openAppAuto(reveal);   // intento automático de abrir la app (sin gesto)
+    }
+    // Al coger el móvil, el primer gesto garantiza abrir la app (o, si no, la web).
+    function armGesture() {
+      if (armed) return; armed = true;
+      var h = function () { if (pending && !revealing) doReveal(pending); };
+      document.addEventListener("pointerdown", h, { passive: true });
+      document.addEventListener("touchstart", h, { passive: true });
+      document.addEventListener("click", h);
+      document.addEventListener("keydown", h);
+    }
+    // Intento automático, NO destructivo: si no hay app, no navega (esperamos gesto).
+    function openAppAuto(reveal) {
+      var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
+      if (/iPhone|iPad|iPod/i.test(ua)) { window.location.href = "youtube://watch?v=" + id + "&t=" + t; }
+      else if (/Android/i.test(ua)) {
+        try {
+          var ifr = document.createElement("iframe"); ifr.style.display = "none";
+          ifr.setAttribute("src", "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+            "#Intent;scheme=https;package=com.google.android.youtube;end");
+          document.body.appendChild(ifr);
+        } catch (e) {}
+      }
+    }
+    // Apertura definitiva dentro de un gesto: abre la APP con fiabilidad; si no
+    // está instalada, cae a la WEB de YouTube (nunca se queda en esta página).
+    function doReveal(reveal) {
+      if (revealing) return; revealing = true;
+      var id = reveal.video_id || "", t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
+      var web = ytWeb(id, t);
       if (/Android/i.test(ua)) {
-        // Un enlace https lanzado por JS (sin toque) NO activa el App Link: Chrome
-        // lo abriría en el navegador. Para abrir la APP se usa una URL intent://
-        // con el paquete de YouTube; browser_fallback_url cae a la web si no está
-        // instalada (sin diálogos de error).
-        var intent = "intent://www.youtube.com/watch?v=" + id + "&t=" + t + "s#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
-        window.location.replace(intent);
+        // Un solo salto: el intent abre la APP si está; si no, el sistema navega a
+        // la WEB (browser_fallback_url). location.href (NO replace) lanza la app.
+        try {
+          window.location.href = "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+            "#Intent;scheme=https;package=com.google.android.youtube;" +
+            "S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+        } catch (e) { window.location.replace(web); }
+        // Salvavidas: si el intent no llegó a navegar, a la web (sin rastro).
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
       } else {
-        // iPhone y demás: intenta la app por su esquema; si no abre (no instalada),
-        // un respaldo breve carga la web. Si la app abre, la página se oculta y se
-        // cancela ese respaldo para no interrumpirla.
-        var fb = setTimeout(function () { window.location.replace(web); }, 1200);
-        var cancel = function () { if (fb) { clearTimeout(fb); fb = null; } };
-        document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
-        window.addEventListener("pagehide", cancel);
-        try { window.location.replace(ytApp(id, t)); } catch (e) { cancel(); window.location.replace(web); }
+        // iOS y resto: intenta la APP; si no abre, sale a la WEB de YouTube.
+        window.location.href = "youtube://watch?v=" + id + "&t=" + t;
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
       }
     }
     function poll() {

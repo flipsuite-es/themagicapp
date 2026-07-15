@@ -33,8 +33,8 @@ ok('r.html: al llegar la señal sale a YouTube sin ningún toque (navegación di
 // En Android, el App Link https de m.youtube.com abre la APP de YouTube sin gesto (los esquemas
 // youtube:// e intent:// exigen toque en Chrome, por eso NO se usan aquí).
 ok('r.html: abre YouTube por App Link https (sin youtube:// ni intent://, que exigen toque)', !/youtube:\/\//.test(rhtml) && !/intent:\/\//.test(rhtml));
-// La revelación no depende de ningún toque ni gesto del espectador.
-ok('r.html: no depende de ningún toque del espectador para revelar', !/addEventListener\("(pointerdown|touchstart|click)"/.test(rhtml.replace(/visibilitychange/g, '')) && !/armGesture/.test(rhtml));
+// La revelación es automática (por el sondeo); el toque en pantalla solo activa el Wake Lock.
+ok('r.html: la revelación es automática; el toque solo activa el Wake Lock', /go\(p\.reveal, p\.rev\)/.test(rhtml) && /addEventListener\("pointerdown", keepAwake/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
 ok('r.html: sin caducidad ni consumo único (repetible por baseline)', /p_since/.test(rhtml) && !/expired/.test(rhtml));
 ok('r.html: lee el código del hash (/r#código), de la ruta y de ?c=', /location\.hash/.test(rhtml) && /pathname\.match/.test(rhtml) && /param\("c"\)/.test(rhtml));
@@ -47,8 +47,8 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: Wake Lock insistente (reintento en bucle + re-solicitud al soltarlo)', /wakeLock/.test(rhtml) && /wakeTimer = setInterval/.test(rhtml) && /"release"/.test(rhtml));
-// Respaldo iOS Safari (Wake Lock exige gesto): vídeo mudo en bucle (autoplay sin gesto) que evita el apagado.
-ok('r.html: respaldo iOS con vídeo mudo (canvas captureStream, autoplay) para no apagar la pantalla', /startNoSleepVideo/.test(rhtml) && /captureStream/.test(rhtml) && /muted/.test(rhtml) && /playsinline/.test(rhtml));
+// iOS Safari exige gesto para el Wake Lock: se pide también al primer toque en la pantalla.
+ok('r.html: en iOS activa el Wake Lock con el primer toque en la pantalla', /addEventListener\("pointerdown", keepAwake/.test(rhtml) && /addEventListener\("touchstart", keepAwake/.test(rhtml));
 ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al

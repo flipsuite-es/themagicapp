@@ -55,12 +55,10 @@
         body: JSON.stringify(body), cache: "no-store", credentials: "omit", keepalive: !!keepalive
       }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
     }
-    var done = false, timer = null, tries = 0, baseline = 0, wakeTimer = null, kaVideo = null, kaDraw = null;
+    var done = false, timer = null, tries = 0, baseline = 0, wakeTimer = null;
     function stop() {
       if (timer) { clearInterval(timer); timer = null; }
       if (wakeTimer) { clearInterval(wakeTimer); wakeTimer = null; }
-      if (kaDraw) { clearInterval(kaDraw); kaDraw = null; }
-      if (kaVideo) { try { kaVideo.pause(); if (kaVideo.parentNode) kaVideo.parentNode.removeChild(kaVideo); } catch (e) {} kaVideo = null; }
     }
 
     /* --- Salida a YouTube (sin ningún toque) ---
@@ -101,10 +99,10 @@
       timer = setInterval(poll, 400);
     });
     // Mantiene la pantalla del espectador ENCENDIDA mientras espera (Wake Lock).
-    // Se pide de forma insistente: si el primer intento se rechaza o el sistema lo
-    // suelta (al ocultar/volver de segundo plano), se vuelve a pedir en bucle cada
-    // 2 s. Así la pantalla NO se apaga ni se bloquea mientras se espera la señal
-    // (un bloqueo cortaría el sondeo y el truco no funcionaría).
+    // En Android se concede sin gesto: la pantalla no se apaga sola. En iOS Safari
+    // el Wake Lock EXIGE un gesto del usuario, así que se pide también al PRIMER
+    // TOQUE en la pantalla (basta un toque al colocar/entregar el móvil). Se
+    // reintenta en bucle por si el primer intento falla o el sistema lo suelta.
     var wl = null;
     function keepAwake() {
       if (done || document.hidden) return;
@@ -112,44 +110,18 @@
         if (navigator.wakeLock && navigator.wakeLock.request && !wl) {
           navigator.wakeLock.request("screen").then(function (w) {
             wl = w;
-            // Si el sistema lo suelta, se marca para volver a pedirlo en el bucle.
             try { w.addEventListener("release", function () { wl = null; }); } catch (e) {}
           }).catch(function () { wl = null; });
         }
       } catch (e) { wl = null; }
     }
-    // Respaldo para iOS Safari (donde el Wake Lock exige un gesto que aquí no hay):
-    // un VÍDEO MUDO EN BUCLE reproduciéndose impide que la pantalla se apague. El
-    // autoplay mudo SÍ está permitido sin gesto. El vídeo se genera desde un canvas
-    // diminuto (sin archivos externos) y es invisible (1px, transparente).
-    function startNoSleepVideo() {
-      if (kaVideo) return;
-      try {
-        var c = document.createElement("canvas"); c.width = 2; c.height = 2;
-        var ctx = c.getContext("2d"); if (!ctx || !c.captureStream) return;
-        var on = false;
-        kaDraw = setInterval(function () { on = !on; ctx.fillStyle = on ? "#000001" : "#010000"; ctx.fillRect(0, 0, 2, 2); }, 300);
-        var stream = c.captureStream(3);
-        var v = document.createElement("video");
-        v.muted = true; v.defaultMuted = true;
-        v.setAttribute("muted", ""); v.setAttribute("autoplay", "");
-        v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", "");
-        v.setAttribute("loop", "");
-        v.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;";
-        try { v.srcObject = stream; } catch (e) {}
-        document.body.appendChild(v);
-        kaVideo = v;
-        var p = v.play(); if (p && p.catch) p.catch(function () {});
-      } catch (e) {}
-    }
     keepAwake();
-    startNoSleepVideo();
-    // Reintento continuo mientras espera: cubre el rechazo inicial y las sueltas del SO.
-    // Reintenta también reproducir el vídeo por si iOS lo pausó al volver de 2º plano.
-    wakeTimer = setInterval(function () {
-      keepAwake();
-      if (kaVideo && kaVideo.paused && !done) { var p = kaVideo.play(); if (p && p.catch) p.catch(function () {}); }
-    }, 2000);
+    wakeTimer = setInterval(keepAwake, 2000);
+    // iOS: el primer toque en la pantalla activa el Wake Lock (Apple lo exige).
+    // El toque NO dispara la salida a YouTube: esa sigue siendo automática (sondeo).
+    document.addEventListener("pointerdown", keepAwake, { passive: true });
+    document.addEventListener("touchstart", keepAwake, { passive: true });
+    document.addEventListener("click", keepAwake);
     // Recupera sondeo y Wake Lock al volver a primer plano (bloqueo/desbloqueo, 2º plano)
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && !done) { poll(); keepAwake(); }

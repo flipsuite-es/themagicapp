@@ -5,6 +5,9 @@
   "rewrites": [
     { "source": "/m/:code", "destination": "/r" }
   ],
+  "redirects": [
+    { "source": "/yt/:id/:t", "destination": "https://m.youtube.com/watch?v=:id&t=:t", "permanent": false }
+  ],
   "headers": [
     {
       "source": "/r",

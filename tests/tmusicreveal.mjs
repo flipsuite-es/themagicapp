@@ -15,13 +15,16 @@ const cloud = readFileSync(ROOT + 'cloud.js', 'utf8');
 
 // --- Estáticos: el service worker deja r.html fuera ---
 ok('sw: r.html NO está en el precache (ASSETS)', !/["']\.\/r\.html["']/.test(sw));
-ok('sw: bypass de red para /m/<código>, /r, /r.html y /r/<código>', /\(r\(\\\.html\)\?\|m\)/.test(sw));
+ok('sw: bypass de red para /m/, /r, /r.html y /yt/ (la redirección a YouTube)', /\(r\(\\\.html\)\?\|m\|yt\)/.test(sw));
 // Vercel: reescribe /r/:code a r.html y le pone Cache-Control no-store
 const vercel = JSON.parse(readFileSync(ROOT + 'vercel.json', 'utf8'));
 const noStore = (vercel.headers || []).some(h => /^\/r/.test(h.source) &&
   (h.headers || []).some(x => x.key === 'Cache-Control' && /no-store/.test(x.value)));
 ok('vercel: Cache-Control no-store para la página del espectador', noStore);
 ok('vercel: reescribe la carpeta /m/:code a /r', (vercel.rewrites || []).some(r => /\/m\/:code/.test(r.source) && r.destination === '/r'));
+// Salto por el servidor: /yt/:id/:t responde 302 al watch de YouTube (el camino de
+// redirección del navegador es el que mejor conserva la apertura de la APP en Android).
+ok('vercel: /yt/:id/:t redirige (302) al watch de YouTube', (vercel.redirects || []).some(r => r.source === '/yt/:id/:t' && /m\.youtube\.com\/watch\?v=:id&t=:t/.test(r.destination) && r.permanent === false));
 
 // --- Estáticos: r.html es neutra, ligera y aislada ---
 ok('r.html: título neutro', /<title>\s*Preparando/i.test(rhtml));
@@ -29,7 +32,7 @@ ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: al llegar la señal sale a YouTube sin ningún toque (navegación directa)', /function go\(/.test(rhtml) && /location\.replace\(ytUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
+ok('r.html: al llegar la señal sale a YouTube sin ningún toque (vía /yt/ del servidor)', /function go\(/.test(rhtml) && /location\.replace\(ytPath/.test(rhtml) && /\/yt\/" \+ id/.test(rhtml));
 // En Android, el App Link https de m.youtube.com abre la APP de YouTube sin gesto (los esquemas
 // youtube:// e intent:// exigen toque en Chrome, por eso NO se usan aquí).
 ok('r.html: abre YouTube por App Link https (sin youtube:// ni intent://, que exigen toque)', !/youtube:\/\//.test(rhtml) && !/intent:\/\//.test(rhtml));
@@ -56,11 +59,11 @@ ok('r.html: vídeo anti-apagado sin loop nativo, con rebobinado manual (timeupda
 // y el mago lo ve en su diagnóstico (para saber POR QUÉ se apagó una pantalla).
 ok('r.html: informa del estado keep-awake en cada sondeo (p_ka)', /p_ka: kaState\(\)/.test(rhtml) && /function kaState/.test(rhtml) && /"wl\+vid"/.test(rhtml));
 ok('app: muestra la protección de pantalla del espectador en el diagnóstico', /spec_ka/.test(app) && /Pantalla del espectador/.test(app));
-ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
+ok('r.html: lleva la marca de tiempo y no deja rastro (location.replace)', /ytPath\(reveal\.video_id, reveal\.start_seconds\)/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al
 // llegar la señal, dentro de go(), sin ningún gesto ni temporizador de respaldo.
-ok('r.html: la salida a YouTube es automática dentro de go()', /window\.location\.replace\(ytUrl/.test(rhtml) && !/setTimeout\([^)]*location/.test(rhtml));
+ok('r.html: la salida a YouTube es automática dentro de go()', /window\.location\.replace\(ytPath/.test(rhtml) && !/setTimeout\([^)]*location/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

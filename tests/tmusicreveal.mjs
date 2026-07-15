@@ -59,6 +59,10 @@ ok('r.html: vídeo anti-apagado sin loop nativo, con rebobinado manual (timeupda
 // y el mago lo ve en su diagnóstico (para saber POR QUÉ se apagó una pantalla).
 ok('r.html: informa del estado keep-awake en cada sondeo (p_ka)', /p_ka: kaState\(\)/.test(rhtml) && /function kaState/.test(rhtml) && /"wl\+vid"/.test(rhtml));
 ok('app: muestra la protección de pantalla del espectador en el diagnóstico', /spec_ka/.test(app) && /Pantalla del espectador/.test(app));
+// Armado con UN toque: dentro del gesto se conceden Wake Lock + vídeo (incluso con ahorro
+// de energía) y el punto de la página se queda fijo como confirmación visual para el mago.
+ok('r.html: un toque fija la pantalla (armKeepAwake) con confirmación visual (.d.on)', /function armKeepAwake/.test(rhtml) && /addEventListener\("pointerdown", armKeepAwake/.test(rhtml) && /function cue/.test(rhtml) && /\.d\.on \{/.test(rhtml));
+ok('app: instruye el toque de armado al mago (enlace del espectador)', /da UN toque en la pantalla/.test(app) && /no se apagará/.test(app));
 ok('r.html: lleva la marca de tiempo y no deja rastro (location.replace)', /ytPath\(reveal\.video_id, reveal\.start_seconds\)/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al

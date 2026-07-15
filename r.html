@@ -17,6 +17,7 @@
     -webkit-font-smoothing: antialiased;
   }
   .d { width: 12px; height: 12px; border-radius: 50%; background: #cfcfd6; opacity: .5; animation: p 1.6s ease-in-out infinite; }
+  .d.on { animation: none; opacity: .85; }
   .m { font-size: 15px; opacity: .82; max-width: 20em; line-height: 1.5; letter-spacing: .01em; }
   @keyframes p { 0%, 100% { opacity: .22; transform: scale(.8); } 50% { opacity: .7; transform: scale(1.18); } }
   @media (prefers-reduced-motion: reduce) { .d { animation: none; } }
@@ -151,13 +152,29 @@
     }
     keepAwake();
     playNoSleep();
-    // Bucle: mantiene el Wake Lock y asegura que el vídeo siga reproduciéndose
-    // (iOS puede pausarlo al volver de segundo plano).
-    wakeTimer = setInterval(function () { keepAwake(); playNoSleep(); }, 2000);
-    // El primer toque (si lo hay) refuerza el Wake Lock; NO dispara la salida a YouTube.
-    document.addEventListener("pointerdown", function () { keepAwake(); playNoSleep(); }, { passive: true });
-    document.addEventListener("touchstart", function () { keepAwake(); playNoSleep(); }, { passive: true });
-    document.addEventListener("click", function () { keepAwake(); playNoSleep(); });
+    // Confirmación visual: cuando hay protección de pantalla activa (Wake Lock o
+    // vídeo), el punto deja de parpadear y se queda FIJO. Así el mago VE que la
+    // pantalla quedó fija encendida antes de entregar el móvil.
+    function cue() {
+      try {
+        var el = document.getElementById("d");
+        if (el) el.className = kaState() === "none" ? "d" : "d on";
+      } catch (e) {}
+    }
+    // Bucle: mantiene el Wake Lock, asegura que el vídeo siga reproduciéndose
+    // (iOS puede pausarlo al volver de 2º plano) y refresca la confirmación.
+    wakeTimer = setInterval(function () { keepAwake(); playNoSleep(); cue(); }, 2000);
+    // UN TOQUE EN LA PANTALLA (el del mago al abrir el enlace, antes de entregar
+    // el móvil) fija la pantalla encendida de forma PERMANENTE: dentro de un
+    // gesto, el sistema concede el Wake Lock y desbloquea el vídeo anti-apagado
+    // incluso con el ahorro de energía activado. Después ya no hace falta tocar
+    // nada más. El toque NO dispara la salida a YouTube (esa sigue siendo
+    // automática, por el sondeo).
+    function armKeepAwake() { keepAwake(); playNoSleep(); setTimeout(cue, 250); setTimeout(cue, 1200); }
+    document.addEventListener("pointerdown", armKeepAwake, { passive: true });
+    document.addEventListener("touchstart", armKeepAwake, { passive: true });
+    document.addEventListener("click", armKeepAwake);
+    document.addEventListener("keydown", armKeepAwake);
     // Recupera sondeo, Wake Lock y vídeo al volver a primer plano (bloqueo/desbloqueo, 2º plano)
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && !done) { poll(); keepAwake(); playNoSleep(); }

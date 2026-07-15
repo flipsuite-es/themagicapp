@@ -5562,7 +5562,7 @@ window.Cloud = (function () {
       '<div class="field"><label for="mrVid">Enlace o ID de YouTube</label><input id="mrVid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…"></div>' +
       '<div class="field"><label for="mrStart">Segundo de inicio</label><input id="mrStart" type="number" min="0" inputmode="numeric" value="' + mrDefaultStart() + '"></div>' +
       '<button class="btn" id="mrReveal" disabled>' + icon("refresh", "i-sm") + " Esperando al espectador…</button>" +
-      '<p class="hint" id="mrSendHint">El botón se activa cuando el espectador abre tu enlace. Si no hay nadie conectado, la revelación no se envía.</p></div>' +
+      '<p class="hint" id="mrSendHint">El botón se activa cuando el espectador abre tu enlace; sin nadie conectado no se envía. Al enviar: el <b>primer toque</b> del espectador abre la <b>app de YouTube</b> con su canción sonando (con el volumen al mínimo no se oye hasta que lo sube). Sin app o sin toque, se abre la web real de YouTube.</p></div>' +
       '<details class="mr-diag"><summary>Diagnóstico (solo pruebas)</summary><div id="mrDiagBody"></div>' +
       '<button class="btn ghost small" id="mrPractice" style="margin-top:8px">Probar teclado oculto (sin salir a Google)</button></details>' +
       "</div>";

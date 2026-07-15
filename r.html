@@ -66,32 +66,23 @@
       // que llega después lo termina todo de forma natural).
     }
 
-    /* --- Salida a YouTube: la APP primero, la web real si no ---
-       El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Al llegar la
-       señal, la página queda ARMADA con un ENLACE REAL de YouTube a pantalla
-       completa (invisible): el primer toque del espectador al coger el móvil es
-       un gesto auténtico sobre un enlace auténtico, y eso es exactamente lo que
-       hace que el sistema abra la APP de YouTube (Universal Link en iOS, App
-       Link en Android). La app reproduce la canción sola y CON SONIDO; con el
-       volumen físico al mínimo no se oye… hasta que el espectador lo sube (ese
-       es el efecto). Si no tiene la app, el mismo toque sigue a la WEB real de
-       YouTube. Y si nadie toca en unos segundos, se sale solo a la web real por
-       la redirección /yt del servidor (nunca se queda en esta página). */
-    function ytPath(id, t) { return "/yt/" + id + "/" + (t || 0); }
-    function ytWatch(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
+    /* --- Salida a YouTube: INMEDIATA y sin ningún toque ---
+       El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Entre que el
+       mago deja el móvil boca abajo y el espectador sube el volumen NO HAY NINGÚN
+       TOQUE: al llegar la señal, la página navega EN EL INSTANTE a YouTube
+       (m.youtube.com/watch) con location.replace — la versión validada en los
+       dos móviles reales (iPhone y Android). En Android, el enlace es un App
+       Link verificado de YouTube y el sistema abre la APP directamente; si no,
+       la web real. Sin rastro en el historial (replace). YouTube arranca la
+       canción; con el volumen al mínimo no se oye… hasta que el espectador sube
+       el botón físico de volumen (ese es el efecto). */
+    function ytUrl(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
     function go(reveal, rev) {
       if (done || !reveal || !reveal.video_id) return;
       done = true; stop();
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      var id = reveal.video_id, t = reveal.start_seconds || 0;
-      // Enlace real a pantalla completa: el primer toque abre la APP (o la web).
-      var a = document.createElement("a");
-      a.href = ytWatch(id, t);
-      a.style.cssText = "position:fixed;left:0;top:0;right:0;bottom:0;z-index:9;background:transparent;";
-      document.body.appendChild(a);
-      // Respaldo sin toque: a los 12 s sale solo a la web real (vía /yt).
-      window.setTimeout(function () { try { window.location.replace(ytPath(id, t)); } catch (e) {} }, 12000);
+      window.location.replace(ytUrl(reveal.video_id, reveal.start_seconds));
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline, p_ka: kaState() }).then(function (p) {

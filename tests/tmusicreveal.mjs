@@ -32,7 +32,8 @@ ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-ok('r.html: primer toque = enlace REAL de YouTube (app primero); respaldo automático a la web', /function go\(/.test(rhtml) && /createElement\("a"\)/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && /location\.replace\(ytPath/.test(rhtml));
+// La versión validada en los dos móviles reales: navegación DIRECTA e INMEDIATA al watch.
+ok('r.html: al llegar la señal sale a YouTube al instante, sin ningún toque', /function go\(/.test(rhtml) && /location\.replace\(ytUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
 // En Android, el App Link https de m.youtube.com abre la APP de YouTube sin gesto (los esquemas
 // youtube:// e intent:// exigen toque en Chrome, por eso NO se usan aquí).
 ok('r.html: abre YouTube por App Link https (sin youtube:// ni intent://, que exigen toque)', !/youtube:\/\//.test(rhtml) && !/intent:\/\//.test(rhtml));
@@ -63,12 +64,12 @@ ok('app: muestra la protección de pantalla del espectador en el diagnóstico', 
 // de energía) y el punto de la página se queda fijo como confirmación visual para el mago.
 ok('r.html: un toque fija la pantalla (armKeepAwake) con confirmación visual (.d.on)', /function armKeepAwake/.test(rhtml) && /addEventListener\("pointerdown", armKeepAwake/.test(rhtml) && /function cue/.test(rhtml) && /\.d\.on \{/.test(rhtml));
 ok('app: instruye el toque de armado al mago (enlace del espectador)', /da UN toque en la pantalla/.test(app) && /no se apagará/.test(app));
-ok('r.html: lleva la marca de tiempo en el enlace y en el respaldo', /ytWatch\(id, t\)/.test(rhtml) && /ytPath\(id, t\)/.test(rhtml));
+ok('r.html: lleva la marca de tiempo y no deja rastro (location.replace)', /ytUrl\(reveal\.video_id, reveal\.start_seconds\)/.test(rhtml) && /&t=/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al
 // llegar la señal, dentro de go(), sin ningún gesto ni temporizador de respaldo.
-// El armado es automático al llegar la señal; el respaldo sin toque sale solo a los 12 s.
-ok('r.html: armado automático en go() y respaldo sin toque a los 12 s', /document\.body\.appendChild\(a\)/.test(rhtml) && /12000\)/.test(rhtml));
+// Sin puertas intermedias: ni anclas armadas, ni esperas, ni temporizadores hacia YouTube.
+ok('r.html: sin esperas ni toques intermedios hacia YouTube', !/createElement\("a"\)/.test(rhtml) && !/setTimeout\([^)]*location/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

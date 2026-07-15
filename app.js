@@ -3303,8 +3303,15 @@
   function mrRenderDiag() {
     var b = document.getElementById("mrDiagBody"); if (!b || !mrState.diag) return;
     var d = mrState.diag;
+    // Estado keep-awake informado por el móvil del espectador en cada sondeo:
+    // wl = Wake Lock concedido; vid = vídeo anti-apagado reproduciéndose.
+    var ka = d.ka === "wl+vid" ? "Wake Lock + vídeo ✓" :
+             d.ka === "wl" ? "Wake Lock ✓" :
+             d.ka === "vid" ? "vídeo anti-apagado ✓" :
+             d.ka === "none" ? "SIN protección (¿ahorro de energía activado?)" : "—";
     b.innerHTML =
       mrDiagRow("Espectador mirando", d.spectator ? "sí" : "no") +
+      mrDiagRow("Pantalla del espectador", ka) +
       mrDiagRow("Sondeo de estado", mrState.poll ? "activo (1 s)" : "inactivo") +
       mrDiagRow("Revelaciones enviadas (rev)", d.sentRev || 0) +
       mrDiagRow("Última entregada (rev)", d.deliveredRev || 0) +
@@ -3322,6 +3329,7 @@
         if (!st || !st.ok || !mrState.diag) return;
         var seen = !!st.spectator_seen;
         mrState.diag.spectator = seen;
+        if (typeof st.spec_ka === "string") mrState.diag.ka = st.spec_ka;
         // Habilita/inhabilita el botón según haya o no espectador (nunca durante un envío).
         if (mrState.canSend !== seen) { mrState.canSend = seen; if (!mrState.sending) mrSyncSendBtn(); }
         mrState.diag.saved = mrState.diag.saved || !!st.reveal_saved;

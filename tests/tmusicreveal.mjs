@@ -47,8 +47,15 @@ ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));
 ok('r.html: Wake Lock insistente (reintento en bucle + re-solicitud al soltarlo)', /wakeLock/.test(rhtml) && /wakeTimer = setInterval/.test(rhtml) && /"release"/.test(rhtml));
-// Cero-toque en iOS: vídeo mudo H.264 en bucle (autoplay sin gesto) que impide el apagado (método NoSleep).
+// Cero-toque en iOS: vídeo mudo H.264 (autoplay sin gesto) que impide el apagado (método NoSleep).
 ok('r.html: cero-toque en iOS con vídeo mudo H.264 incrustado (NoSleep)', /id="nsv"/.test(rhtml) && /data:video\/mp4;base64,/.test(rhtml) && /function playNoSleep/.test(rhtml) && /playsinline/.test(rhtml) && /nsv\.play\(\)/.test(rhtml));
+// Técnica NoSleep EXACTA: sin atributo loop; rebobinado manual por timeupdate (con loop
+// nativo algunos sistemas dejan dormir la pantalla entre ciclos), y load() explícito.
+ok('r.html: vídeo anti-apagado sin loop nativo, con rebobinado manual (timeupdate)', /addEventListener\("timeupdate"/.test(rhtml) && !/<video[^>]*\sloop/.test(rhtml) && /nsv\.load\(\)/.test(rhtml));
+// Telemetría: la página del espectador informa del estado keep-awake en cada sondeo,
+// y el mago lo ve en su diagnóstico (para saber POR QUÉ se apagó una pantalla).
+ok('r.html: informa del estado keep-awake en cada sondeo (p_ka)', /p_ka: kaState\(\)/.test(rhtml) && /function kaState/.test(rhtml) && /"wl\+vid"/.test(rhtml));
+ok('app: muestra la protección de pantalla del espectador en el diagnóstico', /spec_ka/.test(app) && /Pantalla del espectador/.test(app));
 ok('r.html: sale a YouTube en la marca de tiempo (&t=) y sin rastro (location.replace)', /&t=/.test(rhtml) && /location\.replace/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al

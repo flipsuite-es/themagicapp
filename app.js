@@ -3180,7 +3180,7 @@
           out.width = Math.max(1, Math.round(w / 2)); out.height = Math.max(1, Math.round(h / 2));
           var ctx = out.getContext("2d");
           ctx.imageSmoothingEnabled = true;
-          try { ctx.filter = "saturate(1.15) brightness(1.08)"; } catch (e2) {}
+          try { ctx.filter = "saturate(1.45) brightness(1.35)"; } catch (e2) {}
           ctx.drawImage(small, 0, 0, out.width, out.height);
           cb(out.toDataURL("image/jpeg", 0.72));
         } catch (e) { cb(null); }
@@ -3313,8 +3313,8 @@
       // oscuro desenfocado hace de sombra de profundidad, como el real.
       var glassStyle = maskStyle;
       if (c.wallpaper) {
-        glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.62) 0%,rgba(201,235,255,.44) 20%,rgba(214,226,236,.36) 55%,rgba(150,163,175,.48) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
-          ";background-size:auto,175% auto;background-position:center,center 20%;background-repeat:no-repeat";
+        glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.88) 0%,rgba(210,238,255,.6) 20%,rgba(222,231,240,.52) 55%,rgba(168,180,192,.66) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
+          ";background-size:auto,140% auto;background-position:center,center 22%;background-repeat:no-repeat";
       }
       clockHtml = '<div class="ios-clockw">' +
         '<div class="ios-clock cshadow" style="' + maskStyle + '"></div>' +

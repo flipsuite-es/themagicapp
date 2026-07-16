@@ -1852,7 +1852,7 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .ios-date { color: #fff; font: 590 2.15cqh/1.2 -apple-system, system-ui, sans-serif; opacity: .96; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
 /* Reloj enorme como iOS: numerales altos y estrechos. Se dimensiona para caber
    a lo ancho de forma natural y se estira en vertical (evita recortes). */
-.ios-clock { display: inline-block; margin-top: .6cqh; font-size: 18cqh; font-weight: 500; line-height: .9; letter-spacing: -0.3cqw; color: #fff; transform: scale(.74, 2.62); transform-origin: center top; font-variant-numeric: tabular-nums; }
+.ios-clock { display: inline-block; margin-top: .6cqh; font-size: 23cqh; font-weight: 500; line-height: .92; letter-spacing: -0.2cqw; color: #fff; transform: scale(.55, 1.72); transform-origin: center top; font-variant-numeric: tabular-nums; }
 /* Estilo "Cristal": reloj translúcido con degradado azul->gris que deja ver el
    fondo, como el reloj "transparente" de iOS. */
 .ios-clock.glass { color: transparent; -webkit-text-fill-color: transparent; background-image: linear-gradient(176deg, rgba(255,255,255,.97) 0%, rgba(210,238,255,.92) 20%, rgba(228,238,247,.88) 55%, rgba(186,198,209,.85) 100%); background-size: cover; background-position: center; -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 0.12cqh rgba(255,255,255,.42); filter: drop-shadow(0 .25cqh .55cqh rgba(0,0,0,.24)); }
@@ -1907,3 +1907,4 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .pl-row { display: flex; align-items: center; gap: 14px; margin: 2px 0 4px; }
 .pl-row input[type=range] { flex: 1; }
 .pl-chk { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--ink, #e8e2d2); font-size: 14px; }
+.hint.warn { background: rgba(201,162,75,.12); border: 1px solid rgba(201,162,75,.4); border-radius: 10px; padding: 9px 11px; }

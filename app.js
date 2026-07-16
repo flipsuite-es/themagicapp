@@ -3237,10 +3237,15 @@
   var PL_FACE_SVG = '<svg viewBox="0 0 22 22" fill="none" stroke="#30d158" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V4.5A2.5 2.5 0 0 1 4.5 2H6M16 2h1.5A2.5 2.5 0 0 1 20 4.5V6M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M6 20H4.5A2.5 2.5 0 0 1 2 17.5V16"/><path d="M8 8.5v1.6M14 8.5v1.6M11 8.5v3.2l-1 .9"/><path d="M8.2 14.6a4 4 0 0 0 5.6 0"/></svg>';
   var PL_KEYS = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"], ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"], ["", ""], ["0", ""], ["", ""]];
 
+  function plIsIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   // Marca de la pantalla de bloqueo (misma función en la vista previa y en la
   // actuación, así lo que ves preparando es EXACTO a lo que verá el espectador).
-  function plLockMarkup(c) {
-    c = c || {};
+  // opts.hideStatus: en iOS el sistema SIEMPRE pinta su propia barra de estado
+  // (hora + batería) encima de la web y no se puede quitar; si dibujáramos la
+  // nuestra saldrían DOS barras. Por eso en la actuación en iPhone ocultamos la
+  // nuestra y dejamos solo la real (una sola barra, como un móvil de verdad).
+  function plLockMarkup(c, opts) {
+    c = c || {}; opts = opts || {};
     var font = PL_FONTS[c.clockFont] || PL_FONTS.def, wt = PL_WEIGHT[c.clockFont] || 590;
     var glass = c.clockStyle !== "solid";
     var color = glass ? "" : (c.clockColor || "#ffffff");
@@ -3257,9 +3262,10 @@
     var left = (carrier ? '<span class="ios-carrier">' + plEsc(carrier) + "</span>" : "") + (c.mute ? PL_BELL_SVG : "");
     var right = plSigSvg(c.signalBars) + (c.wifi === false ? "" : PL_WIFI_SVG) + plBattSvg(c.battLevel, c.battPct !== false);
     var shortcut = c.shortcut ? '<div class="ios-shortcut">' + plEsc(c.shortcut) + "</div>" : "";
+    var statusBar = opts.hideStatus ? "" :
+      '<div class="ios-status"><span class="ios-status-l">' + left + '</span><span class="ios-status-r">' + right + "</span></div>";
     return '<div class="ios-lock" style="' + bg + '">' +
-      '<div class="ios-dim"></div>' +
-      '<div class="ios-status"><span class="ios-status-l">' + left + '</span><span class="ios-status-r">' + right + "</span></div>" +
+      '<div class="ios-dim"></div>' + statusBar +
       '<div class="ios-head"><div class="ios-date">' + plDateStr(c.dateStyle) + "</div>" +
       '<div class="' + clockCls + '" style="' + clockStyle + '">' + plTimeStr(c.h24) + "</div></div>" +
       '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + "</span>" + shortcut + '<span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>" +
@@ -3312,6 +3318,7 @@
       '<div class="panel">' +
       '<p class="hint">El espectador sostiene tu móvil en la pantalla de bloqueo y, al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y se abre Google. No subimos capturas: solo tu <b>fondo</b>, y replicamos tu UI <b>en vivo</b> (hora, fecha y teclado reales) para que sea idéntica a tu iPhone.</p>' +
       '<div class="pl-live"><div class="pl-phone" id="plPrev"></div><div class="pl-liverow"><button class="btn ghost sm" id="plPrevPass">Ver teclado</button><span class="hint pl-livehint">Vista en vivo</span></div></div>' +
+      '<p class="hint warn"><b>Importante para que sea perfecto:</b> haz el truco con la app <b>a pantalla completa</b>. En el iPhone: botón Compartir → <b>Añadir a pantalla de inicio</b>, y ábrela desde ese icono. Así desaparece la barra de Safari y arriba solo queda la barra de estado real del sistema (una sola, como un móvil de verdad). En Safari normal se ven dos barras.</p>' +
       '<div class="sec-label">Fondo de pantalla</div>' +
       '<button class="btn ghost" id="plWpUp">' + icon("plus", "i-sm") + " Subir tu fondo</button><input type=\"file\" id=\"plWpFile\" accept=\"image/*\" style=\"display:none\">" +
       '<div class="sec-label">Operador y silencio</div>' +
@@ -3398,7 +3405,7 @@
     var entered = 0, done = false, entering = false;
     view.innerHTML =
       '<div class="pl-stage" id="plStage">' +
-      plLockMarkup(c) +
+      plLockMarkup(c, { hideStatus: plIsIOS() }) +
       plPassMarkup(pin) +
       '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
       "</div>";

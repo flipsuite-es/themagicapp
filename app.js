@@ -3137,10 +3137,13 @@
 
   /* ============ DESBLOQUEO IMPOSIBLE (truco incluido) ============
      El móvil del mago, en la palma del espectador, muestra su pantalla de
-     bloqueo (una CAPTURA real de su teléfono; por eso se prepara por usuario:
-     así es idéntica a su móvil). El espectador "teclea" en su palma y, por el
-     sensor de movimiento, cada golpecito rellena un dígito hasta desbloquear y
-     pasar al inicio. Modo de ensayo: tocar la pantalla también avanza. */
+     bloqueo. NO usamos capturas (la hora/fecha quedarían congeladas y se
+     notaría): el mago solo aporta su FONDO de pantalla y nosotros pintamos su
+     UI EN VIVO encima (reloj y fecha reales que avanzan, batería, señal, wifi),
+     con opciones para clavar exactamente la de su iPhone. El espectador "teclea"
+     en su palma y, por el sensor de movimiento, cada golpecito rellena un dígito
+     hasta desbloquear; al desbloquear se abre Google, de modo que salir de la
+     app queda natural. Modo de ensayo: tocar la pantalla también avanza. */
   var PL_CFG_KEY = "magic_pl_cfg";
   function plCfg() { try { return JSON.parse(localStorage.getItem(PL_CFG_KEY)) || {}; } catch (e) { return {}; } }
   function plSave(c) { try { localStorage.setItem(PL_CFG_KEY, JSON.stringify(c)); } catch (e) {} }
@@ -3149,18 +3152,18 @@
       var url = window.URL.createObjectURL(file), img = new Image();
       img.onload = function () {
         try {
-          var max = 1200, w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h));
+          var max = 1400, w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h));
           var cv = document.createElement("canvas"); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
           cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
           try { window.URL.revokeObjectURL(url); } catch (e) {}
-          cb(cv.toDataURL("image/jpeg", 0.82));
+          cb(cv.toDataURL("image/jpeg", 0.85));
         } catch (e) { cb(null); }
       };
       img.onerror = function () { cb(null); };
       img.src = url;
     } catch (e) { cb(null); }
   }
-  var plMotionOK = false, plMotionH = null;
+  var plMotionOK = false, plMotionH = null, plClockH = null;
   // iOS 13+ exige pedir el permiso de movimiento DENTRO de un gesto: se pide al
   // pulsar "Actuar" (que es un toque), encajando con el patrón de preparación.
   function plPrimeMotion(cb) {
@@ -3172,84 +3175,192 @@
     } catch (e) {}
     plMotionOK = true; cb();
   }
-  function plStopMotion() { if (plMotionH) { try { window.removeEventListener("devicemotion", plMotionH); } catch (e) {} plMotionH = null; } releaseWake(); }
+  function plClockClear() { if (plClockH) { try { window.clearInterval(plClockH); } catch (e) {} plClockH = null; } }
+  function plStopMotion() { if (plMotionH) { try { window.removeEventListener("devicemotion", plMotionH); } catch (e) {} plMotionH = null; } plClockClear(); releaseWake(); }
+
+  // --- Réplica de la UI de iOS (aprox. a iOS 16-18; sin sus fuentes propias) ---
+  var PL_FONTS = {
+    def: '-apple-system,system-ui,"SF Pro Display",sans-serif',
+    thin: '-apple-system,system-ui,"SF Pro Display",sans-serif',
+    serif: '"New York",Georgia,"Times New Roman",serif',
+    round: '"SF Pro Rounded",ui-rounded,-apple-system,system-ui,sans-serif',
+    mono: '"SF Mono",ui-monospace,Menlo,monospace'
+  };
+  var PL_WEIGHT = { def: 600, thin: 200, serif: 600, round: 800, mono: 500 };
+  var PL_COLORS = ["#ffffff", "#1c1c1e", "#8fc9ff", "#ff9ec9", "#8ef0b0", "#ffe27a", "#c9b0ff"];
+  function pl2(n) { n = n | 0; return n < 10 ? "0" + n : "" + n; }
+  function plTimeStr(h24) {
+    var d = new Date(), H = d.getHours(), M = d.getMinutes();
+    if (h24 !== false) return pl2(H) + ":" + pl2(M);
+    var h = H % 12; if (h === 0) h = 12;
+    return h + ":" + pl2(M); // iOS no rotula a.m./p.m. en el reloj grande
+  }
+  function plDateStr() {
+    try {
+      var s = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    } catch (e) { return ""; }
+  }
+  function plSigSvg(bars) {
+    if (bars == null) bars = 4;
+    var s = "", hs = [4, 7, 10, 13];
+    for (var i = 0; i < 4; i++) {
+      var on = i < bars;
+      s += '<rect x="' + (i * 5) + '" y="' + (13 - hs[i]) + '" width="3.4" height="' + hs[i] + '" rx="1" fill="#fff" fill-opacity="' + (on ? "1" : "0.32") + '"/>';
+    }
+    return '<svg viewBox="0 0 18 13" class="ios-i-sig">' + s + "</svg>";
+  }
+  var PL_WIFI_SVG =
+    '<svg viewBox="0 0 17 12" class="ios-i-wifi" fill="#fff"><path d="M8.5 2.05c2.62 0 5.02 1 6.83 2.66a.6.6 0 0 0 .84-.02l.6-.63a.6.6 0 0 0-.02-.86A11.3 11.3 0 0 0 8.5.15 11.3 11.3 0 0 0 .75 3.2a.6.6 0 0 0-.02.86l.6.63c.22.24.6.25.84.02A9.86 9.86 0 0 1 8.5 2.05Z"/><path d="M8.5 5.6c1.63 0 3.12.62 4.24 1.64a.6.6 0 0 0 .82-.03l.63-.66a.6.6 0 0 0-.03-.87A8 8 0 0 0 8.5 3.6a8 8 0 0 0-5.66 2.08.6.6 0 0 0-.03.87l.63.66c.22.23.6.24.82.03A6.26 6.26 0 0 1 8.5 5.6Z"/><path d="M8.5 8.9 6.4 6.78a3.2 3.2 0 0 1 4.2 0L8.5 8.9Z"/></svg>';
+  function plBattSvg(level, showPct) {
+    if (level == null) level = 78;
+    level = Math.max(0, Math.min(100, level | 0));
+    var fillW = Math.max(2, Math.round(20 * level / 100));
+    var col = level <= 20 ? "#ff453a" : "#fff";
+    var svg = '<svg viewBox="0 0 27 13" class="ios-i-batt">' +
+      '<rect x="0.6" y="0.6" width="22" height="11.8" rx="3.3" fill="none" stroke="#fff" stroke-opacity="0.45"/>' +
+      '<rect x="2" y="2" width="' + fillW + '" height="9" rx="2" fill="' + col + '"/>' +
+      '<rect x="24" y="4" width="1.8" height="5" rx="0.9" fill="#fff" fill-opacity="0.5"/></svg>';
+    return (showPct ? '<span class="ios-batt-pct">' + level + "</span>" : "") + svg;
+  }
+  var PL_LOCK_SVG = '<svg viewBox="0 0 13 16" fill="#fff"><path d="M6.5 0C4.29 0 2.5 1.79 2.5 4v2H2c-.83 0-1.5.67-1.5 1.5v6.9C.5 15.4 1.13 16 1.9 16h9.2c.77 0 1.4-.6 1.4-1.6V7.5C12.5 6.67 11.83 6 11 6h-.5V4C10.5 1.79 8.71 0 6.5 0Zm2 6h-4V4c0-1.1.9-2 2-2s2 .9 2 2v2Z"/></svg>';
+  var PL_FLASH_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.3 2h5.4l-.7 4H10l-.7-4Zm.8 5.2h3.8l-.42 3.5c-.1.86-.63 1.4-1.48 1.4s-1.38-.54-1.48-1.4L10.1 7.2ZM11 13.4h2V22h-2v-8.6Z"/></svg>';
+  var PL_CAM_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.2 3.2 7.9 5H4.4A2.4 2.4 0 0 0 2 7.4v10.2A2.4 2.4 0 0 0 4.4 20h15.2A2.4 2.4 0 0 0 22 17.6V7.4A2.4 2.4 0 0 0 19.6 5h-3.5l-1.3-1.8H9.2Zm2.8 4.6a4.7 4.7 0 1 1 0 9.4 4.7 4.7 0 0 1 0-9.4Zm0 2a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z"/></svg>';
+  // Marca de la UI de bloqueo (misma función para la vista previa y la actuación,
+  // así lo que se ve preparando es EXACTAMENTE lo que verá el espectador).
+  function plLockMarkup(c) {
+    c = c || {};
+    var font = PL_FONTS[c.clockFont] || PL_FONTS.def, wt = PL_WEIGHT[c.clockFont] || 600;
+    var color = c.clockColor || "#ffffff";
+    var bg = c.wallpaper ? "background-image:url('" + c.wallpaper + "')" : "background:#0b0d12";
+    var right = plSigSvg(c.signalBars) + (c.wifi === false ? "" : PL_WIFI_SVG) + plBattSvg(c.battLevel, !!c.battPct);
+    return '<div class="ios-lock" style="' + bg + '">' +
+      '<div class="ios-dim"></div>' +
+      '<div class="ios-status"><span class="ios-status-r">' + right + "</span></div>" +
+      '<div class="ios-lockicon">' + PL_LOCK_SVG + "</div>" +
+      '<div class="ios-head"><div class="ios-date">' + plDateStr() + "</div>" +
+      '<div class="ios-clock" style="font-family:' + font + ";font-weight:" + wt + ";color:" + color + '">' + plTimeStr(c.h24) + "</div></div>" +
+      '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + '</span><span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>" +
+      '<div class="ios-homebar"></div>' +
+      "</div>";
+  }
+  // Reloj/fecha en vivo. Se autolimpia si su nodo ya no está en el documento.
+  function plStartClock(root, h24) {
+    plClockClear();
+    function upd() {
+      if (!root || !document.body.contains(root)) { plClockClear(); return; }
+      var ck = root.querySelector(".ios-clock"), dt = root.querySelector(".ios-date");
+      if (ck) ck.textContent = plTimeStr(h24);
+      if (dt) dt.textContent = plDateStr();
+    }
+    plClockH = window.setInterval(upd, 15000);
+  }
   function renderPalmLock() {
     clearTabbar(); var f0 = document.getElementById("fabEl"); if (f0) f0.remove();
-    var c = plCfg(), pin = c.pinLen || 6, method = c.method || "sensor";
+    var c = plCfg();
+    var pin = c.pinLen || 6, method = c.method || "sensor";
+    var font = c.clockFont || "def", h24 = c.h24 !== false;
+    var fontOpts = [["def", "Por defecto"], ["thin", "Fina"], ["round", "Redondeada"], ["serif", "Serif"], ["mono", "Mono"]];
+    var fontSeg = "";
+    for (var fi = 0; fi < fontOpts.length; fi++) fontSeg += '<button data-f="' + fontOpts[fi][0] + '" class="' + (font === fontOpts[fi][0] ? "on" : "") + '">' + fontOpts[fi][1] + "</button>";
+    var sw = "";
+    for (var ci = 0; ci < PL_COLORS.length; ci++) sw += '<button class="pl-sw' + ((c.clockColor || "#ffffff").toLowerCase() === PL_COLORS[ci] ? " on" : "") + '" data-c="' + PL_COLORS[ci] + '" style="background:' + PL_COLORS[ci] + '"></button>';
     view.innerHTML =
       '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Desbloqueo imposible</h1></div>' +
       '<div class="panel">' +
-      '<p class="hint">El espectador sostiene tu móvil con la pantalla de bloqueo. Al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y pasa al inicio. Prepáralo con <b>tus propias capturas</b> para que sea idéntico a tu teléfono.</p>' +
+      '<p class="hint">El espectador sostiene tu móvil en la pantalla de bloqueo y, al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y se abre Google. No subimos capturas: solo tu <b>fondo</b>, y replicamos tu UI <b>en vivo</b> (hora y fecha reales) para que sea idéntica a tu iPhone.</p>' +
+      '<div class="pl-live"><div class="pl-phone" id="plPrev"></div><p class="hint pl-livehint">Vista en vivo — ajústala hasta clavar tu móvil.</p></div>' +
+      '<div class="sec-label">Fondo de pantalla</div>' +
+      '<button class="btn ghost" id="plWpUp">' + icon("plus", "i-sm") + " Subir tu fondo</button><input type=\"file\" id=\"plWpFile\" accept=\"image/*\" style=\"display:none\">" +
+      '<div class="sec-label">Formato de hora</div>' +
+      '<div class="seg" id="plH24"><button data-v="1" class="' + (h24 ? "on" : "") + '">24 h</button><button data-v="0" class="' + (h24 ? "" : "on") + '">12 h</button></div>' +
+      '<div class="sec-label">Fuente del reloj</div>' +
+      '<div class="seg wrap" id="plFont">' + fontSeg + "</div>" +
+      '<div class="sec-label">Color del reloj</div>' +
+      '<div class="pl-swatches" id="plSw">' + sw + '<label class="pl-sw pl-swc" style="background:' + (c.clockColor || "#ffffff") + '"><input type="color" id="plColor" value="' + (c.clockColor || "#ffffff") + '"></label></div>' +
+      '<div class="sec-label">Batería</div>' +
+      '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plBattPct"' + (c.battPct ? " checked" : "") + '> Mostrar %</label>' +
+      '<input type="range" id="plBattLvl" min="1" max="100" step="1" value="' + (c.battLevel == null ? 78 : c.battLevel) + '"></div>' +
+      '<div class="sec-label">Cobertura y wifi</div>' +
+      '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plWifi"' + (c.wifi === false ? "" : " checked") + '> WiFi</label>' +
+      '<input type="range" id="plSig" min="0" max="4" step="1" value="' + (c.signalBars == null ? 4 : c.signalBars) + '"></div>' +
       '<div class="sec-label">Método</div>' +
       '<div class="seg" id="plMethod"><button data-v="sensor" class="' + (method === "sensor" ? "on" : "") + '">Sensor (automático)</button><button data-v="remote" class="' + (method === "remote" ? "on" : "") + '">Disparo manual</button></div>' +
       (method === "remote" ? '<p class="hint">El disparo manual (avanzar cada dígito desde otro dispositivo) se monta en el siguiente paso. De momento usa el sensor o el modo de ensayo.</p>' : "") +
       '<div class="sec-label">Longitud del código</div>' +
       '<div class="seg" id="plLen"><button data-v="4" class="' + (pin == 4 ? "on" : "") + '">4</button><button data-v="6" class="' + (pin == 6 ? "on" : "") + '">6</button></div>' +
-      '<div class="sec-label">Captura de tu pantalla de BLOQUEO</div>' +
-      '<div class="pl-prev" id="plLockPrev">' + (c.lockImg ? '<img src="' + c.lockImg + '" alt="">' : "<span>Sin imagen</span>") + "</div>" +
-      '<button class="btn ghost" id="plLockUp">' + icon("plus", "i-sm") + ' Subir captura de bloqueo</button><input type="file" id="plLockFile" accept="image/*" style="display:none">' +
-      '<div class="sec-label">Captura de tu pantalla de INICIO</div>' +
-      '<div class="pl-prev" id="plHomePrev">' + (c.homeImg ? '<img src="' + c.homeImg + '" alt="">' : "<span>Sin imagen</span>") + "</div>" +
-      '<button class="btn ghost" id="plHomeUp">' + icon("plus", "i-sm") + ' Subir captura de inicio</button><input type="file" id="plHomeFile" accept="image/*" style="display:none">' +
       '<div class="sec-label">Sensibilidad del sensor</div>' +
       '<input type="range" id="plSens" min="6" max="20" step="1" value="' + (c.sens || 12) + '" style="width:100%">' +
       '<p class="hint">Ajústala probando en tu móvil real: más baja = detecta toques más suaves.</p>' +
-      '<button class="btn" id="plGo">' + icon("play", "i-sm") + ' Actuar</button>' +
+      '<button class="btn" id="plGo">' + icon("play", "i-sm") + " Actuar</button>" +
       '<p class="hint">En la actuación puedes tocar la pantalla para avanzar (modo ensayo), además del sensor.</p>' +
       "</div></div>";
-    view.querySelectorAll("#plMethod button").forEach(function (b) { b.addEventListener("click", function () { var cc = plCfg(); cc.method = b.getAttribute("data-v"); plSave(cc); renderPalmLock(); }); });
-    view.querySelectorAll("#plLen button").forEach(function (b) { b.addEventListener("click", function () { var cc = plCfg(); cc.pinLen = parseInt(b.getAttribute("data-v"), 10); plSave(cc); renderPalmLock(); }); });
-    var sens = document.getElementById("plSens"); if (sens) sens.addEventListener("change", function () { var cc = plCfg(); cc.sens = parseInt(sens.value, 10); plSave(cc); });
-    function hookUp(btnId, fileId, key) {
-      var btn = document.getElementById(btnId), file = document.getElementById(fileId);
-      if (!btn || !file) return;
-      btn.addEventListener("click", function () { file.click(); });
-      file.addEventListener("change", function () {
-        var fl = file.files && file.files[0]; if (!fl) return;
-        toast("Procesando imagen…");
+    function prev() {
+      var p = document.getElementById("plPrev"); if (!p) return;
+      var cc = plCfg(); p.innerHTML = plLockMarkup(cc); plStartClock(p, cc.h24);
+    }
+    function set(k, v) { var cc = plCfg(); cc[k] = v; plSave(cc); }
+    view.querySelectorAll("#plH24 button").forEach(function (b) { b.addEventListener("click", function () { set("h24", b.getAttribute("data-v") === "1"); renderPalmLock(); }); });
+    view.querySelectorAll("#plFont button").forEach(function (b) { b.addEventListener("click", function () { set("clockFont", b.getAttribute("data-f")); renderPalmLock(); }); });
+    view.querySelectorAll("#plSw .pl-sw[data-c]").forEach(function (b) { b.addEventListener("click", function () { set("clockColor", b.getAttribute("data-c")); renderPalmLock(); }); });
+    var col = document.getElementById("plColor"); if (col) col.addEventListener("input", function () { set("clockColor", col.value); prev(); });
+    var bp = document.getElementById("plBattPct"); if (bp) bp.addEventListener("change", function () { set("battPct", bp.checked); prev(); });
+    var bl = document.getElementById("plBattLvl"); if (bl) bl.addEventListener("input", function () { set("battLevel", parseInt(bl.value, 10)); prev(); });
+    var wf = document.getElementById("plWifi"); if (wf) wf.addEventListener("change", function () { set("wifi", wf.checked); prev(); });
+    var sg = document.getElementById("plSig"); if (sg) sg.addEventListener("input", function () { set("signalBars", parseInt(sg.value, 10)); prev(); });
+    view.querySelectorAll("#plMethod button").forEach(function (b) { b.addEventListener("click", function () { set("method", b.getAttribute("data-v")); renderPalmLock(); }); });
+    view.querySelectorAll("#plLen button").forEach(function (b) { b.addEventListener("click", function () { set("pinLen", parseInt(b.getAttribute("data-v"), 10)); renderPalmLock(); }); });
+    var sens = document.getElementById("plSens"); if (sens) sens.addEventListener("change", function () { set("sens", parseInt(sens.value, 10)); });
+    var wpBtn = document.getElementById("plWpUp"), wpFile = document.getElementById("plWpFile");
+    if (wpBtn && wpFile) {
+      wpBtn.addEventListener("click", function () { wpFile.click(); });
+      wpFile.addEventListener("change", function () {
+        var fl = wpFile.files && wpFile.files[0]; if (!fl) return;
+        toast("Procesando fondo…");
         plCompress(fl, function (data) {
           if (!data) { toast("No se pudo procesar la imagen"); return; }
-          var cc = plCfg(); cc[key] = data; plSave(cc); renderPalmLock(); toast("Imagen guardada");
+          set("wallpaper", data); prev(); toast("Fondo guardado");
         });
       });
     }
-    hookUp("plLockUp", "plLockFile", "lockImg");
-    hookUp("plHomeUp", "plHomeFile", "homeImg");
     document.getElementById("plGo").addEventListener("click", function () {
-      if (!plCfg().lockImg) { toast("Sube antes una captura de bloqueo"); return; }
+      if (!plCfg().wallpaper) { toast("Sube antes tu fondo de pantalla"); return; }
       plPrimeMotion(function () { location.hash = "#/desbloqueo-actuar"; });
     });
+    prev();
   }
   function renderPalmPerform() {
     clearTabbar(); var f1 = document.getElementById("fabEl"); if (f1) f1.remove();
     var c = plCfg();
-    if (!c.lockImg) { location.hash = "#/desbloqueo"; return; }
-    var pin = c.pinLen || 6, method = c.method || "sensor", sens = c.sens || 12;
-    var entered = 0, done = false;
-    var dots = ""; for (var i = 0; i < pin; i++) dots += '<span class="pl-dot" data-i="' + i + '"></span>';
+    if (!c.wallpaper) { location.hash = "#/desbloqueo"; return; }
+    var pin = c.pinLen || 6, method = c.method || "sensor", sens = c.sens || 12, h24 = c.h24 !== false;
+    var entered = 0, done = false, entering = false;
+    var dots = ""; for (var i = 0; i < pin; i++) dots += '<span class="ios-pdot" data-i="' + i + '"></span>';
     view.innerHTML =
       '<div class="pl-stage" id="plStage">' +
-      '<img class="pl-bg" src="' + c.lockImg + '" alt="">' +
-      '<div class="pl-dots" id="plDots">' + dots + "</div>" +
+      plLockMarkup(c) +
+      '<div class="ios-pass" id="plPass"><div class="ios-pass-title">Introduce el código</div><div class="ios-pass-dots">' + dots + "</div></div>" +
       '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
       "</div>";
+    var stage = document.getElementById("plStage");
+    plStartClock(stage, h24);
     function fill() {
-      if (done || entered >= pin) return;
-      var d = view.querySelector('.pl-dot[data-i="' + entered + '"]'); if (d) d.className = "pl-dot on";
+      if (done) return;
+      if (!entering) { entering = true; stage.className = "pl-stage entering"; }
+      if (entered >= pin) return;
+      var d = stage.querySelector('.ios-pdot[data-i="' + entered + '"]'); if (d) d.className = "ios-pdot on";
       entered++;
-      if (entered >= pin) { done = true; window.setTimeout(unlock, 450); }
+      if (entered >= pin) { done = true; window.setTimeout(unlock, 480); }
     }
     function unlock() {
       plStopMotion();
-      var stage = document.getElementById("plStage"); if (!stage) return;
-      if (c.homeImg) {
-        var home = document.createElement("img"); home.className = "pl-bg pl-home"; home.src = c.homeImg; home.alt = "";
-        stage.appendChild(home);
-        window.setTimeout(function () { home.className = "pl-bg pl-home show"; }, 20);
-      }
+      if (!stage) return;
+      stage.className = "pl-stage entering unlocking"; // fundido a blanco
+      // Al desbloquear se abre Google: salir de la app queda natural.
+      window.setTimeout(function () { try { window.location.href = "https://www.google.com/"; } catch (e) {} }, 620);
     }
     document.getElementById("plExit").addEventListener("click", function () { plStopMotion(); location.hash = "#/desbloqueo"; });
-    document.getElementById("plStage").addEventListener("click", function (e) {
+    stage.addEventListener("click", function (e) {
       var t = e.target;
       if (t && (t.id === "plExit" || (t.parentNode && t.parentNode.id === "plExit"))) return;
       fill(); // modo ensayo / respaldo manual

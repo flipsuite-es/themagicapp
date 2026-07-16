@@ -1856,14 +1856,10 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
    medida de la captura real: 86% de ancho, del 12,6% al 51,3% de alto. */
 .ios-clockw { position: relative; }
 .ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: 1.3cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
-/* Clon-sombra bajo el reloj de cristal: el relieve/profundidad de los números
-   reales (borde inferior oscuro difuminado). */
-.ios-clock.cshadow { position: absolute; left: 50%; top: 0; margin: 1.3cqh 0 0; transform: translate(-50%, .55cqh); background: rgba(8,14,22,.45); filter: blur(5px); }
-/* Clon de LUZ desplazado hacia arriba: el bisel iluminado del borde superior
-   de los números reales. */
-.ios-clock.chl { position: absolute; left: 50%; top: 0; margin: 1.3cqh 0 0; transform: translate(-50%, -.26cqh); background: rgba(255,255,255,.5); filter: blur(1.2px); }
-/* Estilo "Cristal": el degradado y el fondo esmerilado van inline (plLockMarkup). */
-.ios-clock.glass { background-color: transparent; }
+/* Estilo "Cristal": el degradado y el fondo esmerilado van inline
+   (plLockMarkup). El relieve va por drop-shadow: sigue el contorno EXACTO de
+   la máscara (sombra abajo + filo de luz arriba) sin tapar las muescas. */
+.ios-clock.glass { background-color: transparent; filter: drop-shadow(0 .28cqh .18cqh rgba(8,14,22,.5)) drop-shadow(0 -.1cqh 0 rgba(255,255,255,.55)); }
 /* Recorte del sujeto DELANTE del reloj (efecto profundidad de iOS). */
 .ios-depth { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 3; pointer-events: none; transition: opacity .35s ease; }
 /* Botones inferiores (linterna / cámara) + atajo central opcional. Círculos al

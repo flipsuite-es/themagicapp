@@ -3216,7 +3216,7 @@
     "2": '<path d="M10,88 C10,16 90,16 90,92 C90,214 11,266 10,431 L91,431"/>',
     "3": '<path d="M22,145 C22,70 32,14 54,14 C80,14 90,46 90,115 C90,163 80,190 62,202 C86,212 92,260 92,330 C92,400 74,431 50,431 C28,431 18,404 18,277"/>',
     "4": '<path d="M63,9 L63,431 M63,14 L10,302 L91,302"/>',
-    "5": '<path d="M14,16 L62,16 C84,16 92,38 92,100 M14,16 L14,318 C14,395 34,431 54,431 C78,431 92,390 92,300 C92,222 83,185 62,186 C52,187 45,194 42,204"/>',
+    "5": '<path d="M14,16 L62,16 C84,16 92,38 92,100 M14,16 L14,318 C14,395 34,431 54,431 C78,431 92,390 92,296 C92,222 87,186 76,187 C64,188 55,197 52,210"/>',
     "6": '<path d="M74,13 C40,70 10,158 10,310 M10,310 C10,214 90,214 90,318 C90,426 10,426 10,310"/>',
     "7": '<path d="M10,13 L90,13 C78,148 53,282 48,431"/>',
     "8": '<rect x="13" y="9" width="74" height="194" rx="37"/><rect x="9" y="220" width="82" height="211" rx="41"/>',
@@ -3316,10 +3316,7 @@
         glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.88) 0%,rgba(210,238,255,.6) 20%,rgba(222,231,240,.52) 55%,rgba(168,180,192,.66) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
           ";background-size:auto,140% auto;background-position:center,center 22%;background-repeat:no-repeat";
       }
-      clockHtml = '<div class="ios-clockw">' +
-        '<div class="ios-clock cshadow" style="' + maskStyle + '"></div>' +
-        '<div class="ios-clock chl" style="' + maskStyle + '"></div>' +
-        '<div class="ios-clock glass" style="' + glassStyle + '"></div></div>';
+      clockHtml = '<div class="ios-clockw"><div class="ios-clock glass" style="' + glassStyle + '"></div></div>';
     } else {
       clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + maskStyle + ";background:" + (c.clockColor || "#ffffff") + '"></div></div>';
     }

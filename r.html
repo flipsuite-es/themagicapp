@@ -66,23 +66,52 @@
       // que llega después lo termina todo de forma natural).
     }
 
-    /* --- Salida a YouTube: INMEDIATA y sin ningún toque ---
-       El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Entre que el
-       mago deja el móvil boca abajo y el espectador sube el volumen NO HAY NINGÚN
-       TOQUE: al llegar la señal, la página navega EN EL INSTANTE a YouTube
-       (m.youtube.com/watch) con location.replace — la versión validada en los
-       dos móviles reales (iPhone y Android). En Android, el enlace es un App
-       Link verificado de YouTube y el sistema abre la APP directamente; si no,
-       la web real. Sin rastro en el historial (replace). YouTube arranca la
-       canción; con el volumen al mínimo no se oye… hasta que el espectador sube
-       el botón físico de volumen (ese es el efecto). */
+    /* --- Salida a YouTube: abre la APP directa, sin ningún toque ---
+       El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Entre dejarlo
+       boca abajo y subir el volumen NO HAY NINGÚN TOQUE. Al llegar la señal se
+       abre la APP de YouTube de forma automática:
+       · Android: un intent con el PAQUETE explícito (com.google.android.youtube).
+         Al nombrar el paquete, el sistema abre esa app DIRECTAMENTE, saltándose
+         cualquier ajuste de "enlaces verificados" del teléfono. Se lanza por un
+         iframe oculto (no navega la página si la app no está) y también por
+         navegación, para máxima fiabilidad.
+       · iPhone: el esquema propio de la app (youtube://), que iOS abre desde una
+         navegación normal.
+       Si la app no está instalada, un respaldo inmediato lleva a la WEB real de
+       YouTube (m.youtube.com). La app arranca la canción con sonido; con el
+       volumen al mínimo no se oye… hasta que el espectador lo sube (el efecto). */
     function ytUrl(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
+    function ytAppAndroid(id, t) {
+      return "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+        "#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=" +
+        encodeURIComponent(ytUrl(id, t)) + ";end";
+    }
     function go(reveal, rev) {
       if (done || !reveal || !reveal.video_id) return;
       done = true; stop();
       // Acuse de entrega (no bloquea). La sesión NO caduca ni se consume.
       rpc("mr_spec_ack", { p_code: code, p_rev: rev || 0 }, true);
-      window.location.replace(ytUrl(reveal.video_id, reveal.start_seconds));
+      var id = reveal.video_id, t = reveal.start_seconds || 0, ua = navigator.userAgent || "";
+      var web = ytUrl(id, t);
+      if (/Android/i.test(ua)) {
+        // Intento por iframe oculto: dispara la app sin mover la página si falla.
+        try {
+          var ifr = document.createElement("iframe"); ifr.style.display = "none";
+          ifr.setAttribute("src", "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
+            "#Intent;scheme=https;package=com.google.android.youtube;end");
+          document.body.appendChild(ifr);
+        } catch (e) {}
+        // Intento por navegación con paquete explícito + respaldo web integrado.
+        try { window.location.href = ytAppAndroid(id, t); } catch (e) { window.location.replace(web); }
+        // Salvavidas: si nada navegó (app ausente), a la web real de YouTube.
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
+      } else if (/iPhone|iPad|iPod/i.test(ua)) {
+        // iOS abre la app desde el esquema; respaldo a la web si no está.
+        try { window.location.href = "youtube://watch?v=" + id + "&t=" + t; } catch (e) {}
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
+      } else {
+        window.location.replace(web);
+      }
     }
     function poll() {
       rpc("mr_spec_poll", { p_code: code, p_since: baseline, p_ka: kaState() }).then(function (p) {

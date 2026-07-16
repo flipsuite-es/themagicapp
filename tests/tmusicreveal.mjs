@@ -32,11 +32,12 @@ ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-// La versión validada en los dos móviles reales: navegación DIRECTA e INMEDIATA al watch.
-ok('r.html: al llegar la señal sale a YouTube al instante, sin ningún toque', /function go\(/.test(rhtml) && /location\.replace\(ytUrl/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
-// En Android, el App Link https de m.youtube.com abre la APP de YouTube sin gesto (los esquemas
-// youtube:// e intent:// exigen toque en Chrome, por eso NO se usan aquí).
-ok('r.html: abre YouTube por App Link https (sin youtube:// ni intent://, que exigen toque)', !/youtube:\/\//.test(rhtml) && !/intent:\/\//.test(rhtml));
+// Abre la APP de YouTube automáticamente (sin toque): intent con paquete explícito en Android
+// (se salta el ajuste de enlaces verificados) y esquema youtube:// en iPhone, con respaldo web.
+ok('r.html: abre la app de YouTube automáticamente (paquete/esquema) sin ningún toque', /function go\(/.test(rhtml) && /com\.google\.android\.youtube/.test(rhtml) && /youtube:\/\/watch/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
+// Android: intent con paquete explícito (abre la app saltándose el ajuste de enlaces
+// verificados), lanzado por iframe oculto y por navegación; iOS: esquema youtube://.
+ok('r.html: intent con paquete por iframe + navegación (Android) y esquema (iOS)', /intent:\/\/www\.youtube\.com/.test(rhtml) && /createElement\("iframe"\)/.test(rhtml) && /package=com\.google\.android\.youtube/.test(rhtml));
 // La revelación es automática (por el sondeo); el toque en pantalla solo refuerza el keep-awake.
 ok('r.html: la revelación es automática (go desde el sondeo)', /go\(p\.reveal, p\.rev\)/.test(rhtml) && /if \(p\.ok && p\.reveal/.test(rhtml));
 ok('r.html: usa las RPC del espectador en vivo (estado + sondeo + acuse)', /mr_spec_state/.test(rhtml) && /mr_spec_poll/.test(rhtml) && /mr_spec_ack/.test(rhtml));
@@ -64,12 +65,12 @@ ok('app: muestra la protección de pantalla del espectador en el diagnóstico', 
 // de energía) y el punto de la página se queda fijo como confirmación visual para el mago.
 ok('r.html: un toque fija la pantalla (armKeepAwake) con confirmación visual (.d.on)', /function armKeepAwake/.test(rhtml) && /addEventListener\("pointerdown", armKeepAwake/.test(rhtml) && /function cue/.test(rhtml) && /\.d\.on \{/.test(rhtml));
 ok('app: instruye el toque de armado al mago (enlace del espectador)', /da UN toque en la pantalla/.test(app) && /no se apagará/.test(app));
-ok('r.html: lleva la marca de tiempo y no deja rastro (location.replace)', /ytUrl\(reveal\.video_id, reveal\.start_seconds\)/.test(rhtml) && /&t=/.test(rhtml));
+ok('r.html: intent con paquete + fallback web y esquema iOS con marca de tiempo', /browser_fallback_url/.test(rhtml) && /function ytAppAndroid/.test(rhtml) && /&t=" \+ t/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al
 // llegar la señal, dentro de go(), sin ningún gesto ni temporizador de respaldo.
-// Sin puertas intermedias: ni anclas armadas, ni esperas, ni temporizadores hacia YouTube.
-ok('r.html: sin esperas ni toques intermedios hacia YouTube', !/createElement\("a"\)/.test(rhtml) && !/setTimeout\([^)]*location/.test(rhtml));
+// El reveal es automático (por el sondeo); no depende de ningún toque del espectador.
+ok('r.html: el reveal es automático desde el sondeo, sin ancla de toque', /go\(p\.reveal, p\.rev\)/.test(rhtml) && !/createElement\("a"\)/.test(rhtml));
 ok('app: mantiene la pantalla del mago encendida (Wake Lock)', /mrKeepAwake/.test(app) && /requestWake/.test(app));
 
 // --- Fiabilidad del envío: presencia obligatoria, acuse y reintento ---

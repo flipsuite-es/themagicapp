@@ -32,9 +32,9 @@ ok('r.html: sin <script src> ni libs externas (ligera y aislada)', !/<script[^>]
 ok('r.html: no usa localStorage', !/localStorage\s*[.\[]/.test(rhtml));
 ok('r.html: no registra service worker', !/serviceWorker/.test(rhtml));
 ok('r.html: Cache-Control no-store', /no-store/.test(rhtml));
-// Abre la APP de YouTube automáticamente (sin toque): intent con paquete explícito en Android
-// (se salta el ajuste de enlaces verificados) y esquema youtube:// en iPhone, con respaldo web.
-ok('r.html: abre la app de YouTube automáticamente (paquete/esquema) sin ningún toque', /function go\(/.test(rhtml) && /com\.google\.android\.youtube/.test(rhtml) && /youtube:\/\/watch/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml));
+// Android: abre la app por intent con paquete explícito (sin toque). iOS: enlace https normal
+// (sin esquema youtube://, que provocaría el diálogo "¿Abrir en YouTube?").
+ok('r.html: Android abre la app por intent; iOS va a la web sin diálogo (sin youtube://)', /function go\(/.test(rhtml) && /com\.google\.android\.youtube/.test(rhtml) && /m\.youtube\.com\/watch/.test(rhtml) && !/youtube:\/\//.test(rhtml));
 // Android: intent con paquete explícito (abre la app saltándose el ajuste de enlaces
 // verificados), lanzado por iframe oculto y por navegación; iOS: esquema youtube://.
 ok('r.html: intent con paquete por iframe + navegación (Android) y esquema (iOS)', /intent:\/\/www\.youtube\.com/.test(rhtml) && /createElement\("iframe"\)/.test(rhtml) && /package=com\.google\.android\.youtube/.test(rhtml));

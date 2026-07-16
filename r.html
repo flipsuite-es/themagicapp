@@ -66,20 +66,21 @@
       // que llega después lo termina todo de forma natural).
     }
 
-    /* --- Salida a YouTube: abre la APP directa, sin ningún toque ---
+    /* --- Salida a YouTube, sin ningún toque y SIN diálogos ---
        El móvil se usa BOCA ABAJO y con el volumen físico al mínimo. Entre dejarlo
-       boca abajo y subir el volumen NO HAY NINGÚN TOQUE. Al llegar la señal se
-       abre la APP de YouTube de forma automática:
+       boca abajo y subir el volumen NO HAY NINGÚN TOQUE. Al llegar la señal:
        · Android: un intent con el PAQUETE explícito (com.google.android.youtube).
          Al nombrar el paquete, el sistema abre esa app DIRECTAMENTE, saltándose
-         cualquier ajuste de "enlaces verificados" del teléfono. Se lanza por un
-         iframe oculto (no navega la página si la app no está) y también por
-         navegación, para máxima fiabilidad.
-       · iPhone: el esquema propio de la app (youtube://), que iOS abre desde una
-         navegación normal.
-       Si la app no está instalada, un respaldo inmediato lleva a la WEB real de
-       YouTube (m.youtube.com). La app arranca la canción con sonido; con el
-       volumen al mínimo no se oye… hasta que el espectador lo sube (el efecto). */
+         cualquier ajuste de "enlaces verificados" del teléfono, sin preguntar. Se
+         lanza por un iframe oculto (no navega la página si la app no está) y
+         también por navegación, para máxima fiabilidad. Si no hay app, la web.
+       · iPhone: se navega al enlace normal de YouTube (m.youtube.com), sin ningún
+         diálogo. NO se usan esquemas propios de app porque iOS SIEMPRE muestra un
+         "¿Abrir en YouTube?" con ellos, y eso rompe el efecto. En iPhone, abrir
+         la app sin diálogo exigiría un toque real sobre un enlace; sin toque y
+         sin diálogo, la opción correcta es la web.
+       La app/web arranca la canción con sonido; con el volumen al mínimo no se
+       oye… hasta que el espectador lo sube (ese es el efecto). */
     function ytUrl(id, t) { return "https://m.youtube.com/watch?v=" + id + "&t=" + (t || 0) + "s"; }
     function ytAppAndroid(id, t) {
       return "intent://www.youtube.com/watch?v=" + id + "&t=" + t +
@@ -106,9 +107,12 @@
         // Salvavidas: si nada navegó (app ausente), a la web real de YouTube.
         window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
       } else if (/iPhone|iPad|iPod/i.test(ua)) {
-        // iOS abre la app desde el esquema; respaldo a la web si no está.
-        try { window.location.href = "youtube://watch?v=" + id + "&t=" + t; } catch (e) {}
-        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
+        // iOS: NUNCA un esquema propio de app — iOS SIEMPRE muestra el diálogo
+        // "¿Abrir en YouTube?" con esos esquemas, y eso no debe pasar.
+        // Se navega al enlace normal de YouTube, sin ningún diálogo. (En iPhone,
+        // abrir la app SIN diálogo exige un toque real sobre un enlace: sin toque
+        // y sin diálogo, la única opción es la web — justo lo pedido: no preguntar.)
+        window.location.replace(web);
       } else {
         window.location.replace(web);
       }

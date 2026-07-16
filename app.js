@@ -3164,6 +3164,31 @@
       img.src = url;
     } catch (e) { cb(null); }
   }
+  // Versión DESENFOCADA del fondo (para el interior "esmerilado" de los
+  // dígitos del reloj de cristal). Desenfoque por reescalado (funciona en
+  // cualquier navegador): se dibuja diminuto y se amplía suavizado.
+  function plBlurData(dataURI, cb) {
+    try {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.width, h = img.height;
+          var small = document.createElement("canvas");
+          small.width = Math.max(1, Math.round(w / 14)); small.height = Math.max(1, Math.round(h / 14));
+          small.getContext("2d").drawImage(img, 0, 0, small.width, small.height);
+          var out = document.createElement("canvas");
+          out.width = Math.max(1, Math.round(w / 2)); out.height = Math.max(1, Math.round(h / 2));
+          var ctx = out.getContext("2d");
+          ctx.imageSmoothingEnabled = true;
+          try { ctx.filter = "saturate(1.15) brightness(1.08)"; } catch (e2) {}
+          ctx.drawImage(small, 0, 0, out.width, out.height);
+          cb(out.toDataURL("image/jpeg", 0.72));
+        } catch (e) { cb(null); }
+      };
+      img.onerror = function () { cb(null); };
+      img.src = dataURI;
+    } catch (e) { cb(null); }
+  }
   var plMotionOK = false, plMotionH = null, plClockH = null;
   // iOS 13+ exige pedir el permiso de movimiento DENTRO de un gesto: se pide al
   // pulsar "Actuar" (que es un toque), encajando con el patrón de preparación.
@@ -3215,8 +3240,9 @@
     }
     return '<svg viewBox="0 0 18 13" class="ios-i-sig">' + s + "</svg>";
   }
+  // WiFi de iOS: tres arcos rellenos.
   var PL_WIFI_SVG =
-    '<svg viewBox="0 0 17 12" class="ios-i-wifi" fill="#fff"><path d="M8.5 2.05c2.62 0 5.02 1 6.83 2.66a.6.6 0 0 0 .84-.02l.6-.63a.6.6 0 0 0-.02-.86A11.3 11.3 0 0 0 8.5.15 11.3 11.3 0 0 0 .75 3.2a.6.6 0 0 0-.02.86l.6.63c.22.24.6.25.84.02A9.86 9.86 0 0 1 8.5 2.05Z"/><path d="M8.5 5.6c1.63 0 3.12.62 4.24 1.64a.6.6 0 0 0 .82-.03l.63-.66a.6.6 0 0 0-.03-.87A8 8 0 0 0 8.5 3.6a8 8 0 0 0-5.66 2.08.6.6 0 0 0-.03.87l.63.66c.22.23.6.24.82.03A6.26 6.26 0 0 1 8.5 5.6Z"/><path d="M8.5 8.9 6.4 6.78a3.2 3.2 0 0 1 4.2 0L8.5 8.9Z"/></svg>';
+    '<svg viewBox="0 0 20 15" class="ios-i-wifi" fill="#fff"><path d="M10 2.55c3.05 0 5.83 1.17 7.9 3.08a.55.55 0 0 0 .78-.03l1.02-1.14a.55.55 0 0 0-.03-.77A13.35 13.35 0 0 0 10 .35 13.35 13.35 0 0 0 .33 3.69a.55.55 0 0 0-.03.77l1.02 1.14c.2.23.55.24.78.03A11.65 11.65 0 0 1 10 2.55Z"/><path d="M10 6.9c1.94 0 3.7.72 5.05 1.9.23.2.57.19.78-.03l1-1.12a.55.55 0 0 0-.04-.78A9.95 9.95 0 0 0 10 4.5a9.95 9.95 0 0 0-6.79 2.37.55.55 0 0 0-.04.78l1 1.12c.2.22.55.23.78.03A7.65 7.65 0 0 1 10 6.9Z"/><path d="M10 11.15c.95 0 1.82.32 2.52.86.24.19.28.54.07.76l-2.19 2.42a.54.54 0 0 1-.8 0l-2.19-2.42a.53.53 0 0 1 .07-.76 4.1 4.1 0 0 1 2.52-.86Z"/></svg>'
   var PL_BELL_SVG = '<svg viewBox="0 0 20 20" class="ios-i-bell" fill="#fff"><path d="M10 2a1 1 0 0 0-1 1v.6A5 5 0 0 0 5 8.5V12l-1.3 1.9a.7.7 0 0 0 .6 1.1h11.4a.7.7 0 0 0 .6-1.1L15 12V8.5a5 5 0 0 0-4-4.9V3a1 1 0 0 0-1-1Zm0 16a2.2 2.2 0 0 0 2.1-1.6H7.9A2.2 2.2 0 0 0 10 18Z"/><path d="M2.5 1.8 18.2 17.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>';
   // Batería con el porcentaje DENTRO (como iOS): número + carcasa + punta.
   // saver = modo de ahorro de energía (batería AMARILLA aunque no esté baja).
@@ -3233,8 +3259,10 @@
       '<rect x="2" y="2" width="' + fillW + '" height="9" rx="2" fill="' + col + '"/>' + pct +
       '<rect x="24" y="4" width="1.8" height="5" rx="0.9" fill="#fff" fill-opacity="0.5"/></svg>';
   }
-  var PL_FLASH_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.3 2h5.4l-.7 4H10l-.7-4Zm.8 5.2h3.8l-.42 3.5c-.1.86-.63 1.4-1.48 1.4s-1.38-.54-1.48-1.4L10.1 7.2ZM11 13.4h2V22h-2v-8.6Z"/></svg>';
-  var PL_CAM_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.2 3.2 7.9 5H4.4A2.4 2.4 0 0 0 2 7.4v10.2A2.4 2.4 0 0 0 4.4 20h15.2A2.4 2.4 0 0 0 22 17.6V7.4A2.4 2.4 0 0 0 19.6 5h-3.5l-1.3-1.8H9.2Zm2.8 4.6a4.7 4.7 0 1 1 0 9.4 4.7 4.7 0 0 1 0-9.4Zm0 2a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z"/></svg>';
+  // Linterna estilo SF Symbols: cabezal, corte, mango largo con "lente" (agujero).
+  var PL_FLASH_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M8.7 2h6.6v1.6H8.7Z"/><path fill-rule="evenodd" d="M8.7 4.7h6.6l-1.05 1.95c-.18.34-.28.72-.28 1.1V19.5a1.47 1.47 0 0 1-2.94 0V7.75c0-.38-.1-.76-.28-1.1L8.7 4.7Zm3.3 2.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/></svg>';
+  // Cámara estilo SF Symbols: cuerpo relleno con la lente en anillo.
+  var PL_CAM_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path fill-rule="evenodd" d="M8.5 4.5c.3-.9 1.15-1.5 2.1-1.5h2.8c.95 0 1.8.6 2.1 1.5l.35 1h2.75A2.4 2.4 0 0 1 21 7.9v9.2a2.4 2.4 0 0 1-2.4 2.4H5.4A2.4 2.4 0 0 1 3 17.1V7.9a2.4 2.4 0 0 1 2.4-2.4h2.75l.35-1ZM12 8.2a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.7a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z"/></svg>';
   var PL_ISLK_SVG = '<svg viewBox="0 0 13 16" fill="#fff"><path d="M6.5 0C4.29 0 2.5 1.79 2.5 4v2H2c-.83 0-1.5.67-1.5 1.5v6.9C.5 15.4 1.13 16 1.9 16h9.2c.77 0 1.4-.6 1.4-1.6V7.5C12.5 6.67 11.83 6 11 6h-.5V4C10.5 1.79 8.71 0 6.5 0Zm2 6h-4V4c0-1.1.9-2 2-2s2 .9 2 2v2Z"/></svg>';
   var PL_FACE_SVG = '<svg viewBox="0 0 22 22" fill="none" stroke="#30d158" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V4.5A2.5 2.5 0 0 1 4.5 2H6M16 2h1.5A2.5 2.5 0 0 1 20 4.5V6M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M6 20H4.5A2.5 2.5 0 0 1 2 17.5V16"/><path d="M8 8.5v1.6M14 8.5v1.6M11 8.5v3.2l-1 .9"/><path d="M8.2 14.6a4 4 0 0 0 5.6 0"/></svg>';
   var PL_KEYS = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"], ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"], ["", ""], ["0", ""], ["", ""]];
@@ -3259,7 +3287,9 @@
       // relieve que tienen los números reales).
       var glassStyle = baseStyle;
       if (c.wallpaper) {
-        glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.66) 0%,rgba(201,235,255,.5) 20%,rgba(214,226,236,.42) 55%,rgba(150,163,175,.54) 100%),url('" + c.wallpaper + "')" +
+        // Interior de los dígitos: el fondo DESENFOCADO (cristal esmerilado),
+        // ampliado como si el vidrio refractara, más un tinte brillo->plata.
+        glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.62) 0%,rgba(201,235,255,.44) 20%,rgba(214,226,236,.36) 55%,rgba(150,163,175,.48) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
           ";background-size:auto,175% auto;background-position:center,center 20%;background-repeat:no-repeat";
       }
       clockHtml = '<div class="ios-clockw">' +
@@ -3430,7 +3460,12 @@
         toast("Procesando fondo…");
         plCompress(fl, function (data) {
           if (!data) { toast("No se pudo procesar la imagen"); return; }
-          set("wallpaper", data); prev(); toast("Fondo guardado");
+          set("wallpaper", data);
+          // Genera también la versión esmerilada para el interior del reloj.
+          plBlurData(data, function (b) {
+            if (b) set("wallpaperBlur", b);
+            prev(); toast("Fondo guardado");
+          });
         });
       });
     }

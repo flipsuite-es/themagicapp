@@ -1838,14 +1838,14 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 
 /* --- Pantalla de bloqueo --- */
 .ios-lock { position: absolute; inset: 0; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
-.ios-dim { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background .4s ease; z-index: 1; }
+.ios-dim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 16%, rgba(0,0,0,0) 70%, rgba(0,0,0,.26) 100%); transition: background .4s ease, backdrop-filter .4s ease, -webkit-backdrop-filter .4s ease; z-index: 1; }
 /* Barra de estado: izq = operador + silencio; der = cobertura · wifi · batería. */
 .ios-status { position: absolute; top: 1.4cqh; left: 0; right: 0; height: 5cqh; display: flex; align-items: center; justify-content: space-between; padding: 0 7.5cqw; z-index: 3; }
 .ios-status-l, .ios-status-r { display: flex; align-items: center; gap: 1.6cqw; }
 .ios-carrier { color: #fff; font: 600 2cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .02em; }
 .ios-i-bell { height: 2cqh; width: auto; opacity: .95; }
 .ios-i-sig { height: 1.6cqh; width: auto; }
-.ios-i-wifi { height: 1.6cqh; width: auto; }
+.ios-i-wifi { height: 1.75cqh; width: auto; }
 .ios-i-batt { height: 1.7cqh; width: auto; }
 /* Fecha + reloj grande. Medidas de capturas reales (iPhone 1320x2868): fecha
    centrada al 10% de alto; reloj del 12,7% al 51,5% de alto y ~86% de ancho. */
@@ -1866,7 +1866,7 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 /* Botones inferiores (linterna / cámara) + atajo central opcional. Círculos al
    12,5% de ancho, centros al 90,8% de alto (medidos de la captura real). */
 .ios-bottom { position: absolute; bottom: 6.3cqh; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12cqw; z-index: 3; transition: opacity .35s ease; }
-.ios-cbtn { width: 12.5cqw; height: 12.5cqw; border-radius: 50%; background: rgba(20,16,10,.34); backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; box-shadow: inset 0 0.1cqh 0.25cqh rgba(255,255,255,.22); }
+.ios-cbtn { width: 12.5cqw; height: 12.5cqw; border-radius: 50%; background: rgba(10,8,6,.20); backdrop-filter: blur(14px) saturate(1.25) brightness(1.04); -webkit-backdrop-filter: blur(14px) saturate(1.25) brightness(1.04); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; box-shadow: inset 0 0.15cqh 0.35cqh rgba(255,255,255,.26), inset 0 -0.1cqh 0.3cqh rgba(0,0,0,.10); }
 .ios-cbtn svg { width: 5.6cqw; height: 5.6cqw; }
 .ios-shortcut { color: #fff; font: 500 2.05cqh/1 -apple-system, system-ui, sans-serif; opacity: .95; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .ios-homebar { position: absolute; bottom: 1.3cqh; left: 50%; transform: translateX(-50%); width: 34.5cqw; height: .55cqh; border-radius: 1cqh; background: #fff; opacity: .92; z-index: 3; transition: opacity .3s ease; }
@@ -1879,20 +1879,23 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .ios-island .isl-r svg { height: 2.9cqh; width: auto; }
 .ios-pass-title { position: absolute; top: 20cqh; left: 0; right: 0; text-align: center; color: #fff; font: 400 2.2cqh/1.25 -apple-system, system-ui, sans-serif; text-shadow: 0 1px 4px rgba(0,0,0,.4); padding: 0 3cqw; white-space: nowrap; }
 .ios-pass-dots { position: absolute; top: 24.5cqh; left: 0; right: 0; display: flex; justify-content: center; gap: 5cqw; }
-.ios-pdot { width: 1.55cqh; height: 1.55cqh; border-radius: 50%; background: transparent; border: 0.22cqh solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: background .1s ease, transform .1s ease; }
+.ios-pdot { width: 1.55cqh; height: 1.55cqh; border-radius: 50%; background: transparent; border: 0.18cqh solid rgba(255,255,255,.95); box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: background .1s ease, transform .1s ease; }
 .ios-pdot.on { background: #fff; transform: scale(1.04); }
 /* Rejilla 3x4 de teclas con efecto cristal. */
 .ios-keypad { position: absolute; top: 35.5cqh; left: 50%; transform: translateX(-50%); width: 76cqw; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.25cqh 0; justify-items: center; }
-.ios-key { width: 19.5cqw; aspect-ratio: 1 / 1; border-radius: 50%; background: rgba(255,255,255,.16); backdrop-filter: blur(18px) saturate(1.35); -webkit-backdrop-filter: blur(18px) saturate(1.35); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0.18cqh 0.35cqh rgba(255,255,255,.34), inset 0 0 0 0.1cqh rgba(255,255,255,.15), 0 0.15cqh 0.5cqh rgba(0,0,0,.12); transition: background .12s ease, transform .12s ease; }
+.ios-key { position: relative; overflow: hidden; width: 19.5cqw; aspect-ratio: 1 / 1; border-radius: 50%; background: rgba(255,255,255,.09); backdrop-filter: blur(22px) saturate(1.5) brightness(1.16); -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(1.16); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0.2cqh 0.5cqh rgba(255,255,255,.32), inset 0 -0.15cqh 0.4cqh rgba(0,0,0,.08), 0 0.2cqh 0.7cqh rgba(0,0,0,.10); transition: background .12s ease, transform .12s ease; }
+/* Destello de vidrio en la parte alta de cada tecla (liquid glass). */
+.ios-key::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse 70% 45% at 32% 20%, rgba(255,255,255,.28), rgba(255,255,255,0) 70%); pointer-events: none; }
 .ios-key.ghost { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
-.ios-key .k-num { color: #fff; font: 400 4cqh/1 -apple-system, system-ui, sans-serif; }
-.ios-key .k-sub { color: #fff; font: 600 1.25cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .18em; margin-top: .55cqh; }
+.ios-key.ghost::before { content: none; }
+.ios-key .k-num { position: relative; color: #fff; font: 400 4cqh/1 -apple-system, system-ui, sans-serif; }
+.ios-key .k-sub { position: relative; color: #fff; font: 600 1.25cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .18em; margin-top: .55cqh; }
 .ios-key.press { background: rgba(255,255,255,.48); transform: scale(.95); }
 .ios-pass-foot { position: absolute; bottom: 8cqh; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 19cqw; color: #fff; font: 400 2.15cqh/1 -apple-system, system-ui, sans-serif; }
 
 /* Estado "introduciendo código": el reloj y botones se ocultan, aparece el
    teclado (el fondo se mantiene nítido, como en iOS, solo un pelín atenuado). */
-.entering .ios-dim { background: rgba(0,0,0,.32); backdrop-filter: blur(22px) saturate(1.1); -webkit-backdrop-filter: blur(22px) saturate(1.1); }
+.entering .ios-dim { background: rgba(0,0,0,.32); backdrop-filter: blur(34px) saturate(1.15); -webkit-backdrop-filter: blur(34px) saturate(1.15); }
 .entering .ios-status { opacity: 0; }
 .entering .ios-head { opacity: 0; transform: translateY(-3cqh); }
 .entering .ios-depth { opacity: 0; }

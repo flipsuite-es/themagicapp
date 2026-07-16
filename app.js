@@ -3212,28 +3212,28 @@
   // como máscara: el "material" (cristal/color) se pinta a través de él.
   var PL_GLYPHS = {
     "0": '<rect x="9" y="9" width="82" height="422" rx="41"/>',
-    "1": '<path d="M8,102 L38,14 M38,9 L38,431"/>',
+    "1": '<path d="M23,42 L48,16 M48,9 L48,431"/>',
     "2": '<path d="M10,88 C10,16 90,16 90,92 C90,214 11,266 10,431 L91,431"/>',
-    "3": '<path d="M11,80 C11,14 90,14 90,92 C90,170 54,208 45,218 C54,228 91,258 91,340 C91,426 11,426 11,352"/>',
+    "3": '<path d="M12,58 C16,28 38,14 56,14 C80,14 90,38 90,86 C90,140 62,178 50,190 C64,200 91,230 91,320 C91,395 74,428 52,428 C32,428 14,406 11,372"/>',
     "4": '<path d="M63,9 L63,431 M63,14 L10,302 L91,302"/>',
-    "5": '<path d="M86,12 L14,12 L14,198 C34,180 91,192 91,312 C91,426 13,432 10,354"/>',
+    "5": '<path d="M14,16 L64,16 C80,16 89,28 89,54 M14,16 L14,190 C34,172 91,186 91,300 C91,386 56,430 26,410 C17,403 12,396 12,388"/>',
     "6": '<path d="M74,13 C40,70 10,158 10,310 M10,310 C10,214 90,214 90,318 C90,426 10,426 10,310"/>',
     "7": '<path d="M10,13 L90,13 C78,148 53,282 48,431"/>',
     "8": '<rect x="13" y="9" width="74" height="194" rx="37"/><rect x="9" y="220" width="82" height="211" rx="41"/>',
     "9": '<path d="M90,130 C90,226 10,226 10,122 C10,14 90,14 90,130 M90,130 C90,282 62,370 26,428"/>',
-    ":": '<circle cx="20" cy="114" r="14" class="dot"/><circle cx="20" cy="304" r="14" class="dot"/>'
+    ":": '<circle cx="29" cy="120" r="11" class="dot"/><circle cx="29" cy="300" r="11" class="dot"/>'
   };
   // Avances PROPORCIONALES como el reloj real: el "1" es estrecho.
-  var PL_GLYPH_W = { "1": 58, ":": 40 };
+  var PL_GLYPH_W = { "1": 44, ":": 40 };
   function plClockMaskUri(t) {
-    var GAP = 12, x = 0, body = "";
+    var GAP = 14, x = 0, body = "";
     for (var i = 0; i < t.length; i++) {
       var ch = t.charAt(i), g = PL_GLYPHS[ch];
       if (!g) continue;
       body += '<g transform="translate(' + x + ',0)">' + g + "</g>";
       x += (PL_GLYPH_W[ch] || 100) + GAP;
     }
-    var w = Math.max(1, x - GAP);
+    var w = Math.max(1, x - GAP + (t.charAt(t.length - 1) === "1" ? 13 : 0));
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' 440">' +
       '<style>path,rect{fill:none;stroke:#fff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round}circle.dot{fill:#fff;stroke:none}</style>' +
       body + "</svg>";

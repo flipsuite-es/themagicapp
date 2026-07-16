@@ -3246,6 +3246,12 @@
     var color = glass ? "" : (c.clockColor || "#ffffff");
     var clockCls = "ios-clock" + (glass ? " glass" : "");
     var clockStyle = "font-family:" + font + ";font-weight:" + wt + (color ? ";color:" + color : "");
+    // Reloj "Cristal": el propio FONDO del mago se ve A TRAVÉS de los dígitos
+    // (efecto vidrio de iOS), teñido por un degradado azul->plata translúcido.
+    if (glass && c.wallpaper) {
+      clockStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.66) 0%,rgba(201,235,255,.5) 20%,rgba(214,226,236,.42) 55%,rgba(150,163,175,.54) 100%),url('" + c.wallpaper + "')" +
+        ";background-size:auto,175% auto;background-position:center,center 20%;background-repeat:no-repeat";
+    }
     var bg = c.wallpaper ? "background-image:url('" + c.wallpaper + "')" : "background:#0b0d12";
     var carrier = (c.carrier != null ? c.carrier : "");
     var left = (carrier ? '<span class="ios-carrier">' + plEsc(carrier) + "</span>" : "") + (c.mute ? PL_BELL_SVG : "");

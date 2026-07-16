@@ -107,12 +107,12 @@
         // Salvavidas: si nada navegó (app ausente), a la web real de YouTube.
         window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 1200);
       } else if (/iPhone|iPad|iPod/i.test(ua)) {
-        // iOS: NUNCA un esquema propio de app — iOS SIEMPRE muestra el diálogo
-        // "¿Abrir en YouTube?" con esos esquemas, y eso no debe pasar.
-        // Se navega al enlace normal de YouTube, sin ningún diálogo. (En iPhone,
-        // abrir la app SIN diálogo exige un toque real sobre un enlace: sin toque
-        // y sin diálogo, la única opción es la web — justo lo pedido: no preguntar.)
-        window.location.replace(web);
+        // iOS: navega DIRECTO a la APP de YouTube por su esquema. En Chrome y en
+        // la app de Google abre la app directamente; conviene abrir el enlace del
+        // espectador en Google/Chrome (en Safari, iOS añade un diálogo de
+        // confirmación por su propia política de esquemas). Respaldo a la web.
+        try { window.location.href = "youtube://watch?v=" + id + "&t=" + t; } catch (e) {}
+        window.setTimeout(function () { if (!document.hidden) window.location.replace(web); }, 700);
       } else {
         window.location.replace(web);
       }

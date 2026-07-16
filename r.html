@@ -196,13 +196,28 @@
     // Bucle: mantiene el Wake Lock, asegura que el vídeo siga reproduciéndose
     // (iOS puede pausarlo al volver de 2º plano) y refresca la confirmación.
     wakeTimer = setInterval(function () { keepAwake(); playNoSleep(); cue(); }, 2000);
+    // Desbloqueo de AUDIO dentro del gesto de preparación: reanuda un AudioContext
+    // y emite un pulso silencioso. Así el permiso de sonido queda CONCEDIDO desde
+    // la preparación (antes de dejar el móvil boca abajo) y no se pide en el reveal.
+    var actx = null, audioReady = false;
+    function unlockAudio() {
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!actx) actx = new AC();
+        if (actx.state === "suspended" && actx.resume) actx.resume();
+        var o = actx.createOscillator(), g = actx.createGain();
+        g.gain.value = 0; o.connect(g); g.connect(actx.destination);
+        o.start(0); o.stop(actx.currentTime + 0.03);
+        audioReady = (actx.state === "running");
+      } catch (e) {}
+    }
     // UN TOQUE EN LA PANTALLA (el del mago al abrir el enlace, antes de entregar
-    // el móvil) fija la pantalla encendida de forma PERMANENTE: dentro de un
-    // gesto, el sistema concede el Wake Lock y desbloquea el vídeo anti-apagado
-    // incluso con el ahorro de energía activado. Después ya no hace falta tocar
-    // nada más. El toque NO dispara la salida a YouTube (esa sigue siendo
-    // automática, por el sondeo).
-    function armKeepAwake() { keepAwake(); playNoSleep(); setTimeout(cue, 250); setTimeout(cue, 1200); }
+    // el móvil) concede TODOS los permisos que exigen un gesto: fija la pantalla
+    // encendida de forma permanente (Wake Lock + vídeo anti-apagado, incluso con
+    // ahorro de energía) y desbloquea el audio. Después ya no hace falta tocar
+    // nada: el reveal es automático (por el sondeo) y no pide ningún permiso.
+    function armKeepAwake() { keepAwake(); playNoSleep(); unlockAudio(); setTimeout(cue, 250); setTimeout(cue, 1200); }
     document.addEventListener("pointerdown", armKeepAwake, { passive: true });
     document.addEventListener("touchstart", armKeepAwake, { passive: true });
     document.addEventListener("click", armKeepAwake);

@@ -67,7 +67,9 @@ ok('app: muestra la protección de pantalla del espectador en el diagnóstico', 
 // Armado con UN toque: dentro del gesto se conceden Wake Lock + vídeo (incluso con ahorro
 // de energía) y el punto de la página se queda fijo como confirmación visual para el mago.
 ok('r.html: un toque fija la pantalla (armKeepAwake) con confirmación visual (.d.on)', /function armKeepAwake/.test(rhtml) && /addEventListener\("pointerdown", armKeepAwake/.test(rhtml) && /function cue/.test(rhtml) && /\.d\.on \{/.test(rhtml));
-ok('app: instruye el toque de armado al mago (enlace del espectador)', /da UN toque en la pantalla/.test(app) && /no se apagará/.test(app));
+// El toque de preparación concede TODOS los permisos con gesto: pantalla encendida Y audio.
+ok('r.html: el toque de preparación también desbloquea el audio (unlockAudio)', /function unlockAudio/.test(rhtml) && /armKeepAwake\(\) \{ keepAwake\(\); playNoSleep\(\); unlockAudio\(\)/.test(rhtml) && /AudioContext/.test(rhtml));
+ok('app: instruye el toque de armado al mago (concede permisos en preparación)', /da UN toque en la pantalla/.test(app) && /permisos/.test(app));
 ok('r.html: intent con paquete + fallback web y esquema iOS con marca de tiempo', /browser_fallback_url/.test(rhtml) && /function ytAppAndroid/.test(rhtml) && /&t=" \+ t/.test(rhtml));
 ok('r.html: es YouTube de verdad, sin reproductor propio ni incrustado', !/youtube\.com\/embed\//.test(rhtml) && !/new YT\.Player/.test(rhtml) && !/<iframe/i.test(rhtml));
 // La salida a YouTube (y la apertura de la app en Android por App Link) es automática al

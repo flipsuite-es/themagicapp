@@ -3206,7 +3206,7 @@
       '<div class="mr-code">/m/<b id="mrCodeBig">' + esc(mrState.code || "…") + "</b></div>" +
       '<div class="mr-linkfull" id="mrLinkShort">' + esc((mrSpectatorUrl() || "").replace(/^https?:\/\//, "")) + '</div>' +
       '<p class="hint">Es siempre el mismo, para cualquier momento. El espectador lo abre y espera; al enviar la revelación, su móvil abre YouTube. Se puede repetir cuantas veces quieras, incluso si vuelve a entrar en el enlace.</p>' +
-      '<p class="hint"><b>Importante:</b> al abrir el enlace, <b>da UN toque en la pantalla</b> del móvil del espectador antes de entregarlo: el punto central deja de parpadear y se queda fijo — eso confirma que su pantalla ya <b>no se apagará</b> (ni con ahorro de energía) sin tocar nada más.</p>' +
+      '<p class="hint"><b>Importante:</b> al abrir el enlace, <b>da UN toque en la pantalla</b> del móvil del espectador antes de entregarlo: ese toque concede de golpe todos los permisos (pantalla siempre encendida y audio) y el punto central se queda fijo. Después ya no hace falta tocar nada: la revelación es automática y no pedirá ningún permiso.</p>' +
       '<input readonly id="mrLink" style="position:absolute;left:-9999px" value="' + esc(mrSpectatorUrl()) + '">' +
       '<div class="row" style="margin-top:10px"><button class="btn" id="mrCopy">' + icon("copy", "i-sm") + " Copiar enlace</button>" +
       (navigator.share ? '<button class="btn ghost" id="mrShare">' + icon("share", "i-sm") + " Compartir…</button>" : "") + "</div></div>" +

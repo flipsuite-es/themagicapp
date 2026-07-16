@@ -1851,16 +1851,16 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
    centrada al 10% de alto; reloj del 12,7% al 51,5% de alto y ~86% de ancho. */
 .ios-head { position: absolute; top: 8.6cqh; left: 0; right: 0; text-align: center; z-index: 3; transition: opacity .35s ease, transform .35s ease; }
 .ios-date { color: #fff; font: 590 2.1cqh/1.2 -apple-system, system-ui, sans-serif; opacity: .96; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
-/* Reloj enorme como iOS: numerales altos y estrechos. Se dimensiona para caber
-   a lo ancho de forma natural y se estira en vertical (evita recortes). */
+/* Reloj: dígitos SVG propios (idénticos en cualquier dispositivo) usados como
+   MÁSCARA de una caja; el material (cristal/color) se pinta a través. Caja
+   medida de la captura real: 86% de ancho, del 12,6% al 51,3% de alto. */
 .ios-clockw { position: relative; }
-.ios-clock { display: inline-block; margin-top: .5cqh; font-size: 26cqh; font-weight: 510; line-height: .72; letter-spacing: -0.2cqw; color: #fff; transform: scale(.62, 2.05); transform-origin: center top; font-variant-numeric: tabular-nums; }
+.ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: 1cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
 /* Clon-sombra bajo el reloj de cristal: el relieve/profundidad de los números
    reales (borde inferior oscuro difuminado). */
-.ios-clock.cshadow { position: absolute; left: 0; right: 0; top: 0; color: rgba(6,12,20,.5); transform: translateY(.45cqh) scale(.62, 2.05); filter: blur(4px); }
-/* Estilo "Cristal": translúcido con degradado brillo->azul->plata que deja ver
-   el fondo, como el reloj "transparente" de iOS. */
-.ios-clock.glass { color: transparent; -webkit-text-fill-color: transparent; background-image: linear-gradient(176deg, rgba(255,255,255,.97) 0%, rgba(210,238,255,.92) 20%, rgba(228,238,247,.88) 55%, rgba(186,198,209,.85) 100%); background-size: cover; background-position: center; -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 0.12cqh rgba(255,255,255,.42); }
+.ios-clock.cshadow { position: absolute; left: 50%; top: 0; margin: 1cqh 0 0; transform: translate(-50%, .5cqh); background: rgba(6,12,20,.55); filter: blur(5px); }
+/* Estilo "Cristal": el degradado y el fondo esmerilado van inline (plLockMarkup). */
+.ios-clock.glass { background-color: transparent; }
 /* Recorte del sujeto DELANTE del reloj (efecto profundidad de iOS). */
 .ios-depth { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 3; pointer-events: none; transition: opacity .35s ease; }
 /* Botones inferiores (linterna / cámara) + atajo central opcional. Círculos al

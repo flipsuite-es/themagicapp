@@ -1859,16 +1859,16 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
    centrada al 10% de alto; reloj del 12,7% al 51,5% de alto y ~86% de ancho. */
 .ios-head { position: absolute; top: 8.6cqh; left: 0; right: 0; text-align: center; z-index: 3; transition: opacity .35s ease, transform .35s ease; }
 .ios-date { color: #fff; font: 590 2.1cqh/1.2 -apple-system, system-ui, sans-serif; opacity: .96; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
-/* Reloj enorme como iOS: numerales altos y estrechos. Se dimensiona para caber
-   a lo ancho de forma natural y se estira en vertical (evita recortes). */
+/* Reloj: dígitos SVG propios (idénticos en cualquier dispositivo) usados como
+   MÁSCARA de una caja; el material (cristal/color) se pinta a través. Caja
+   medida de la captura real: 86% de ancho, del 12,6% al 51,3% de alto. */
 .ios-clockw { position: relative; }
-.ios-clock { display: inline-block; margin-top: .5cqh; font-size: 26cqh; font-weight: 510; line-height: .72; letter-spacing: -0.2cqw; color: #fff; transform: scale(.62, 2.05); transform-origin: center top; font-variant-numeric: tabular-nums; }
+.ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: 1cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
 /* Clon-sombra bajo el reloj de cristal: el relieve/profundidad de los números
    reales (borde inferior oscuro difuminado). */
-.ios-clock.cshadow { position: absolute; left: 0; right: 0; top: 0; color: rgba(6,12,20,.5); transform: translateY(.45cqh) scale(.62, 2.05); filter: blur(4px); }
-/* Estilo "Cristal": translúcido con degradado brillo->azul->plata que deja ver
-   el fondo, como el reloj "transparente" de iOS. */
-.ios-clock.glass { color: transparent; -webkit-text-fill-color: transparent; background-image: linear-gradient(176deg, rgba(255,255,255,.97) 0%, rgba(210,238,255,.92) 20%, rgba(228,238,247,.88) 55%, rgba(186,198,209,.85) 100%); background-size: cover; background-position: center; -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 0.12cqh rgba(255,255,255,.42); }
+.ios-clock.cshadow { position: absolute; left: 50%; top: 0; margin: 1cqh 0 0; transform: translate(-50%, .5cqh); background: rgba(6,12,20,.55); filter: blur(5px); }
+/* Estilo "Cristal": el degradado y el fondo esmerilado van inline (plLockMarkup). */
+.ios-clock.glass { background-color: transparent; }
 /* Recorte del sujeto DELANTE del reloj (efecto profundidad de iOS). */
 .ios-depth { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 3; pointer-events: none; transition: opacity .35s ease; }
 /* Botones inferiores (linterna / cámara) + atajo central opcional. Círculos al
@@ -5656,15 +5656,41 @@ window.Cloud = (function () {
   function plClockClear() { if (plClockH) { try { window.clearInterval(plClockH); } catch (e) {} plClockH = null; } }
   function plStopMotion() { if (plMotionH) { try { window.removeEventListener("devicemotion", plMotionH); } catch (e) {} plMotionH = null; } plClockClear(); releaseWake(); }
 
-  // --- Réplica de la UI de iOS (aprox. a iOS 17/18; sin sus fuentes propias) ---
-  var PL_FONTS = {
-    def: '-apple-system,system-ui,"SF Pro Display",sans-serif',
-    thin: '-apple-system,system-ui,"SF Pro Display",sans-serif',
-    serif: '"New York",Georgia,"Times New Roman",serif',
-    round: '"SF Pro Rounded",ui-rounded,-apple-system,system-ui,sans-serif',
-    mono: '"SF Mono",ui-monospace,Menlo,monospace'
+  // --- Réplica de la UI de iOS ---
+  // Dígitos del reloj DIBUJADOS A MANO como SVG (trazo uniforme, ultra
+  // condensados: caja 100x440, trazo 17 — proporciones medidas de capturas
+  // reales). Ninguna fuente del sistema tiene esa forma sin deformarse, así
+  // que el SVG garantiza que se vea IDÉNTICO en cualquier dispositivo. Se usa
+  // como máscara: el "material" (cristal/color) se pinta a través de él.
+  var PL_GLYPHS = {
+    "0": '<rect x="9" y="9" width="82" height="422" rx="41"/>',
+    "1": '<path d="M22,108 L59,12 M59,9 L59,431"/>',
+    "2": '<path d="M10,88 C10,16 90,16 90,92 C90,214 11,266 10,431 L91,431"/>',
+    "3": '<path d="M11,80 C11,14 90,14 90,92 C90,170 54,208 45,218 C54,228 91,258 91,340 C91,426 11,426 11,352"/>',
+    "4": '<path d="M63,9 L63,431 M63,14 L10,302 L91,302"/>',
+    "5": '<path d="M86,12 L14,12 L14,198 C34,180 91,192 91,312 C91,426 13,432 10,354"/>',
+    "6": '<path d="M74,13 C40,70 10,158 10,310 M10,310 C10,214 90,214 90,318 C90,426 10,426 10,310"/>',
+    "7": '<path d="M10,13 L90,13 C78,148 53,282 48,431"/>',
+    "8": '<rect x="13" y="9" width="74" height="194" rx="37"/><rect x="9" y="220" width="82" height="211" rx="41"/>',
+    "9": '<path d="M90,130 C90,226 10,226 10,122 C10,14 90,14 90,130 M90,130 C90,282 62,370 26,428"/>',
+    ":": '<circle cx="24" cy="156" r="26" class="dot"/><circle cx="24" cy="288" r="26" class="dot"/>'
   };
-  var PL_WEIGHT = { def: 510, thin: 250, serif: 620, round: 760, mono: 560 };
+  var PL_GLYPH_W = { ":": 48 }; // el resto miden 100
+  function plClockMaskUri(t) {
+    var GAP = 4, x = 0, body = ""; // los dígitos reales van casi pegados
+    for (var i = 0; i < t.length; i++) {
+      var ch = t.charAt(i), g = PL_GLYPHS[ch];
+      if (!g) continue;
+      body += '<g transform="translate(' + x + ',0)">' + g + "</g>";
+      x += (PL_GLYPH_W[ch] || 100) + GAP;
+    }
+    var w = Math.max(1, x - GAP);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' 440">' +
+      '<style>path,rect{fill:none;stroke:#fff;stroke-width:17;stroke-linecap:round;stroke-linejoin:round}circle.dot{fill:#fff;stroke:none}</style>' +
+      body + "</svg>";
+    // encodeURIComponent no escapa ( ) ' — y romperían el url() del CSS.
+    return "data:image/svg+xml," + encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/'/g, "%27");
+  }
   var PL_COLORS = ["#ffffff", "#1c1c1e", "#8fc9ff", "#ff9ec9", "#8ef0b0", "#ffe27a", "#c9b0ff"];
   var PL_DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
   var PL_DAYS_L = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -5728,27 +5754,24 @@ window.Cloud = (function () {
   // nuestra y dejamos solo la real (una sola barra, como un móvil de verdad).
   function plLockMarkup(c, opts) {
     c = c || {}; opts = opts || {};
-    var font = PL_FONTS[c.clockFont] || PL_FONTS.def, wt = PL_WEIGHT[c.clockFont] || 590;
     var glass = c.clockStyle !== "solid";
-    var baseStyle = "font-family:" + font + ";font-weight:" + wt;
     var t = plTimeStr(c.h24), clockHtml;
+    var mask = plClockMaskUri(t);
+    var maskStyle = "-webkit-mask-image:url('" + mask + "');mask-image:url('" + mask + "')";
     if (glass) {
-      // Reloj "Cristal": el propio FONDO del mago se ve A TRAVÉS de los dígitos
-      // (efecto vidrio de iOS), teñido por un degradado azul->plata translúcido.
-      // Debajo, un CLON oscuro desenfocado hace de sombra de profundidad (el
-      // relieve que tienen los números reales).
-      var glassStyle = baseStyle;
+      // Reloj "Cristal": el material se pinta a través de la máscara — fondo
+      // ESMERILADO (refracción) + tinte brillo->azul->plata. Debajo, un clon
+      // oscuro desenfocado hace de sombra de profundidad, como el real.
+      var glassStyle = maskStyle;
       if (c.wallpaper) {
-        // Interior de los dígitos: el fondo DESENFOCADO (cristal esmerilado),
-        // ampliado como si el vidrio refractara, más un tinte brillo->plata.
         glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.62) 0%,rgba(201,235,255,.44) 20%,rgba(214,226,236,.36) 55%,rgba(150,163,175,.48) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
           ";background-size:auto,175% auto;background-position:center,center 20%;background-repeat:no-repeat";
       }
       clockHtml = '<div class="ios-clockw">' +
-        '<div class="ios-clock cshadow" style="' + baseStyle + '">' + t + "</div>" +
-        '<div class="ios-clock glass" style="' + glassStyle + '">' + t + "</div></div>";
+        '<div class="ios-clock cshadow" style="' + maskStyle + '"></div>' +
+        '<div class="ios-clock glass" style="' + glassStyle + '"></div></div>';
     } else {
-      clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + baseStyle + ";color:" + (c.clockColor || "#ffffff") + '">' + t + "</div></div>";
+      clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + maskStyle + ";background:" + (c.clockColor || "#ffffff") + '"></div></div>';
     }
     var bg = c.wallpaper ? "background-image:url('" + c.wallpaper + "')" : "background:#0b0d12";
     var carrier = (c.carrier != null ? c.carrier : "");
@@ -5787,50 +5810,23 @@ window.Cloud = (function () {
       "</div>";
   }
   function plEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-  // Ajusta el reloj para que SIEMPRE ocupe el 86% del ancho (medido de la
-  // captura real), sea cual sea la fuente: se mide el ancho natural del texto
-  // y se comprime en horizontal justo lo necesario. Así nunca se corta.
-  function plFitClock(root) {
-    try {
-      var w = root.clientWidth || 0; if (!w) return;
-      var base = root.querySelector(".ios-clock:not(.cshadow)"); if (!base) return;
-      var nat = base.offsetWidth; if (!nat) return;
-      var sx = (w * 0.86) / nat;
-      if (sx > 0.92) sx = 0.92; if (sx < 0.36) sx = 0.36;
-      // Si el texto es más ancho que el contenedor, el inline-block se
-      // desborda hacia la derecha: hay que centrarlo explícitamente para que
-      // el escalado (origen centro) deje el reloj clavado en medio.
-      var ml = Math.round((w - nat) / 2);
-      var cks = root.querySelectorAll(".ios-clock");
-      for (var i = 0; i < cks.length; i++) {
-        var el = cks[i], shadow = el.className.indexOf("cshadow") >= 0;
-        if (shadow) { el.style.left = ml + "px"; el.style.right = "auto"; el.style.width = nat + "px"; }
-        else { el.style.marginLeft = ml + "px"; }
-        el.style.transform = (shadow ? "translateY(.45cqh) " : "") + "scale(" + sx.toFixed(3) + ", 2.05)";
-      }
-    } catch (e) {}
-  }
   // Reloj/fecha en vivo. Se autolimpia si su nodo ya no está en el documento.
   function plStartClock(root, c) {
     plClockClear();
     function upd() {
       if (!root || !document.body.contains(root)) { plClockClear(); return; }
       var cks = root.querySelectorAll(".ios-clock"), dt = root.querySelector(".ios-date");
-      for (var i = 0; i < cks.length; i++) cks[i].textContent = plTimeStr(c.h24);
+      var m = 'url("' + plClockMaskUri(plTimeStr(c.h24)) + '")';
+      for (var i = 0; i < cks.length; i++) { cks[i].style.webkitMaskImage = m; cks[i].style.maskImage = m; }
       if (dt) dt.textContent = plDateStr(c.dateStyle);
-      plFitClock(root);
     }
-    plFitClock(root);
     plClockH = window.setInterval(upd, 10000);
   }
   function renderPalmLock() {
     clearTabbar(); var f0 = document.getElementById("fabEl"); if (f0) f0.remove();
     var c = plCfg();
     var pin = c.pinLen || 6, method = c.method || "sensor";
-    var font = c.clockFont || "def", h24 = c.h24 !== false, glass = c.clockStyle !== "solid";
-    var fontOpts = [["def", "Por defecto"], ["thin", "Fina"], ["round", "Redondeada"], ["serif", "Serif"], ["mono", "Mono"]];
-    var fontSeg = "";
-    for (var fi = 0; fi < fontOpts.length; fi++) fontSeg += '<button data-f="' + fontOpts[fi][0] + '" class="' + (font === fontOpts[fi][0] ? "on" : "") + '">' + fontOpts[fi][1] + "</button>";
+    var h24 = c.h24 !== false, glass = c.clockStyle !== "solid";
     var sw = "";
     for (var ci = 0; ci < PL_COLORS.length; ci++) sw += '<button class="pl-sw' + ((c.clockColor || "#ffffff").toLowerCase() === PL_COLORS[ci] ? " on" : "") + '" data-c="' + PL_COLORS[ci] + '" style="background:' + PL_COLORS[ci] + '"></button>';
     var sensVal = c.sens; if (sensVal == null || sensVal > 6) sensVal = 1.4;
@@ -5853,8 +5849,6 @@ window.Cloud = (function () {
       '<div class="seg" id="plDate"><button data-v="compact" class="' + (c.dateStyle === "full" ? "" : "on") + '">Jue 16 jul</button><button data-v="full" class="' + (c.dateStyle === "full" ? "on" : "") + '">Completa</button></div>' +
       '<div class="sec-label">Estilo del reloj</div>' +
       '<div class="seg" id="plStyle"><button data-v="glass" class="' + (glass ? "on" : "") + '">Cristal</button><button data-v="solid" class="' + (glass ? "" : "on") + '">Sólido</button></div>' +
-      '<div class="sec-label">Fuente del reloj</div>' +
-      '<div class="seg wrap" id="plFont">' + fontSeg + "</div>" +
       (glass ? "" : '<div class="sec-label">Color del reloj</div><div class="pl-swatches" id="plSw">' + sw + '<label class="pl-sw pl-swc" style="background:' + (c.clockColor || "#ffffff") + '"><input type="color" id="plColor" value="' + (c.clockColor || "#ffffff") + '"></label></div>') +
       '<div class="sec-label">Batería</div>' +
       '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plBattPct"' + (c.battPct !== false ? " checked" : "") + '> Mostrar %</label>' +
@@ -5890,7 +5884,6 @@ window.Cloud = (function () {
     view.querySelectorAll("#plH24 button").forEach(function (b) { b.addEventListener("click", function () { set("h24", b.getAttribute("data-v") === "1"); renderPalmLock(); }); });
     view.querySelectorAll("#plDate button").forEach(function (b) { b.addEventListener("click", function () { set("dateStyle", b.getAttribute("data-v")); renderPalmLock(); }); });
     view.querySelectorAll("#plStyle button").forEach(function (b) { b.addEventListener("click", function () { set("clockStyle", b.getAttribute("data-v")); renderPalmLock(); }); });
-    view.querySelectorAll("#plFont button").forEach(function (b) { b.addEventListener("click", function () { set("clockFont", b.getAttribute("data-f")); renderPalmLock(); }); });
     view.querySelectorAll("#plSw .pl-sw[data-c]").forEach(function (b) { b.addEventListener("click", function () { set("clockColor", b.getAttribute("data-c")); renderPalmLock(); }); });
     var col = document.getElementById("plColor"); if (col) col.addEventListener("input", function () { set("clockColor", col.value); prev(); });
     var car = document.getElementById("plCarrier"); if (car) car.addEventListener("input", function () { set("carrier", car.value); prev(); });

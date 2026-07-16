@@ -48,6 +48,9 @@ ok('r.html: no menciona la marca ni el nombre del truco', !/App del Mago/.test(r
 // --- Estáticos: entrada cruda al servidor + código permanente ---
 ok('cloud: mrSendReveal envía p_input (entrada cruda al servidor)', /p_input:\s*rawInput/.test(cloud));
 ok('cloud: expone mrMyHandle (código permanente)', /mrMyHandle/.test(cloud));
+// Enlace corto del espectador: en producción usa el dominio corto uzo.lol (que redirige a
+// appdelmago.com conservando la ruta); en local usa el origen para las pruebas.
+ok('app: enlace del espectador usa el dominio corto uzo.lol en producción', /MR_SHORT = "uzo\.lol"/.test(app) && /"https:\/\/" \+ MR_SHORT \+ "\/m\/" \+ mrState\.code/.test(app) && /host\.indexOf\("vercel\.app"\)/.test(app));
 ok("app: el enlace del espectador usa la carpeta /m/<código>", /base \+ "m\/" \+ mrState\.code/.test(app));
 ok("app: conserva /r?c= como respaldo", /base \+ "r\?c=" \+ mrState\.code/.test(app));
 ok('r.html: lee el código de la carpeta /m/ y de /r/', /\(\?:m\|r\)/.test(rhtml));

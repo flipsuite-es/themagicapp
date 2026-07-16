@@ -3082,11 +3082,22 @@
     if (!cloudReady() || !logged() || !Cloud.mrMyHandle) return Promise.resolve(null);
     return Cloud.mrMyHandle().then(function (c) { mrState.code = c; return c; }).catch(function () { return null; });
   }
+  // Dominio corto del espectador: uzo.lol redirige a appdelmago.com conservando
+  // la ruta, así el enlace que se enseña es cortísimo (uzo.lol/m/<código>) pero
+  // por dentro sigue siendo la app de siempre.
+  var MR_SHORT = "uzo.lol";
   function mrSpectatorUrl() {
-    // Enlace por carpeta: appdelmago.com/m/<código>. Una reescritura de Vercel
-    // sirve r.html para /m/<código> (destino /r, ruta limpia, sin colisión).
+    if (!mrState.code) return "";
+    var host = (location.hostname || "").toLowerCase();
+    // En producción (dominio real) se usa el corto; en local/preview, el origen
+    // actual, para que las pruebas sigan funcionando sin depender del dominio.
+    if (MR_SHORT && !/^(localhost|127\.|0\.0\.0\.0|\[|192\.168\.|10\.)/.test(host) && host.indexOf("vercel.app") < 0) {
+      return "https://" + MR_SHORT + "/m/" + mrState.code;
+    }
+    // Enlace por carpeta: <origen>/m/<código>. Una reescritura de Vercel sirve
+    // r.html para /m/<código> (destino /r, ruta limpia, sin colisión).
     var base = location.pathname.replace(/[^/]*$/, "");
-    return mrState.code ? (location.origin + base + "m/" + mrState.code) : "";
+    return location.origin + base + "m/" + mrState.code;
   }
   // Respaldo garantizado (sin depender de reescrituras): /r?c=<código>
   function mrSpectatorUrlSafe() {

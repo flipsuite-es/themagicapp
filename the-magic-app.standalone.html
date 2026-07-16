@@ -510,6 +510,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 /* Práctica */
 .pracbanner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 12px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent); color: var(--brand); font-weight: 600; font-size: 14px; cursor: pointer; }
 .pracbanner span { flex: 1; }
+.pracbanner.inc { background: color-mix(in srgb, var(--accent, var(--brand)) 12%, transparent); border-color: color-mix(in srgb, var(--accent, var(--brand)) 32%, transparent); color: var(--accent, var(--brand)); }
 .pracrow { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 9px; }
 .pracrow .rc { cursor: pointer; }
 .pracrow .rc .n { font-weight: 600; font-size: 15px; }
@@ -2842,6 +2843,7 @@ window.Cloud = (function () {
       '<button class="iconbtn" id="acctBtn" aria-label="Cuenta">' + icon("user") + "</button></div>" +
       '<div class="search"><span class="mag">' + icon("search", "i-sm") + '</span><input id="q" type="search" enterkeyhint="search" placeholder="Buscar en mi biblioteca…" value="' + esc(filter.q) + '"></div>' +
       (dueCount ? '<div class="pracbanner" id="pracBanner">' + icon("target", "i-sm") + "<span>" + dueCount + " truco" + (dueCount > 1 ? "s" : "") + " para practicar hoy</span>" + icon("chev", "i-sm") + "</div>" : "") +
+      '<div class="pracbanner inc" id="incBanner">' + icon("wand", "i-sm") + "<span>Trucos incluidos · listos para actuar</span>" + icon("chev", "i-sm") + "</div>" +
       '<div class="chips">' + catChips + "</div>" +
       '<div class="chips">' + statusChips + "</div>" +
       body +
@@ -2851,6 +2853,7 @@ window.Cloud = (function () {
     var qT; q.addEventListener("input", function () { filter.q = q.value; clearTimeout(qT); qT = setTimeout(refreshCards, 120); });
     document.getElementById("favToggle").addEventListener("click", function () { filter.fav = !filter.fav; renderLibrary(); });
     var pb = document.getElementById("pracBanner"); if (pb) pb.addEventListener("click", function () { location.hash = "#/practica"; });
+    var ib = document.getElementById("incBanner"); if (ib) ib.addEventListener("click", function () { location.hash = "#/incluidos"; });
     document.getElementById("acctBtn").addEventListener("click", function () { location.hash = "#/cuenta"; });
     var sb = document.getElementById("syncBtn"); if (sb) sb.addEventListener("click", function () { syncOnLogin(false); });
     view.querySelectorAll(".chip[data-cat]").forEach(function (c) { c.addEventListener("click", function () { filter.cat = c.getAttribute("data-cat"); renderLibrary(); }); });
@@ -2999,7 +3002,16 @@ window.Cloud = (function () {
     var photosHtml = (t.photos || []).length ? '<div class="sec-label">Fotos</div><div class="photogrid">' + t.photos.map(function (p) { return '<div class="photocell view"><span class="ph-img" data-load="' + esc(p.path) + '"></span></div>'; }).join("") + "</div>" : "";
 
     var colMedia = (media ? '<div class="sec-label">Vídeos</div>' + media : "") + photosHtml;
+    // Truco incluido: botón grande para actuarlo (y aprender su método si lo tiene).
+    var incKey = meta.included, inc = incKey && INCLUDED[incKey];
+    var incAct = inc
+      ? ((inc.needsCloud && !cloudReady())
+          ? '<p class="hint">Inicia sesión para actuar este truco incluido.</p>'
+          : '<button class="btn" id="incActBtn">' + icon("play", "i-sm") + " " + esc(inc.actLabel) + "</button>" +
+            (inc.methodHash ? '<button class="btn ghost" id="incMethodBtn">' + icon("book", "i-sm") + " Aprender el método</button>" : ""))
+      : "";
     var colInfo =
+      incAct +
       specs +
       (t.notes ? '<div class="sec-label">Notas</div><div class="notes">' + esc(t.notes) + "</div>" : "") +
       tags +
@@ -3028,6 +3040,8 @@ window.Cloud = (function () {
       "</div>" +
       "</div>";
 
+    var iAct = document.getElementById("incActBtn"); if (iAct && inc) iAct.addEventListener("click", function () { location.hash = inc.actHash; });
+    var iMet = document.getElementById("incMethodBtn"); if (iMet && inc) iMet.addEventListener("click", function () { location.hash = inc.methodHash; });
     document.getElementById("favBtn").addEventListener("click", function () { t.favorite = !t.favorite; t.updatedAt = Date.now(); save(); syncTrick(t); renderDetail(id); });
     document.getElementById("editBtn").addEventListener("click", function () { location.hash = "#/editar/" + id; });
     document.getElementById("editBtn2").addEventListener("click", function () { location.hash = "#/editar/" + id; });
@@ -5409,19 +5423,65 @@ window.Cloud = (function () {
   function stopFeedRealtime() { if (feedCh) { Cloud.unsubscribeRealtime(feedCh); feedCh = null; } if (notifCh) { Cloud.unsubscribeRealtime(notifCh); notifCh = null; } }
 
   /* ========================= TRUCOS INCLUIDOS ======================== */
+  // Catálogo de trucos incluidos (efectos listos para actuar). Cada uno se puede
+  // ACTUAR y también AÑADIR A LA BIBLIOTECA del mago (aparece con sus trucos).
+  var INCLUDED = {
+    "lector": {
+      title: "Lector Mental", cat: "Mentalismo",
+      desc: "La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.",
+      actHash: "#/lector", actLabel: "Actuar", methodHash: "#/lector-metodo", needsCloud: false
+    },
+    "revelacion-musical": {
+      title: "Revelación musical", cat: "Mentalismo",
+      desc: "El espectador dice un cantante y su propio móvil abre, solo, la canción en YouTube.",
+      actHash: "#/revelacion-musical", actLabel: "Preparar truco", methodHash: null, needsCloud: true
+    }
+  };
+  function includedInLib(key) {
+    for (var i = 0; i < state.tricks.length; i++) {
+      var t = state.tricks[i]; if (t.meta && t.meta.included === key) return t;
+    }
+    return null;
+  }
+  // Crea (una sola vez) el truco incluido en la biblioteca del mago. Queda entre
+  // sus trucos y, al abrirlo, tiene el botón para actuarlo.
+  function addIncludedTrick(key) {
+    var inc = INCLUDED[key]; if (!inc) return;
+    var ex = includedInLib(key);
+    if (ex) { location.hash = "#/truco/" + ex.id; return; }
+    var now = Date.now();
+    var t = {
+      id: uid(), title: inc.title, category: inc.cat, difficulty: "medio", status: "dominado",
+      notes: inc.desc + "\n\nTruco incluido de la app. Ábrelo para actuarlo.",
+      tags: ["incluido"], media: [], photos: [], favorite: false,
+      meta: { included: key }, practice: {}, createdAt: now, updatedAt: now, remote: false
+    };
+    state.tricks.push(t); save(); syncTrick(t);
+    toast("Añadido a tu biblioteca");
+    location.hash = "#/truco/" + t.id;
+  }
   function renderIncluded() {
     mountTabbar("inc"); var f = document.getElementById("fabEl"); if (f) f.remove();
+    var cards = Object.keys(INCLUDED).map(function (key) {
+      var t = INCLUDED[key], inLib = includedInLib(key);
+      var act = (t.needsCloud && !cloudReady())
+        ? '<p class="hint">Este truco necesita tu cuenta en la nube. Inicia sesión para usarlo.</p>'
+        : '<button class="btn" data-act="' + key + '">' + icon("play", "i-sm") + " " + esc(t.actLabel) + "</button>";
+      var method = t.methodHash ? '<button class="btn ghost" data-method="' + key + '">' + icon("book", "i-sm") + " Aprender el método</button>" : "";
+      var lib = inLib
+        ? '<button class="btn ghost" data-open="' + inLib.id + '">' + icon("check", "i-sm") + " En tu biblioteca · abrir</button>"
+        : '<button class="btn ghost" data-add="' + key + '">' + icon("plus", "i-sm") + " Añadir a mi biblioteca</button>";
+      return '<div class="hero" style="margin-top:18px"><h2>' + esc(t.title) + "</h2><p>" + esc(t.desc) + "</p></div>" + act + method + lib;
+    }).join("");
     view.innerHTML =
       '<div class="screen">' +
       '<h1 class="title">Trucos incluidos</h1>' +
-      '<p class="subtitle">Efectos listos para actuar, con su método explicado.</p>' +
-      '<div class="hero"><h2>Lector Mental</h2><p>La app “lee la mente” del espectador en su propio teléfono y revela su carta o palabra.</p></div>' +
-      '<button class="btn" onclick="location.hash=\'#/lector\'">' + icon("play", "i-sm") + " Actuar</button>" +
-      '<button class="btn ghost" onclick="location.hash=\'#/lector-metodo\'">' + icon("book", "i-sm") + " Aprender el método</button>" +
-      '<div class="hero" style="margin-top:22px"><h2>Revelación musical</h2><p>El espectador dice un cantante y su propio móvil abre, solo, la canción en YouTube.</p></div>' +
-      (cloudReady() ? '<button class="btn" onclick="location.hash=\'#/revelacion-musical\'">' + icon("play", "i-sm") + " Preparar truco</button>"
-        : '<p class="hint">Este truco necesita tu cuenta en la nube. Inicia sesión para usarlo.</p>') +
-      "</div>";
+      '<p class="subtitle">Efectos listos para actuar, con su método. Añádelos a tu biblioteca para tenerlos junto a tus trucos.</p>' +
+      cards + "</div>";
+    view.querySelectorAll("[data-act]").forEach(function (b) { b.addEventListener("click", function () { location.hash = INCLUDED[b.getAttribute("data-act")].actHash; }); });
+    view.querySelectorAll("[data-method]").forEach(function (b) { b.addEventListener("click", function () { location.hash = INCLUDED[b.getAttribute("data-method")].methodHash; }); });
+    view.querySelectorAll("[data-add]").forEach(function (b) { b.addEventListener("click", function () { addIncludedTrick(b.getAttribute("data-add")); }); });
+    view.querySelectorAll("[data-open]").forEach(function (b) { b.addEventListener("click", function () { location.hash = "#/truco/" + b.getAttribute("data-open"); }); });
   }
 
   /* ==================== REVELACIÓN MUSICAL (truco) ====================

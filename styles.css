@@ -502,6 +502,7 @@ h1.title { font-family: var(--display); font-size: 27px; margin: 4px 0 2px; font
 /* Práctica */
 .pracbanner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 12px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent); color: var(--brand); font-weight: 600; font-size: 14px; cursor: pointer; }
 .pracbanner span { flex: 1; }
+.pracbanner.inc { background: color-mix(in srgb, var(--accent, var(--brand)) 12%, transparent); border-color: color-mix(in srgb, var(--accent, var(--brand)) 32%, transparent); color: var(--accent, var(--brand)); }
 .pracrow { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 9px; }
 .pracrow .rc { cursor: pointer; }
 .pracrow .rc .n { font-weight: 600; font-size: 15px; }

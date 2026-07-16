@@ -1,7 +1,7 @@
 /* Service worker de App del Mago.
    Estrategia: cache-first con relleno en segundo plano. Una vez instalada,
    la app funciona completamente sin conexión. Sube CACHE al cambiar assets. */
-var CACHE = "magic-v118";
+var CACHE = "magic-v119";
 var ASSETS = [
   "./",
   "./index.html",

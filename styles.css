@@ -1823,3 +1823,22 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .mrg-spill .sbtn .i, .mrg-spill .sbtn svg { width: 26px; height: 26px; }
 .mrg-spill .sbtn .i { stroke-width: 2; }
 .mrg-spill .sbtn.sm .i, .mrg-spill .sbtn.sm svg { width: 23px; height: 23px; }
+
+/* ==================== Desbloqueo imposible (truco palm-lock) ==================== */
+/* Vista previa de las capturas en la preparación. */
+.pl-prev { width: 108px; height: 210px; border-radius: 14px; overflow: hidden; background: #0d0f14; border: 1px solid var(--line, #2a2f3a); display: flex; align-items: center; justify-content: center; margin: 4px 0 10px; }
+.pl-prev img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pl-prev span { color: #7a8190; font-size: 13px; }
+/* Escenario de actuación: ocupa TODA la pantalla, imita el móvil bloqueado. */
+.pl-stage { position: fixed; inset: 0; z-index: 3000; background: #000; overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.pl-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* La captura de inicio arranca invisible y aparece con un fundido al desbloquear. */
+.pl-home { opacity: 0; transition: opacity .5s ease; z-index: 2; }
+.pl-home.show { opacity: 1; }
+/* Puntos del código: superpuestos, se van rellenando con cada golpe. */
+.pl-dots { position: absolute; left: 0; right: 0; bottom: 30%; z-index: 5; display: flex; justify-content: center; gap: 16px; pointer-events: none; }
+.pl-dot { width: 13px; height: 13px; border-radius: 50%; background: transparent; border: 1.5px solid rgba(255,255,255,.85); box-shadow: 0 1px 3px rgba(0,0,0,.5); transition: background .12s ease, transform .12s ease; }
+.pl-dot.on { background: #fff; transform: scale(1.08); }
+/* Botón de salida discreto (esquina superior), solo para el mago. */
+.pl-exit { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 10; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(0,0,0,.28); color: rgba(255,255,255,.55); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pl-exit svg, .pl-exit .i { width: 18px; height: 18px; }

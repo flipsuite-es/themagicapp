@@ -3081,6 +3081,11 @@
       title: "Revelación musical", cat: "Mentalismo",
       desc: "El espectador dice un cantante y su propio móvil abre, solo, la canción en YouTube.",
       actHash: "#/revelacion-musical", actLabel: "Preparar truco", methodHash: null, needsCloud: true
+    },
+    "desbloqueo": {
+      title: "Desbloqueo imposible", cat: "Mentalismo",
+      desc: "El espectador sostiene tu móvil y, tecleando en su palma, lo desbloquea dígito a dígito hasta el inicio.",
+      actHash: "#/desbloqueo", actLabel: "Preparar y actuar", methodHash: null, needsCloud: false
     }
   };
   function includedInLib(key) {
@@ -3128,6 +3133,140 @@
     view.querySelectorAll("[data-method]").forEach(function (b) { b.addEventListener("click", function () { location.hash = INCLUDED[b.getAttribute("data-method")].methodHash; }); });
     view.querySelectorAll("[data-add]").forEach(function (b) { b.addEventListener("click", function () { addIncludedTrick(b.getAttribute("data-add")); }); });
     view.querySelectorAll("[data-open]").forEach(function (b) { b.addEventListener("click", function () { location.hash = "#/truco/" + b.getAttribute("data-open"); }); });
+  }
+
+  /* ============ DESBLOQUEO IMPOSIBLE (truco incluido) ============
+     El móvil del mago, en la palma del espectador, muestra su pantalla de
+     bloqueo (una CAPTURA real de su teléfono; por eso se prepara por usuario:
+     así es idéntica a su móvil). El espectador "teclea" en su palma y, por el
+     sensor de movimiento, cada golpecito rellena un dígito hasta desbloquear y
+     pasar al inicio. Modo de ensayo: tocar la pantalla también avanza. */
+  var PL_CFG_KEY = "magic_pl_cfg";
+  function plCfg() { try { return JSON.parse(localStorage.getItem(PL_CFG_KEY)) || {}; } catch (e) { return {}; } }
+  function plSave(c) { try { localStorage.setItem(PL_CFG_KEY, JSON.stringify(c)); } catch (e) {} }
+  function plCompress(file, cb) {
+    try {
+      var url = window.URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        try {
+          var max = 1200, w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h));
+          var cv = document.createElement("canvas"); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          try { window.URL.revokeObjectURL(url); } catch (e) {}
+          cb(cv.toDataURL("image/jpeg", 0.82));
+        } catch (e) { cb(null); }
+      };
+      img.onerror = function () { cb(null); };
+      img.src = url;
+    } catch (e) { cb(null); }
+  }
+  var plMotionOK = false, plMotionH = null;
+  // iOS 13+ exige pedir el permiso de movimiento DENTRO de un gesto: se pide al
+  // pulsar "Actuar" (que es un toque), encajando con el patrón de preparación.
+  function plPrimeMotion(cb) {
+    try {
+      if (window.DeviceMotionEvent && typeof window.DeviceMotionEvent.requestPermission === "function") {
+        window.DeviceMotionEvent.requestPermission().then(function (s) { plMotionOK = (s === "granted"); cb(); }).catch(function () { cb(); });
+        return;
+      }
+    } catch (e) {}
+    plMotionOK = true; cb();
+  }
+  function plStopMotion() { if (plMotionH) { try { window.removeEventListener("devicemotion", plMotionH); } catch (e) {} plMotionH = null; } releaseWake(); }
+  function renderPalmLock() {
+    clearTabbar(); var f0 = document.getElementById("fabEl"); if (f0) f0.remove();
+    var c = plCfg(), pin = c.pinLen || 6, method = c.method || "sensor";
+    view.innerHTML =
+      '<div class="screen"><div class="pagehead"><button class="back" aria-label="Volver" onclick="location.hash=\'#/incluidos\'">' + icon("back") + '</button><h1>Desbloqueo imposible</h1></div>' +
+      '<div class="panel">' +
+      '<p class="hint">El espectador sostiene tu móvil con la pantalla de bloqueo. Al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y pasa al inicio. Prepáralo con <b>tus propias capturas</b> para que sea idéntico a tu teléfono.</p>' +
+      '<div class="sec-label">Método</div>' +
+      '<div class="seg" id="plMethod"><button data-v="sensor" class="' + (method === "sensor" ? "on" : "") + '">Sensor (automático)</button><button data-v="remote" class="' + (method === "remote" ? "on" : "") + '">Disparo manual</button></div>' +
+      (method === "remote" ? '<p class="hint">El disparo manual (avanzar cada dígito desde otro dispositivo) se monta en el siguiente paso. De momento usa el sensor o el modo de ensayo.</p>' : "") +
+      '<div class="sec-label">Longitud del código</div>' +
+      '<div class="seg" id="plLen"><button data-v="4" class="' + (pin == 4 ? "on" : "") + '">4</button><button data-v="6" class="' + (pin == 6 ? "on" : "") + '">6</button></div>' +
+      '<div class="sec-label">Captura de tu pantalla de BLOQUEO</div>' +
+      '<div class="pl-prev" id="plLockPrev">' + (c.lockImg ? '<img src="' + c.lockImg + '" alt="">' : "<span>Sin imagen</span>") + "</div>" +
+      '<button class="btn ghost" id="plLockUp">' + icon("plus", "i-sm") + ' Subir captura de bloqueo</button><input type="file" id="plLockFile" accept="image/*" style="display:none">' +
+      '<div class="sec-label">Captura de tu pantalla de INICIO</div>' +
+      '<div class="pl-prev" id="plHomePrev">' + (c.homeImg ? '<img src="' + c.homeImg + '" alt="">' : "<span>Sin imagen</span>") + "</div>" +
+      '<button class="btn ghost" id="plHomeUp">' + icon("plus", "i-sm") + ' Subir captura de inicio</button><input type="file" id="plHomeFile" accept="image/*" style="display:none">' +
+      '<div class="sec-label">Sensibilidad del sensor</div>' +
+      '<input type="range" id="plSens" min="6" max="20" step="1" value="' + (c.sens || 12) + '" style="width:100%">' +
+      '<p class="hint">Ajústala probando en tu móvil real: más baja = detecta toques más suaves.</p>' +
+      '<button class="btn" id="plGo">' + icon("play", "i-sm") + ' Actuar</button>' +
+      '<p class="hint">En la actuación puedes tocar la pantalla para avanzar (modo ensayo), además del sensor.</p>' +
+      "</div></div>";
+    view.querySelectorAll("#plMethod button").forEach(function (b) { b.addEventListener("click", function () { var cc = plCfg(); cc.method = b.getAttribute("data-v"); plSave(cc); renderPalmLock(); }); });
+    view.querySelectorAll("#plLen button").forEach(function (b) { b.addEventListener("click", function () { var cc = plCfg(); cc.pinLen = parseInt(b.getAttribute("data-v"), 10); plSave(cc); renderPalmLock(); }); });
+    var sens = document.getElementById("plSens"); if (sens) sens.addEventListener("change", function () { var cc = plCfg(); cc.sens = parseInt(sens.value, 10); plSave(cc); });
+    function hookUp(btnId, fileId, key) {
+      var btn = document.getElementById(btnId), file = document.getElementById(fileId);
+      if (!btn || !file) return;
+      btn.addEventListener("click", function () { file.click(); });
+      file.addEventListener("change", function () {
+        var fl = file.files && file.files[0]; if (!fl) return;
+        toast("Procesando imagen…");
+        plCompress(fl, function (data) {
+          if (!data) { toast("No se pudo procesar la imagen"); return; }
+          var cc = plCfg(); cc[key] = data; plSave(cc); renderPalmLock(); toast("Imagen guardada");
+        });
+      });
+    }
+    hookUp("plLockUp", "plLockFile", "lockImg");
+    hookUp("plHomeUp", "plHomeFile", "homeImg");
+    document.getElementById("plGo").addEventListener("click", function () {
+      if (!plCfg().lockImg) { toast("Sube antes una captura de bloqueo"); return; }
+      plPrimeMotion(function () { location.hash = "#/desbloqueo-actuar"; });
+    });
+  }
+  function renderPalmPerform() {
+    clearTabbar(); var f1 = document.getElementById("fabEl"); if (f1) f1.remove();
+    var c = plCfg();
+    if (!c.lockImg) { location.hash = "#/desbloqueo"; return; }
+    var pin = c.pinLen || 6, method = c.method || "sensor", sens = c.sens || 12;
+    var entered = 0, done = false;
+    var dots = ""; for (var i = 0; i < pin; i++) dots += '<span class="pl-dot" data-i="' + i + '"></span>';
+    view.innerHTML =
+      '<div class="pl-stage" id="plStage">' +
+      '<img class="pl-bg" src="' + c.lockImg + '" alt="">' +
+      '<div class="pl-dots" id="plDots">' + dots + "</div>" +
+      '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
+      "</div>";
+    function fill() {
+      if (done || entered >= pin) return;
+      var d = view.querySelector('.pl-dot[data-i="' + entered + '"]'); if (d) d.className = "pl-dot on";
+      entered++;
+      if (entered >= pin) { done = true; window.setTimeout(unlock, 450); }
+    }
+    function unlock() {
+      plStopMotion();
+      var stage = document.getElementById("plStage"); if (!stage) return;
+      if (c.homeImg) {
+        var home = document.createElement("img"); home.className = "pl-bg pl-home"; home.src = c.homeImg; home.alt = "";
+        stage.appendChild(home);
+        window.setTimeout(function () { home.className = "pl-bg pl-home show"; }, 20);
+      }
+    }
+    document.getElementById("plExit").addEventListener("click", function () { plStopMotion(); location.hash = "#/desbloqueo"; });
+    document.getElementById("plStage").addEventListener("click", function (e) {
+      var t = e.target;
+      if (t && (t.id === "plExit" || (t.parentNode && t.parentNode.id === "plExit"))) return;
+      fill(); // modo ensayo / respaldo manual
+    });
+    if (method === "sensor" && plMotionOK && window.DeviceMotionEvent) {
+      var lastMag = null, lastTap = 0;
+      plMotionH = function (ev) {
+        var a = ev.accelerationIncludingGravity; if (!a) return;
+        var mag = Math.sqrt((a.x || 0) * (a.x || 0) + (a.y || 0) * (a.y || 0) + (a.z || 0) * (a.z || 0));
+        if (lastMag === null) { lastMag = mag; return; }
+        var delta = Math.abs(mag - lastMag); lastMag = mag;
+        var now = Date.now();
+        if (delta > sens && now - lastTap > 280) { lastTap = now; fill(); }
+      };
+      window.addEventListener("devicemotion", plMotionH);
+    }
+    requestWake();
   }
 
   /* ==================== REVELACIÓN MUSICAL (truco) ====================
@@ -4258,6 +4397,8 @@
       if (h.indexOf("#/mercado/") === 0) return socialEnabled ? renderListing(h.slice(10)) : renderLibrary();
       if (h === "#/incluidos") return renderIncluded();
       if (h === "#/revelacion-musical") return renderMusicReveal();
+      if (h === "#/desbloqueo") return renderPalmLock();
+      if (h === "#/desbloqueo-actuar") return renderPalmPerform();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
       if (h === "#/ajustes") return renderSettings();

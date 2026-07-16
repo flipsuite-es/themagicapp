@@ -3212,7 +3212,7 @@
   // como máscara: el "material" (cristal/color) se pinta a través de él.
   var PL_GLYPHS = {
     "0": '<rect x="9" y="9" width="82" height="422" rx="41"/>',
-    "1": '<path d="M22,108 L59,12 M59,9 L59,431"/>',
+    "1": '<path d="M8,102 L38,14 M38,9 L38,431"/>',
     "2": '<path d="M10,88 C10,16 90,16 90,92 C90,214 11,266 10,431 L91,431"/>',
     "3": '<path d="M11,80 C11,14 90,14 90,92 C90,170 54,208 45,218 C54,228 91,258 91,340 C91,426 11,426 11,352"/>',
     "4": '<path d="M63,9 L63,431 M63,14 L10,302 L91,302"/>',
@@ -3221,11 +3221,12 @@
     "7": '<path d="M10,13 L90,13 C78,148 53,282 48,431"/>',
     "8": '<rect x="13" y="9" width="74" height="194" rx="37"/><rect x="9" y="220" width="82" height="211" rx="41"/>',
     "9": '<path d="M90,130 C90,226 10,226 10,122 C10,14 90,14 90,130 M90,130 C90,282 62,370 26,428"/>',
-    ":": '<circle cx="24" cy="156" r="26" class="dot"/><circle cx="24" cy="288" r="26" class="dot"/>'
+    ":": '<circle cx="20" cy="114" r="14" class="dot"/><circle cx="20" cy="304" r="14" class="dot"/>'
   };
-  var PL_GLYPH_W = { ":": 48 }; // el resto miden 100
+  // Avances PROPORCIONALES como el reloj real: el "1" es estrecho.
+  var PL_GLYPH_W = { "1": 58, ":": 40 };
   function plClockMaskUri(t) {
-    var GAP = 4, x = 0, body = ""; // los dígitos reales van casi pegados
+    var GAP = 12, x = 0, body = "";
     for (var i = 0; i < t.length; i++) {
       var ch = t.charAt(i), g = PL_GLYPHS[ch];
       if (!g) continue;
@@ -3234,7 +3235,7 @@
     }
     var w = Math.max(1, x - GAP);
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' 440">' +
-      '<style>path,rect{fill:none;stroke:#fff;stroke-width:17;stroke-linecap:round;stroke-linejoin:round}circle.dot{fill:#fff;stroke:none}</style>' +
+      '<style>path,rect{fill:none;stroke:#fff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round}circle.dot{fill:#fff;stroke:none}</style>' +
       body + "</svg>";
     // encodeURIComponent no escapa ( ) ' — y romperían el url() del CSS.
     return "data:image/svg+xml," + encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/'/g, "%27");
@@ -3317,6 +3318,7 @@
       }
       clockHtml = '<div class="ios-clockw">' +
         '<div class="ios-clock cshadow" style="' + maskStyle + '"></div>' +
+        '<div class="ios-clock chl" style="' + maskStyle + '"></div>' +
         '<div class="ios-clock glass" style="' + glassStyle + '"></div></div>';
     } else {
       clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + maskStyle + ";background:" + (c.clockColor || "#ffffff") + '"></div></div>';

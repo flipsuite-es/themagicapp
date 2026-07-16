@@ -1855,10 +1855,13 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
    MÁSCARA de una caja; el material (cristal/color) se pinta a través. Caja
    medida de la captura real: 86% de ancho, del 12,6% al 51,3% de alto. */
 .ios-clockw { position: relative; }
-.ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: 1cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+.ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: .6cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
 /* Clon-sombra bajo el reloj de cristal: el relieve/profundidad de los números
    reales (borde inferior oscuro difuminado). */
-.ios-clock.cshadow { position: absolute; left: 50%; top: 0; margin: 1cqh 0 0; transform: translate(-50%, .5cqh); background: rgba(6,12,20,.55); filter: blur(5px); }
+.ios-clock.cshadow { position: absolute; left: 50%; top: 0; margin: .6cqh 0 0; transform: translate(-50%, .55cqh); background: rgba(6,12,20,.55); filter: blur(5px); }
+/* Clon de LUZ desplazado hacia arriba: el bisel iluminado del borde superior
+   de los números reales. */
+.ios-clock.chl { position: absolute; left: 50%; top: 0; margin: .6cqh 0 0; transform: translate(-50%, -.26cqh); background: rgba(255,255,255,.85); filter: blur(1px); }
 /* Estilo "Cristal": el degradado y el fondo esmerilado van inline (plLockMarkup). */
 .ios-clock.glass { background-color: transparent; }
 /* Recorte del sujeto DELANTE del reloj (efecto profundidad de iOS). */

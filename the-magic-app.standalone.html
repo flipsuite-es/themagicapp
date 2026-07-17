@@ -5777,40 +5777,52 @@ window.Cloud = (function () {
     } else {
       clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + maskStyle + ";background:" + (c.clockColor || "#ffffff") + '"></div></div>';
     }
+    var useShot = (c.renderMode === "screenshot" || c.renderMode === "hybrid") && c.lockShot;
+    function elOn(id) { var m = c.el || {}; return m[id] !== "cap" && m[id] !== "off"; }
+    if (useShot && !elOn("clock")) clockHtml = "";
     var bg = c.wallpaper ? "background-image:url('" + c.wallpaper + "')" : "background:#0b0d12";
     var carrier = (c.carrier != null ? c.carrier : "");
     var left = (carrier ? '<span class="ios-carrier">' + plEsc(carrier) + "</span>" : "") + (c.mute ? PL_BELL_SVG : "");
     var right = plSigSvg(c.signalBars) + (c.wifi === false ? "" : PL_WIFI_SVG) + plBattSvg(c.battLevel, c.battPct !== false, !!c.battSaver);
     var shortcut = c.shortcut ? '<div class="ios-shortcut">' + plEsc(c.shortcut) + "</div>" : "";
-    var statusBar = opts.hideStatus ? "" :
+    var statusBar = (opts.hideStatus || (useShot && !elOn("status")) || (c.statusMode === "use-system")) ? "" :
       '<div class="ios-status"><span class="ios-status-l">' + left + '</span><span class="ios-status-r">' + right + "</span></div>";
     // Efecto profundidad de iOS: el recorte del sujeto de la foto se pinta
     // DELANTE del reloj (va después en el DOM), como hace el bloqueo real.
-    var depth = c.depthImg ? '<img class="ios-depth" src="' + c.depthImg + '" alt="">' : "";
+    var depth = (c.depthImg && (!useShot || elOn("depth"))) ? '<img class="ios-depth" src="' + c.depthImg + '" alt="">' : "";
+    var dateHtml = (useShot && !elOn("date")) ? "" : '<div class="ios-date">' + plDateStr(c.dateStyle) + "</div>";
+    var bottom = (useShot && !elOn("buttons")) ? "" : '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + "</span>" + shortcut + '<span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>";
+    var homebar = (useShot && !elOn("homebar")) ? "" : '<div class="ios-homebar"></div>';
     return '<div class="ios-lock" style="' + bg + '">' +
+      (useShot ? plShotHtml(c.lockShot, c.shotFit) : "") +
       '<div class="ios-dim"></div>' + statusBar +
-      '<div class="ios-head"><div class="ios-date">' + plDateStr(c.dateStyle) + "</div>" + clockHtml + "</div>" +
-      depth +
-      '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + "</span>" + shortcut + '<span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>" +
-      '<div class="ios-homebar"></div>' +
+      '<div class="ios-head">' + dateHtml + clockHtml + "</div>" +
+      depth + bottom + homebar +
       "</div>";
   }
   // Teclado de código de iOS (efecto cristal), con Dynamic Island, título,
   // puntos, teclas 0-9 con sus letras y pie SOS / Cancelar.
-  function plPassMarkup(pin) {
+  function plPassMarkup(pin, c) {
+    c = c || {};
     var dots = ""; for (var i = 0; i < pin; i++) dots += '<span class="ios-pdot" data-i="' + i + '"></span>';
     var keys = "";
     for (var k = 0; k < PL_KEYS.length; k++) {
       var num = PL_KEYS[k][0];
       if (!num) { keys += '<span class="ios-key ghost"></span>'; continue; }
-      keys += '<span class="ios-key" data-k="' + num + '"><span class="k-num">' + num + "</span>" + (PL_KEYS[k][1] ? '<span class="k-sub">' + PL_KEYS[k][1] + "</span>" : "") + "</span>";
+      keys += '<span class="ios-key" data-k="' + num + '"><span class="k-num">' + num + "</span>" + (PL_KEYS[k][1] && c.subLetters !== false ? '<span class="k-sub">' + PL_KEYS[k][1] + "</span>" : "") + "</span>";
     }
-    return '<div class="ios-pass">' +
-      '<div class="ios-island"><span class="isl-l">' + PL_ISLK_SVG + '</span><span class="isl-r">' + PL_FACE_SVG + "</span></div>" +
-      '<div class="ios-pass-title">Introduce el código de desbloqueo</div>' +
+    var dev = c.device || {};
+    var island = (c.el && c.el.island === "off") || dev.island === false ? "" :
+      '<div class="ios-island"><span class="isl-l">' + PL_ISLK_SVG + '</span><span class="isl-r">' + PL_FACE_SVG + "</span></div>";
+    var vars = "--pl-keyd:" + (c.keyD || 20) + "cqw;--pl-keygapy:" + (c.keyGapY != null ? c.keyGapY : 2.15) + "cqh;--pl-dotd:" + (c.dotD || 1.3) + "cqh;--pl-dotgap:" + (c.dotGap != null ? c.dotGap : 5.5) + "cqw;--pl-pass-dim:" + (c.passDim != null ? c.passDim : 0.34) + ";--pl-pass-blur:" + (c.passBlur != null ? c.passBlur : 9) + "px";
+    var useShot = (c.renderMode === "screenshot" || c.renderMode === "hybrid") && c.passShot;
+    return '<div class="ios-pass" style="' + vars + '">' +
+      (useShot ? plShotHtml(c.passShot, c.passShotFit) : "") +
+      island +
+      '<div class="ios-pass-title">' + plEsc(c.passTitle || "Introduce el código de desbloqueo") + "</div>" +
       '<div class="ios-pass-dots">' + dots + "</div>" +
       '<div class="ios-keypad">' + keys + "</div>" +
-      '<div class="ios-pass-foot"><span>SOS</span><span>Cancelar</span></div>' +
+      '<div class="ios-pass-foot"><span>' + plEsc(c.footL || "SOS") + "</span><span>" + plEsc(c.footR || "Cancelar") + "</span></div>" +
       "</div>";
   }
   function plEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -5826,9 +5838,392 @@ window.Cloud = (function () {
     }
     plClockH = window.setInterval(upd, 10000);
   }
+
+  /* ========== RÉPLICA CONFIGURABLE: perfiles, presets (IndexedDB), calibración ========== */
+  // Perfiles de dispositivo (viewport CSS en pt, dpr, isla/notch, safe areas en px CSS)
+  var PL_DEVICES = [
+    { id: "se3", name: "iPhone SE (2/3)", cssW: 375, cssH: 667, dpr: 2, notch: false, island: false, safeTop: 20, safeBottom: 0 },
+    { id: "x", name: "iPhone X / XS / 11 Pro", cssW: 375, cssH: 812, dpr: 3, notch: true, island: false, safeTop: 44, safeBottom: 34 },
+    { id: "xr", name: "iPhone XR / 11", cssW: 414, cssH: 896, dpr: 2, notch: true, island: false, safeTop: 44, safeBottom: 34 },
+    { id: "xsmax", name: "iPhone XS Max / 11 Pro Max", cssW: 414, cssH: 896, dpr: 3, notch: true, island: false, safeTop: 44, safeBottom: 34 },
+    { id: "mini", name: "iPhone 12/13 mini", cssW: 375, cssH: 812, dpr: 3, notch: true, island: false, safeTop: 50, safeBottom: 34 },
+    { id: "i13", name: "iPhone 12 / 13 / 14", cssW: 390, cssH: 844, dpr: 3, notch: true, island: false, safeTop: 47, safeBottom: 34 },
+    { id: "i14p", name: "iPhone 12/13 Pro Max / 14 Plus", cssW: 428, cssH: 926, dpr: 3, notch: true, island: false, safeTop: 47, safeBottom: 34 },
+    { id: "i15", name: "iPhone 14 Pro / 15 / 15 Pro / 16", cssW: 393, cssH: 852, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 },
+    { id: "i15pm", name: "iPhone 14 Pro Max / 15 Plus / 15 Pro Max / 16 Plus", cssW: 430, cssH: 932, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 },
+    { id: "i16pro", name: "iPhone 16 Pro", cssW: 402, cssH: 874, dpr: 3, notch: false, island: true, safeTop: 62, safeBottom: 34 },
+    { id: "i16pm", name: "iPhone 16 Pro Max", cssW: 440, cssH: 956, dpr: 3, notch: false, island: true, safeTop: 62, safeBottom: 34 },
+    { id: "custom", name: "Dispositivo personalizado", cssW: 393, cssH: 852, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 }
+  ];
+  function plDevice(id) { for (var i = 0; i < PL_DEVICES.length; i++) if (PL_DEVICES[i].id === id) return PL_DEVICES[i]; return PL_DEVICES[7]; }
+  // IndexedDB para presets (las imágenes en dataURI caben; localStorage no)
+  var plDbH = null;
+  function plDb(cb) {
+    if (plDbH) return cb(plDbH);
+    try {
+      var rq = indexedDB.open("magic_pl", 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore("presets", { keyPath: "id" }); };
+      rq.onsuccess = function () { plDbH = rq.result; cb(plDbH); };
+      rq.onerror = function () { cb(null); };
+    } catch (e) { cb(null); }
+  }
+  function plDbPut(pr, cb) { plDb(function (db) { if (!db) return cb && cb(false); var tx = db.transaction("presets", "readwrite"); tx.objectStore("presets").put(pr); tx.oncomplete = function () { cb && cb(true); }; tx.onerror = function () { cb && cb(false); }; }); }
+  function plDbGet(id, cb) { plDb(function (db) { if (!db) return cb(null); var rq = db.transaction("presets").objectStore("presets").get(id); rq.onsuccess = function () { cb(rq.result || null); }; rq.onerror = function () { cb(null); }; }); }
+  function plDbAll(cb) { plDb(function (db) { if (!db) return cb([]); var rq = db.transaction("presets").objectStore("presets").getAll(); rq.onsuccess = function () { cb(rq.result || []); }; rq.onerror = function () { cb([]); }; }); }
+  function plDbDel(id, cb) { plDb(function (db) { if (!db) return cb && cb(false); var tx = db.transaction("presets", "readwrite"); tx.objectStore("presets").delete(id); tx.oncomplete = function () { cb && cb(true); }; }); }
+  function plActiveId() { try { return localStorage.getItem("magic_pl_active") || ""; } catch (e) { return ""; } }
+  function plSetActive(id) { try { localStorage.setItem("magic_pl_active", id); } catch (e) {} }
+  function plNewPreset(name) {
+    var c = plCfg(); // hereda la config rápida existente como base editable
+    return { version: 1, id: "pl" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || "Mi iPhone",
+      device: "i15", renderMode: "editable",
+      cfg: { carrier: c.carrier || "", mute: c.mute !== false, h24: c.h24 !== false, dateStyle: c.dateStyle || "compact", clockStyle: c.clockStyle || "glass", clockColor: c.clockColor || "#ffffff", battPct: c.battPct !== false, battLevel: c.battLevel != null ? c.battLevel : 63, battSaver: !!c.battSaver, signalBars: c.signalBars != null ? c.signalBars : 3, wifi: c.wifi !== false, shortcut: c.shortcut || "", pinLen: c.pinLen || 6, method: c.method || "sensor", sens: c.sens,
+        passTitle: "Introduce el código de desbloqueo", footL: "SOS", footR: "Cancelar", subLetters: true, passDim: 0.34, passBlur: 9, keyD: 20, keyGapY: 2.15, dotD: 1.3, dotGap: 5.5 },
+      images: { wallpaper: c.wallpaper || "", depthImg: c.depthImg || "", lockShot: "", passShot: "" },
+      shotFit: { x: 0, y: 0, s: 100 }, passShotFit: { x: 0, y: 0, s: 100 },
+      el: { status: "dyn", date: "dyn", clock: "dyn", buttons: "dyn", homebar: "dyn", island: "dyn", depth: "dyn" },
+      cal: {} };
+  }
+  // Config efectiva de render a partir de un preset (para plLockMarkup/plPassMarkup)
+  function plPresetCfg(pr) {
+    var c = {}; var k;
+    for (k in pr.cfg) c[k] = pr.cfg[k];
+    c.wallpaper = pr.images.wallpaper; c.depthImg = pr.images.depthImg;
+    c.lockShot = pr.images.lockShot; c.passShot = pr.images.passShot;
+    c.renderMode = pr.renderMode; c.shotFit = pr.shotFit; c.passShotFit = pr.passShotFit;
+    c.el = pr.el; c.cal = pr.cal; c.device = plDevice(pr.device);
+    if (pr.deviceCustom) c.device = pr.deviceCustom;
+    return c;
+  }
+  // Calibración: selectors de cada elemento ajustable
+  var PL_CAL_SEL = { status: ".ios-status", date: ".ios-date", clock: ".ios-clockw", depth: ".ios-depth", buttons: ".ios-bottom", homebar: ".ios-homebar", shot: ".ios-shot img", island: ".ios-island", ptitle: ".ios-pass-title", pdots: ".ios-pass-dots", keypad: ".ios-keypad", pfoot: ".ios-pass-foot", pshot: ".ios-pass .ios-shot img" };
+  var PL_CAL_LOCK = ["shot", "status", "date", "clock", "depth", "buttons", "homebar"];
+  var PL_CAL_PASS = ["pshot", "island", "ptitle", "pdots", "keypad", "pfoot"];
+  function plApplyCal(root, c) {
+    if (!root || !c || !c.cal) return;
+    for (var id in c.cal) {
+      var el = root.querySelector(PL_CAL_SEL[id]); if (!el) continue;
+      var v = c.cal[id] || {};
+      var t = "translate(" + (v.x || 0) + "cqw," + (v.y || 0) + "cqh) scale(" + (v.sx != null ? v.sx : 1) + "," + (v.sy != null ? v.sy : 1) + ")";
+      el.style.transform = t;
+      el.style.transformOrigin = "center top";
+      if (v.op != null) el.style.opacity = v.op;
+      el.style.visibility = v.h ? "hidden" : "";
+    }
+  }
+  // Capa de captura (métodos captura completa / híbrido)
+  function plShotHtml(img, fit) {
+    if (!img) return "";
+    fit = fit || { x: 0, y: 0, s: 100 };
+    return '<div class="ios-shot"><img src="' + img + '" alt="" style="transform:translate(' + (fit.x || 0) + "cqw," + (fit.y || 0) + 'cqh) scale(' + ((fit.s || 100) / 100) + ')"></div>';
+  }
+  function plPreload(list, cb) {
+    var left = 0, fired = false;
+    function done() { if (!fired && left <= 0) { fired = true; cb(); } }
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i]) continue;
+      left++;
+      (function (src) { var im = new Image(); im.onload = im.onerror = function () { left--; done(); }; im.src = src; })(list[i]);
+    }
+    window.setTimeout(function () { fired = true; cb(); }, 4000);
+    done();
+  }
+
+
+  /* ========== ASISTENTE + EDITOR DE CALIBRACIÓN + COMPARACIÓN ========== */
+  var plDraft = null; // preset en edición
+  function plField(label, inner) { return '<div class="ple-f"><label>' + label + "</label>" + inner + "</div>"; }
+  function plImgInput(id, label, cur) {
+    return '<div class="ple-img"><span>' + label + "</span>" +
+      '<input type="file" accept="image/*" id="' + id + '">' +
+      '<em id="' + id + 'St">' + (cur ? "cargada ✓" : "—") + "</em></div>";
+  }
+  function plReadFile(inp, cb) {
+    var f = inp.files && inp.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { cb(String(r.result)); };
+    r.readAsDataURL(f);
+  }
+  function renderPalmDiag() {
+    clearTabbar();
+    var sa = { t: "?", b: "?" };
+    try {
+      var probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:0;width:1px;pointer-events:none;visibility:hidden";
+      document.body.appendChild(probe);
+      var r = probe.getBoundingClientRect();
+      sa.t = Math.round(r.top) + "px"; sa.b = Math.round(window.innerHeight - r.bottom) + "px";
+      probe.remove();
+    } catch (e) {}
+    var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+    var rows = [
+      ["Viewport CSS", window.innerWidth + " × " + window.innerHeight + " px"],
+      ["100dvh estable", (window.visualViewport ? Math.round(window.visualViewport.height) : "?") + " px visibles"],
+      ["Device pixel ratio", String(window.devicePixelRatio || 1)],
+      ["Safe area (top/bottom)", sa.t + " / " + sa.b],
+      ["Modo standalone (PWA)", standalone ? "SÍ (pantalla completa, sin barras de Safari)" : "NO — añade la app a la pantalla de inicio"],
+      ["Navegador iOS", plIsIOS() ? "sí" : "no"],
+      ["Barra superior en actuación", plIsIOS() ? "la real del sistema (no se dibuja doble)" : "simulada (escritorio/Android)"],
+      ["Scroll bloqueado en actuación", "sí (touch-action + overflow hidden)"],
+      ["Preset activo", plActiveId() || "ninguno (modo clásico)"]
+    ];
+    var h = "";
+    for (var i = 0; i < rows.length; i++) h += "<tr><td>" + rows[i][0] + "</td><td>" + rows[i][1] + "</td></tr>";
+    view.innerHTML = '<div class="wrap"><div class="pagehead"><button class="back" onclick="location.hash=\'#/desbloqueo\'">' + icon("back") + "</button><h1>Diagnóstico de la réplica</h1></div>" +
+      '<table class="ple-diag">' + h + "</table>" +
+      '<p class="hint">Comprobaciones: sin doble barra superior (en iPhone la barra la pone el sistema), una sola Dynamic Island (si tu captura ya la trae, ponla "De la captura" en el asistente), fondo sin deformar (usa la escala de captura en el editor) y tolerancia objetivo de 1–2 px tras calibrar con Superponer/Cortina/Parpadeo.</p></div>';
+  }
+
+  function renderPalmWizard() {
+    clearTabbar();
+    if (!plDraft) plDraft = plNewPreset("Mi iPhone");
+    var pr = plDraft, step = pr.__step || 1;
+    var body = "";
+    if (step === 1) {
+      var devs = "";
+      for (var i = 0; i < PL_DEVICES.length; i++) {
+        var d = PL_DEVICES[i];
+        devs += '<button class="ple-dev' + (pr.device === d.id ? " on" : "") + '" data-d="' + d.id + '">' + d.name + "<em>" + d.cssW + "×" + d.cssH + " pt · @" + d.dpr + "x · " + (d.island ? "Dynamic Island" : d.notch ? "notch" : "clásico") + "</em></button>";
+      }
+      var cust = pr.device === "custom" ? '<div class="ple-row"><input type="number" id="plcW" value="' + plDevice("custom").cssW + '" placeholder="ancho pt"><input type="number" id="plcH" value="' + plDevice("custom").cssH + '" placeholder="alto pt"><label class="pl-chk"><input type="checkbox" id="plcIsl" checked> Dynamic Island</label></div>' : "";
+      body = "<h3>1 · ¿Qué iPhone tienes?</h3><p class='hint'>Define proporciones, isla/notch y zonas seguras. En el propio iPhone la réplica ocupa la pantalla real completa.</p><div class='ple-devs'>" + devs + "</div>" + cust;
+    } else if (step === 2) {
+      var c = pr.cfg;
+      body = "<h3>2 · Preferencias</h3>" +
+        plField("Operador", '<input class="pl-txt" id="plw-carrier" value="' + plEsc(c.carrier) + '" placeholder="vacío = sin operador">') +
+        plField("Formato de hora", '<div class="seg"><button data-k="h24" data-v="1" class="' + (c.h24 ? "on" : "") + '">24 h</button><button data-k="h24" data-v="" class="' + (!c.h24 ? "on" : "") + '">12 h</button></div>') +
+        plField("Código visual", '<div class="seg"><button data-k="pinLen" data-v="6" class="' + (c.pinLen === 6 ? "on" : "") + '">6 cifras</button><button data-k="pinLen" data-v="4" class="' + (c.pinLen === 4 ? "on" : "") + '">4 cifras</button></div>') +
+        plField("Batería", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-bpct" ' + (c.battPct ? "checked" : "") + "> % visible</label><input type='number' id='plw-blvl' min='1' max='100' value='" + c.battLevel + "' style='width:70px'></div>") +
+        plField("Silencio y señal", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-mute" ' + (c.mute ? "checked" : "") + '> campana silencio</label><input type="number" id="plw-sig" min="0" max="4" value="' + c.signalBars + "\" style='width:60px'> barras</div>") +
+        "<div class='hint warn'><b>Seguridad:</b> el código que se teclea en la actuación es FICTICIO y solo vive en memoria: no se guarda, no se envía, no se registra. <b>Nunca configures ni uses tu código real del iPhone.</b></div>";
+    } else if (step === 3) {
+      body = "<h3>3 · Imágenes</h3><p class='hint'>Todo se procesa y guarda LOCALMENTE en tu dispositivo (IndexedDB). Nada se sube a ningún servidor.</p>" +
+        plImgInput("plw-lock", "Captura de tu pantalla de bloqueo", pr.images.lockShot) +
+        plImgInput("plw-pass", "Captura de tu pantalla de código", pr.images.passShot) +
+        plImgInput("plw-wall", "Fondo original (foto)", pr.images.wallpaper) +
+        plImgInput("plw-depth", "PNG del sujeto recortado (efecto profundidad)", pr.images.depthImg);
+    } else if (step === 4) {
+      var modes = [["screenshot", "Captura completa", "Tu captura es la base visual; los elementos dinámicos se superponen solo donde tú elijas."], ["hybrid", "Híbrido (recomendado)", "La captura pone las partes estáticas; hora/fecha/teclado van en dinámico, calibrados encima."], ["reference", "Solo referencia", "La captura solo se usa en el editor para comparar; el resultado es 100% reconstruido."], ["editable", "Reconstrucción editable", "Sin captura: fondo + componentes configurables."]];
+      var mb = "";
+      for (var m = 0; m < modes.length; m++) mb += '<button class="ple-mode' + (pr.renderMode === modes[m][0] ? " on" : "") + '" data-m="' + modes[m][0] + '">' + modes[m][1] + "<em>" + modes[m][2] + "</em></button>";
+      body = "<h3>4 · Método de creación</h3><div class='ple-modes'>" + mb + "</div>";
+      if (pr.renderMode === "screenshot" || pr.renderMode === "hybrid") {
+        var names = { status: "Barra superior", date: "Fecha", clock: "Reloj", buttons: "Botones inferiores", homebar: "Indicador inferior", depth: "Sujeto (profundidad)" };
+        var rows = "";
+        for (var id in names) {
+          rows += '<div class="ple-elrow"><span>' + names[id] + '</span><div class="seg">' +
+            '<button data-el="' + id + '" data-v="cap" class="' + (pr.el[id] === "cap" ? "on" : "") + '">De la captura</button>' +
+            '<button data-el="' + id + '" data-v="dyn" class="' + (pr.el[id] === "dyn" ? "on" : "") + '">Dinámico</button>' +
+            '<button data-el="' + id + '" data-v="off" class="' + (pr.el[id] === "off" ? "on" : "") + '">Oculto</button></div></div>';
+        }
+        body += "<p class='hint'>Elemento a elemento: ¿lo aporta la captura o lo dibuja la app? Evita duplicados (si la captura ya trae la hora, ponla \"De la captura\" o el reloj dinámico se pintará encima).</p>" + rows;
+      }
+    }
+    view.innerHTML = '<div class="wrap ple-wiz"><div class="ple-steps">Paso ' + step + " de 4</div>" + body +
+      '<div class="ple-nav">' + (step > 1 ? '<button class="btn ghost" id="plwBack">Atrás</button>' : "") +
+      '<button class="btn primary" id="plwNext">' + (step < 4 ? "Siguiente" : "Abrir editor") + "</button></div></div>";
+    view.querySelectorAll(".ple-dev").forEach(function (b) { b.addEventListener("click", function () { pr.device = b.getAttribute("data-d"); renderPalmWizard(); }); });
+    view.querySelectorAll(".ple-mode").forEach(function (b) { b.addEventListener("click", function () {
+      pr.renderMode = b.getAttribute("data-m");
+      if (pr.renderMode === "screenshot") pr.el = { status: "cap", date: "cap", clock: "dyn", buttons: "cap", homebar: "cap", depth: "cap", island: "dyn" };
+      if (pr.renderMode === "hybrid") pr.el = { status: "cap", date: "dyn", clock: "dyn", buttons: "cap", homebar: "cap", depth: "cap", island: "dyn" };
+      renderPalmWizard();
+    }); });
+    view.querySelectorAll("[data-el]").forEach(function (b) { b.addEventListener("click", function () { pr.el[b.getAttribute("data-el")] = b.getAttribute("data-v"); renderPalmWizard(); }); });
+    view.querySelectorAll(".seg [data-k]").forEach(function (b) { b.addEventListener("click", function () {
+      var k = b.getAttribute("data-k"), v = b.getAttribute("data-v");
+      pr.cfg[k] = k === "pinLen" ? parseInt(v, 10) : !!v; renderPalmWizard();
+    }); });
+    function bindImg(id, key) { var el = document.getElementById(id); if (el) el.addEventListener("change", function () { plReadFile(el, function (d) { pr.images[key] = d; var st = document.getElementById(id + "St"); if (st) st.textContent = "cargada ✓"; if (key === "wallpaper") plBlurData(d, function (b) { pr.images.wallpaperBlur = b || ""; }); }); }); }
+    bindImg("plw-lock", "lockShot"); bindImg("plw-pass", "passShot"); bindImg("plw-wall", "wallpaper"); bindImg("plw-depth", "depthImg");
+    var back = document.getElementById("plwBack"); if (back) back.addEventListener("click", function () { pr.__step = step - 1; renderPalmWizard(); });
+    document.getElementById("plwNext").addEventListener("click", function () {
+      if (step === 1 && pr.device === "custom") {
+        var w = parseInt((document.getElementById("plcW") || {}).value, 10), h = parseInt((document.getElementById("plcH") || {}).value, 10);
+        if (w && h) pr.deviceCustom = { id: "custom", name: "Personalizado", cssW: w, cssH: h, dpr: 3, notch: false, island: !!(document.getElementById("plcIsl") || {}).checked, safeTop: 59, safeBottom: 34 };
+      }
+      if (step === 2) {
+        pr.cfg.carrier = (document.getElementById("plw-carrier") || {}).value || "";
+        pr.cfg.battPct = !!(document.getElementById("plw-bpct") || {}).checked;
+        pr.cfg.battLevel = parseInt((document.getElementById("plw-blvl") || {}).value, 10) || 63;
+        pr.cfg.mute = !!(document.getElementById("plw-mute") || {}).checked;
+        pr.cfg.signalBars = parseInt((document.getElementById("plw-sig") || {}).value, 10);
+      }
+      if (step < 4) { pr.__step = step + 1; renderPalmWizard(); return; }
+      delete pr.__step;
+      plDbPut(pr, function () { plSetActive(pr.id); location.hash = "#/desbloqueo-editor"; });
+    });
+  }
+
+  /* ---- Editor de calibración con comparación ---- */
+  var plEd = { screen: "lock", sel: "clock", zoom: 100, cmp: "off", cmpOp: 0.5, grid: false, undo: [], redo: [], blinkH: null };
+  function plCalOf(pr, id) { if (!pr.cal[id]) pr.cal[id] = { x: 0, y: 0, sx: 1, sy: 1, op: null, h: false }; return pr.cal[id]; }
+  function renderPalmEditor() {
+    clearTabbar();
+    var id = plActiveId();
+    if (!plDraft || plDraft.id !== id) {
+      plDbGet(id, function (pr) { if (!pr) { location.hash = "#/desbloqueo"; return; } plDraft = pr; renderPalmEditor(); });
+      if (!plDraft || plDraft.id !== id) { view.innerHTML = '<div class="wrap"><p class="hint">Cargando preset…</p></div>'; return; }
+    }
+    var pr = plDraft, c = plPresetCfg(pr), dev = c.device;
+    var isLock = plEd.screen === "lock";
+    var ids = isLock ? PL_CAL_LOCK : PL_CAL_PASS;
+    var names = { shot: "Captura", status: "Barra", date: "Fecha", clock: "Reloj", depth: "Sujeto", buttons: "Botones", homebar: "Indicador", pshot: "Captura", island: "Isla", ptitle: "Título", pdots: "Puntos", keypad: "Teclado", pfoot: "SOS/Cancelar" };
+    var chips = "";
+    for (var i = 0; i < ids.length; i++) chips += '<button class="ple-chip' + (plEd.sel === ids[i] ? " on" : "") + '" data-c="' + ids[i] + '">' + names[ids[i]] + "</button>";
+    var v = plCalOf(pr, plEd.sel);
+    var refImg = isLock ? pr.images.lockShot : pr.images.passShot;
+    var stageW = Math.round(dev.cssW * plEd.zoom / 100 * 0.82);
+    view.innerHTML =
+      '<div class="ple-top">' +
+      '<button class="btn ghost sm" id="pleBack">‹ Guardar y salir</button>' +
+      '<div class="seg sm"><button id="pleLock" class="' + (isLock ? "on" : "") + '">Bloqueo</button><button id="plePass" class="' + (!isLock ? "on" : "") + '">Código</button></div>' +
+      '<div class="seg sm"><button data-z="50">50%</button><button data-z="100" class="on">100%</button><button data-z="150">150%</button><button data-z="200">200%</button></div>' +
+      '<button class="btn ghost sm" id="pleUndo">↩</button><button class="btn ghost sm" id="pleRedo">↪</button>' +
+      '<button class="btn ghost sm" id="pleGrid">' + (plEd.grid ? "Rejilla ✓" : "Rejilla") + "</button>" +
+      "</div>" +
+      '<div class="ple-cmpbar">Comparar: <div class="seg sm">' +
+      ["off", "over", "curtain", "blink"].map(function (m) { var lbl = { off: "No", over: "Superponer", curtain: "Cortina", blink: "Parpadeo" }[m]; return '<button data-cmp="' + m + '" class="' + (plEd.cmp === m ? "on" : "") + '"' + (m !== "off" && !refImg ? " disabled" : "") + ">" + lbl + "</button>"; }).join("") +
+      '</div><input type="range" id="pleOp" min="0" max="100" value="' + Math.round(plEd.cmpOp * 100) + '" style="width:110px"><input type="number" id="pleOpN" min="0" max="100" value="' + Math.round(plEd.cmpOp * 100) + '" style="width:56px">%' +
+      (refImg ? "" : " <em class='ple-noref'>sin captura de referencia</em>") + "</div>" +
+      '<div class="ple-stagewrap"><div class="ple-stage" id="pleStage" style="width:' + stageW + "px;aspect-ratio:" + dev.cssW + "/" + dev.cssH + '">' +
+      plLockMarkup(c, {}) + (isLock ? "" : plPassMarkup(c.pinLen || 6, c)) +
+      (plEd.grid ? '<div class="ple-grid"></div>' : "") +
+      (refImg && plEd.cmp !== "off" ? '<img class="ple-ref" id="pleRef" src="' + refImg + '" style="opacity:' + plEd.cmpOp + '">' : "") +
+      (plEd.cmp === "curtain" ? '<div class="ple-curtain" id="pleCurtain"></div>' : "") +
+      "</div></div>" +
+      '<div class="ple-chips">' + chips + "</div>" +
+      '<div class="ple-panel" id="plePanel">' +
+      '<div class="ple-nudges">X: ' + [-10, -1, -0.5, 0.5, 1, 10].map(function (n) { return '<button data-nx="' + n + '">' + (n > 0 ? "+" : "") + n + "</button>"; }).join("") + "</div>" +
+      '<div class="ple-nudges">Y: ' + [-10, -1, -0.5, 0.5, 1, 10].map(function (n) { return '<button data-ny="' + n + '">' + (n > 0 ? "+" : "") + n + "</button>"; }).join("") + "</div>" +
+      '<div class="ple-nums">' +
+      '<label>X<input type="number" step="0.1" id="pleX" value="' + (Math.round((v.x || 0) * dev.cssW / 100 * 10) / 10) + '"></label>' +
+      '<label>Y<input type="number" step="0.1" id="pleY" value="' + (Math.round((v.y || 0) * dev.cssH / 100 * 10) / 10) + '"></label>' +
+      '<label>Esc.X %<input type="number" step="0.5" id="pleSX" value="' + Math.round((v.sx != null ? v.sx : 1) * 100) + '"></label>' +
+      '<label>Esc.Y %<input type="number" step="0.5" id="pleSY" value="' + Math.round((v.sy != null ? v.sy : 1) * 100) + '"></label>' +
+      '<label>Opac.%<input type="number" step="1" min="0" max="100" id="pleOpE" value="' + (v.op != null ? Math.round(v.op * 100) : 100) + '"></label>' +
+      '<label class="pl-chk"><input type="checkbox" id="pleHide" ' + (v.h ? "checked" : "") + ">Ocultar</label>" +
+      '<button class="btn ghost sm" id="pleReset">Restaurar</button>' +
+      "</div>" +
+      (plEd.sel === "keypad" && !isLock ? '<div class="ple-nums"><label>Ø tecla cqw<input type="number" step="0.1" id="pleKeyD" value="' + (c.keyD || 20) + '"></label><label>Sep.filas cqh<input type="number" step="0.05" id="pleKeyG" value="' + (c.keyGapY != null ? c.keyGapY : 2.15) + '"></label><label>Oscurecer %<input type="number" step="1" id="pleDim" value="' + Math.round((c.passDim != null ? c.passDim : 0.34) * 100) + '"></label><label>Blur px<input type="number" step="1" id="pleBlur" value="' + (c.passBlur != null ? c.passBlur : 9) + '"></label></div>' : "") +
+      (plEd.sel === "pdots" && !isLock ? '<div class="ple-nums"><label>Ø punto cqh<input type="number" step="0.05" id="pleDotD" value="' + (c.dotD || 1.3) + '"></label><label>Sep. cqw<input type="number" step="0.1" id="pleDotG" value="' + (c.dotGap != null ? c.dotGap : 5.5) + '"></label></div>' : "") +
+      (plEd.sel === "ptitle" && !isLock ? '<div class="ple-nums"><label style="flex:1">Texto<input type="text" class="pl-txt" id="pleTitle" value="' + plEsc(c.passTitle || "") + '"></label></div>' : "") +
+      ((plEd.sel === "shot" || plEd.sel === "pshot") ? '<div class="ple-nums"><label>Escala captura %<input type="number" step="0.5" id="pleShotS" value="' + ((isLock ? pr.shotFit : pr.passShotFit).s || 100) + '"></label></div>' : "") +
+      "</div>";
+    var stage = document.getElementById("pleStage");
+    plApplyCal(stage, c);
+    plStartClock(stage, c);
+    if (!isLock) { stage.querySelector(".ios-lock").classList.add("ple-dimmed"); var ip = stage.querySelector(".ios-pass"); if (ip) ip.style.opacity = 1; }
+    // selección tocando el elemento + arrastre
+    function snapshot() { plEd.undo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); if (plEd.undo.length > 40) plEd.undo.shift(); plEd.redo = []; }
+    function save() { plDbPut(pr); }
+    function rerender() { save(); renderPalmEditor(); }
+    ids.forEach(function (eid) {
+      var el = stage.querySelector(PL_CAL_SEL[eid]); if (!el) return;
+      el.addEventListener("pointerdown", function (ev) {
+        if (plEd.sel !== eid) { plEd.sel = eid; renderPalmEditor(); return; }
+        ev.preventDefault();
+        var v0 = plCalOf(pr, eid), sx = ev.clientX, sy = ev.clientY, x0 = v0.x || 0, y0 = v0.y || 0;
+        snapshot();
+        function mv(e2) {
+          var r = stage.getBoundingClientRect();
+          v0.x = x0 + (e2.clientX - sx) / r.width * 100;
+          v0.y = y0 + (e2.clientY - sy) / r.height * 100;
+          plApplyCal(stage, c);
+        }
+        function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); save(); renderPalmEditor(); }
+        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
+      });
+    });
+    view.querySelectorAll(".ple-chip").forEach(function (b) { b.addEventListener("click", function () { plEd.sel = b.getAttribute("data-c"); renderPalmEditor(); }); });
+    view.querySelectorAll("[data-z]").forEach(function (b) { b.addEventListener("click", function () { plEd.zoom = parseInt(b.getAttribute("data-z"), 10); renderPalmEditor(); }); });
+    view.querySelectorAll("[data-cmp]").forEach(function (b) { b.addEventListener("click", function () { plEd.cmp = b.getAttribute("data-cmp"); renderPalmEditor(); }); });
+    function nudge(dxPx, dyPx) { snapshot(); var vv = plCalOf(pr, plEd.sel); vv.x = (vv.x || 0) + dxPx / dev.cssW * 100; vv.y = (vv.y || 0) + dyPx / dev.cssH * 100; rerender(); }
+    view.querySelectorAll("[data-nx]").forEach(function (b) { b.addEventListener("click", function () { nudge(parseFloat(b.getAttribute("data-nx")), 0); }); });
+    view.querySelectorAll("[data-ny]").forEach(function (b) { b.addEventListener("click", function () { nudge(0, parseFloat(b.getAttribute("data-ny"))); }); });
+    function bindNum(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener("change", function () { snapshot(); fn(parseFloat(el.value)); rerender(); }); }
+    bindNum("pleX", function (n) { plCalOf(pr, plEd.sel).x = n / dev.cssW * 100; });
+    bindNum("pleY", function (n) { plCalOf(pr, plEd.sel).y = n / dev.cssH * 100; });
+    bindNum("pleSX", function (n) { plCalOf(pr, plEd.sel).sx = n / 100; });
+    bindNum("pleSY", function (n) { plCalOf(pr, plEd.sel).sy = n / 100; });
+    bindNum("pleOpE", function (n) { plCalOf(pr, plEd.sel).op = Math.max(0, Math.min(1, n / 100)); });
+    bindNum("pleKeyD", function (n) { pr.cfg.keyD = n; });
+    bindNum("pleKeyG", function (n) { pr.cfg.keyGapY = n; });
+    bindNum("pleDim", function (n) { pr.cfg.passDim = n / 100; });
+    bindNum("pleBlur", function (n) { pr.cfg.passBlur = n; });
+    bindNum("pleDotD", function (n) { pr.cfg.dotD = n; });
+    bindNum("pleDotG", function (n) { pr.cfg.dotGap = n; });
+    bindNum("pleShotS", function (n) { (isLock ? pr.shotFit : pr.passShotFit).s = n; });
+    var tEl = document.getElementById("pleTitle"); if (tEl) tEl.addEventListener("change", function () { snapshot(); pr.cfg.passTitle = tEl.value; rerender(); });
+    document.getElementById("pleHide").addEventListener("change", function (e) { snapshot(); plCalOf(pr, plEd.sel).h = !!e.target.checked; rerender(); });
+    document.getElementById("pleReset").addEventListener("click", function () { snapshot(); delete pr.cal[plEd.sel]; rerender(); });
+    document.getElementById("pleUndo").addEventListener("click", function () { var u = plEd.undo.pop(); if (!u) return; plEd.redo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); var st = JSON.parse(u); pr.cal = st.cal; pr.cfg = st.cfg; pr.shotFit = st.shotFit; pr.passShotFit = st.passShotFit; rerender(); });
+    document.getElementById("pleRedo").addEventListener("click", function () { var u = plEd.redo.pop(); if (!u) return; plEd.undo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); var st = JSON.parse(u); pr.cal = st.cal; pr.cfg = st.cfg; pr.shotFit = st.shotFit; pr.passShotFit = st.passShotFit; rerender(); });
+    document.getElementById("pleGrid").addEventListener("click", function () { plEd.grid = !plEd.grid; renderPalmEditor(); });
+    document.getElementById("pleLock").addEventListener("click", function () { plEd.screen = "lock"; plEd.sel = "clock"; renderPalmEditor(); });
+    document.getElementById("plePass").addEventListener("click", function () { plEd.screen = "pass"; plEd.sel = "keypad"; renderPalmEditor(); });
+    var opR = document.getElementById("pleOp"), opN = document.getElementById("pleOpN");
+    function setOp(val) { plEd.cmpOp = val / 100; var r = document.getElementById("pleRef"); if (r) r.style.opacity = plEd.cmpOp; opR.value = val; opN.value = val; }
+    opR.addEventListener("input", function () { setOp(parseFloat(opR.value)); });
+    opN.addEventListener("change", function () { setOp(parseFloat(opN.value)); });
+    if (plEd.cmp === "blink") { plEd.blinkH = window.setInterval(function () { var r = document.getElementById("pleRef"); if (!r) { window.clearInterval(plEd.blinkH); return; } r.style.opacity = r.style.opacity === "0" ? String(plEd.cmpOp) : "0"; }, 450); }
+    var curt = document.getElementById("pleCurtain");
+    if (curt) {
+      curt.addEventListener("pointerdown", function (ev) {
+        ev.preventDefault();
+        function mv(e2) { var r = stage.getBoundingClientRect(); var pct = Math.max(0, Math.min(100, (e2.clientX - r.left) / r.width * 100)); curt.style.left = pct + "%"; var ref = document.getElementById("pleRef"); if (ref) ref.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)"; }
+        function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); }
+        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
+      });
+    }
+    document.getElementById("pleBack").addEventListener("click", function () { if (plEd.blinkH) window.clearInterval(plEd.blinkH); plDbPut(pr, function () { location.hash = "#/desbloqueo"; }); });
+  }
+
   function renderPalmLock() {
     clearTabbar(); var f0 = document.getElementById("fabEl"); if (f0) f0.remove();
     var c = plCfg();
+    // Gestor de presets (réplicas por comprador) — IndexedDB
+    window.setTimeout(function () {
+      var host = document.getElementById("plPresets");
+      if (!host) return;
+      plDbAll(function (list) {
+        var act = plActiveId(), h = "";
+        for (var i = 0; i < list.length; i++) {
+          var pr = list[i];
+          h += '<div class="ple-preset' + (pr.id === act ? " on" : "") + '" data-id="' + pr.id + '">' +
+            '<label class="pl-chk"><input type="radio" name="plap" ' + (pr.id === act ? "checked" : "") + "> " + plEsc(pr.name) + " <em>(" + plDevice(pr.device).name + " · " + pr.renderMode + ")</em></label>" +
+            '<span class="ple-pbtns"><button data-a="edit">Calibrar</button><button data-a="dup">Duplicar</button><button data-a="ren">Renombrar</button><button data-a="exp">Exportar</button><button data-a="del">Borrar</button></span></div>';
+        }
+        host.innerHTML = h +
+          '<div class="pl-row"><button class="btn primary sm" id="plNewP">+ Nueva réplica (asistente)</button>' +
+          '<button class="btn ghost sm" id="plImpP">Importar</button><input type="file" id="plImpF" accept="application/json" style="display:none">' +
+          (act ? '<button class="btn ghost sm" id="plNoP">Usar modo clásico</button>' : "") + "</div>";
+        host.querySelectorAll(".ple-preset").forEach(function (row) {
+          var id = row.getAttribute("data-id");
+          row.querySelector("input[type=radio]").addEventListener("change", function () { plSetActive(id); renderPalmLock(); });
+          row.querySelectorAll("[data-a]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              var a = b.getAttribute("data-a");
+              if (a === "edit") { plSetActive(id); plDraft = null; location.hash = "#/desbloqueo-editor"; }
+              if (a === "del") plDbDel(id, function () { if (plActiveId() === id) plSetActive(""); renderPalmLock(); });
+              if (a === "dup") plDbGet(id, function (pr) { if (!pr) return; pr.id = "pl" + Date.now().toString(36); pr.name += " (copia)"; plDbPut(pr, function () { renderPalmLock(); }); });
+              if (a === "ren") plDbGet(id, function (pr) { if (!pr) return; var n = window.prompt("Nombre del preset", pr.name); if (!n) return; pr.name = n; plDbPut(pr, function () { renderPalmLock(); }); });
+              if (a === "exp") plDbGet(id, function (pr) { if (!pr) return; var blob = new Blob([JSON.stringify(pr)], { type: "application/json" }); var u = URL.createObjectURL(blob); var aEl = document.createElement("a"); aEl.href = u; aEl.download = pr.name.replace(/\W+/g, "_") + ".magiclock.json"; aEl.click(); window.setTimeout(function () { URL.revokeObjectURL(u); }, 4000); });
+            });
+          });
+        });
+        var np = document.getElementById("plNewP"); if (np) np.addEventListener("click", function () { plDraft = null; location.hash = "#/desbloqueo-config"; });
+        var ip = document.getElementById("plImpP"), iff = document.getElementById("plImpF");
+        if (ip) ip.addEventListener("click", function () { iff.click(); });
+        if (iff) iff.addEventListener("change", function () {
+          var f = iff.files && iff.files[0]; if (!f) return;
+          var r = new FileReader();
+          r.onload = function () { try { var pr = JSON.parse(String(r.result)); if (!pr || !pr.id || !pr.version) throw 0; pr.id = "pl" + Date.now().toString(36); plDbPut(pr, function () { plSetActive(pr.id); renderPalmLock(); }); } catch (e) { toast("Fichero de preset no válido"); } };
+          r.readAsText(f);
+        });
+        var nop = document.getElementById("plNoP"); if (nop) nop.addEventListener("click", function () { plSetActive(""); renderPalmLock(); });
+      });
+    }, 0);
     var pin = c.pinLen || 6, method = c.method || "sensor";
     var h24 = c.h24 !== false, glass = c.clockStyle !== "solid";
     var sw = "";
@@ -5840,7 +6235,10 @@ window.Cloud = (function () {
       '<p class="hint">El espectador sostiene tu móvil en la pantalla de bloqueo y, al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y se abre Google. No subimos capturas: solo tu <b>fondo</b>, y replicamos tu UI <b>en vivo</b> (hora, fecha y teclado reales) para que sea idéntica a tu iPhone.</p>' +
       '<div class="pl-live"><div class="pl-phone" id="plPrev"></div><div class="pl-liverow"><button class="btn ghost sm" id="plPrevPass">Ver teclado</button><span class="hint pl-livehint">Vista en vivo</span></div></div>' +
       '<p class="hint warn"><b>Importante para que sea perfecto:</b> haz el truco con la app <b>a pantalla completa</b>. En el iPhone: botón Compartir → <b>Añadir a pantalla de inicio</b>, y ábrela desde ese icono. Así desaparece la barra de Safari y arriba solo queda la barra de estado real del sistema (una sola, como un móvil de verdad). En Safari normal se ven dos barras.</p>' +
-      '<div class="sec-label">Fondo de pantalla</div>' +
+      '<div class="sec-label">Tu réplica (presets)</div>' +
+      '<p class="hint">Crea una réplica calibrada de TU pantalla de bloqueo con el asistente: elige tu iPhone, sube tus capturas y ajusta cada elemento al píxel comparando con tu pantalla real. Se guarda en tu dispositivo y la actuación la usa automáticamente. <a href="#/desbloqueo-diag">Diagnóstico</a></p>' +
+      '<div id="plPresets"><p class="hint">Cargando…</p></div>' +
+      '<div class="sec-label">Modo clásico (reconstrucción rápida)</div>' +
       '<button class="btn ghost" id="plWpUp">' + icon("plus", "i-sm") + " Subir tu fondo</button><input type=\"file\" id=\"plWpFile\" accept=\"image/*\" style=\"display:none\">" +
       '<div class="sec-label">Efecto profundidad (el sujeto DELANTE del reloj)</div>' +
       '<p class="hint">Si en tu bloqueo real la persona/objeto de la foto tapa parte del reloj, replícalo: en Fotos mantén pulsado el sujeto → <b>Copiar sujeto</b> → pégalo en Notas y guárdalo como imagen (PNG recortado), o usa cualquier app de quitar fondo. Súbelo aquí y quedará delante del reloj, exacto a iOS.</p>' +
@@ -5878,7 +6276,7 @@ window.Cloud = (function () {
     function prev() {
       var p = document.getElementById("plPrev"); if (!p) return;
       var cc = plCfg();
-      p.innerHTML = plLockMarkup(cc) + (showPass ? plPassMarkup(cc.pinLen || 6) : "");
+      p.innerHTML = plLockMarkup(cc) + (showPass ? plPassMarkup(cc.pinLen || 6, cc) : "");
       if (showPass) p.className = "pl-phone entering"; else p.className = "pl-phone";
       plStartClock(p, cc);
     }
@@ -5939,18 +6337,28 @@ window.Cloud = (function () {
   }
   function renderPalmPerform() {
     clearTabbar(); var f1 = document.getElementById("fabEl"); if (f1) f1.remove();
-    var c = plCfg();
-    if (!c.wallpaper) { location.hash = "#/desbloqueo"; return; }
+    var aid = plActiveId();
+    if (aid && !renderPalmPerform.__pr) {
+      plDbGet(aid, function (pr) { renderPalmPerform.__pr = pr || { __none: true }; renderPalmPerform(); });
+      view.innerHTML = "";
+      return;
+    }
+    var pr = renderPalmPerform.__pr && !renderPalmPerform.__pr.__none ? renderPalmPerform.__pr : null;
+    renderPalmPerform.__pr = null;
+    var c = pr ? plPresetCfg(pr) : plCfg();
+    if (!c.wallpaper && !c.lockShot) { location.hash = "#/desbloqueo"; return; }
+    plPreload([c.wallpaper, c.wallpaperBlur, c.lockShot, c.passShot, c.depthImg], function () {});
     var pin = c.pinLen || 6, method = c.method || "sensor";
     var sens = c.sens; if (sens == null || sens > 6) sens = 1.4;
     var entered = 0, done = false, entering = false;
     view.innerHTML =
       '<div class="pl-stage" id="plStage">' +
-      plLockMarkup(c, { hideStatus: plIsIOS() }) +
-      plPassMarkup(pin) +
+      plLockMarkup(c, { hideStatus: plIsIOS() && c.statusMode !== "simulated" }) +
+      plPassMarkup(pin, c) +
       '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
       "</div>";
     var stage = document.getElementById("plStage");
+    plApplyCal(stage, c);
     plStartClock(stage, c);
     var keyEls = stage.querySelectorAll(".ios-key[data-k]");
     function flashKey() {
@@ -7129,6 +7537,9 @@ window.Cloud = (function () {
       if (h === "#/revelacion-musical") return renderMusicReveal();
       if (h === "#/desbloqueo") return renderPalmLock();
       if (h === "#/desbloqueo-actuar") return renderPalmPerform();
+      if (h === "#/desbloqueo-config") return renderPalmWizard();
+      if (h === "#/desbloqueo-editor") return renderPalmEditor();
+      if (h === "#/desbloqueo-diag") return renderPalmDiag();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
       if (h === "#/ajustes") return renderSettings();

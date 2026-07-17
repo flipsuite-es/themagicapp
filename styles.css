@@ -1922,3 +1922,63 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .pl-row input[type=range] { flex: 1; }
 .pl-chk { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--ink, #e8e2d2); font-size: 14px; }
 .hint.warn { background: rgba(201,162,75,.12); border: 1px solid rgba(201,162,75,.4); border-radius: 10px; padding: 9px 11px; }
+
+/* ===== Réplica configurable: captura, asistente, editor, diagnóstico ===== */
+/* Capa de captura (métodos captura completa / híbrido): la imagen del usuario
+   como base, con transform calibrable (x/y en cq, escala). */
+.ios-shot { position: absolute; inset: 0; overflow: hidden; }
+.ios-shot img { width: 100%; height: 100%; object-fit: cover; display: block; transform-origin: center center; }
+.ios-pass .ios-shot { z-index: 0; }
+.ios-pass > *:not(.ios-shot) { position: relative; }
+/* Teclado y puntos gobernados por variables calibrables */
+.ios-key { width: var(--pl-keyd, 20cqw); }
+.ios-keypad { gap: var(--pl-keygapy, 2.15cqh) 0; }
+.ios-pdot { width: var(--pl-dotd, 1.3cqh); height: var(--pl-dotd, 1.3cqh); }
+.ios-pass-dots { gap: var(--pl-dotgap, 5.5cqw); }
+.entering .ios-dim { background: rgba(0, 0, 0, var(--pl-pass-dim, .34)); backdrop-filter: blur(var(--pl-pass-blur, 9px)) saturate(1.2); -webkit-backdrop-filter: blur(var(--pl-pass-blur, 9px)) saturate(1.2); }
+/* Guardas táctiles del modo actuación: sin scroll, zoom, selección ni callout */
+.pl-stage { touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; height: 100vh; height: 100dvh; }
+/* Asistente */
+.ple-wiz h3 { margin: 10px 0 6px; }
+.ple-steps { color: var(--muted, #9aa); font-size: 13px; margin-top: 8px; }
+.ple-devs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.ple-dev, .ple-mode { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); cursor: pointer; }
+.ple-dev em, .ple-mode em { display: block; font-style: normal; color: var(--muted, #9aa); font-size: 12px; margin-top: 2px; }
+.ple-dev.on, .ple-mode.on { border-color: var(--accent, #c9a24b); box-shadow: 0 0 0 1px var(--accent, #c9a24b); }
+.ple-modes { display: grid; gap: 8px; margin: 10px 0; }
+.ple-nav { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+.ple-f { margin: 10px 0; } .ple-f > label { display: block; font-size: 13px; color: var(--muted, #9aa); margin-bottom: 4px; }
+.ple-img { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.ple-img span { flex: 1 1 100%; font-size: 13px; }
+.ple-img em { color: var(--accent, #c9a24b); font-style: normal; font-size: 12px; }
+.ple-elrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; font-size: 13px; }
+.ple-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+/* Editor */
+.ple-top, .ple-cmpbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; }
+.ple-cmpbar { font-size: 13px; color: var(--muted, #9aa); }
+.ple-noref { color: var(--muted, #9aa); font-style: normal; }
+.ple-stagewrap { overflow: auto; display: flex; justify-content: center; padding: 8px; max-height: 62vh; }
+.ple-stage { position: relative; container-type: size; overflow: hidden; border-radius: 18px; background: #000; flex: 0 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+.ple-stage .ios-lock.ple-dimmed .ios-head, .ple-stage .ios-lock.ple-dimmed .ios-bottom { opacity: .25; }
+.ple-ref { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 40; }
+.ple-curtain { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; background: var(--accent, #c9a24b); cursor: ew-resize; z-index: 41; touch-action: none; }
+.ple-curtain::after { content: "◂▸"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--accent, #c9a24b); color: #000; border-radius: 10px; padding: 2px 6px; font-size: 12px; }
+.ple-grid { position: absolute; inset: 0; pointer-events: none; z-index: 39; background-image: linear-gradient(rgba(0,255,200,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,.16) 1px, transparent 1px), linear-gradient(rgba(0,255,200,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,.5) 1px, transparent 1px); background-size: 5% 5%, 5% 5%, 50.5% 50.5%, 50.5% 50.5%; }
+.ple-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 10px; }
+.ple-chip { border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.ple-chip.on { border-color: var(--accent, #c9a24b); color: var(--accent, #c9a24b); }
+.ple-panel { padding: 6px 10px 16px; }
+.ple-nudges { display: flex; gap: 6px; align-items: center; margin: 6px 0; font-size: 13px; color: var(--muted, #9aa); }
+.ple-nudges button { min-width: 44px; padding: 6px 4px; border-radius: 8px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); cursor: pointer; }
+.ple-nums { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin: 8px 0; }
+.ple-nums label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted, #9aa); gap: 3px; }
+.ple-nums input[type=number] { width: 76px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); }
+.seg.sm button, .btn.sm { padding: 5px 10px; font-size: 13px; }
+.ple-preset { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line, #2a2f3a); border-radius: 10px; margin: 6px 0; flex-wrap: wrap; }
+.ple-preset.on { border-color: var(--accent, #c9a24b); }
+.ple-preset em { color: var(--muted, #9aa); font-style: normal; font-size: 12px; }
+.ple-pbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.ple-pbtns button { border: 1px solid var(--line, #2a2f3a); background: none; color: var(--ink, #e8e2d2); border-radius: 8px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.ple-diag { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+.ple-diag td { border-bottom: 1px solid var(--line, #2a2f3a); padding: 7px 6px; }
+.ple-diag td:first-child { color: var(--muted, #9aa); }

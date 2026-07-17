@@ -3146,47 +3146,21 @@
      queda natural. Modo de ensayo: tocar la pantalla también avanza. */
   var PL_CFG_KEY = "magic_pl_cfg";
   function plCfg() { try { return JSON.parse(localStorage.getItem(PL_CFG_KEY)) || {}; } catch (e) { return {}; } }
-  function plSave(c) { try { localStorage.setItem(PL_CFG_KEY, JSON.stringify(c)); return true; } catch (e) { toast("No cabe la imagen (demasiado grande)"); return false; } }
-  // asPng: conserva la transparencia (necesario para el recorte del sujeto).
-  function plCompress(file, cb, asPng) {
+  function plSave(c) { try { localStorage.setItem(PL_CFG_KEY, JSON.stringify(c)); } catch (e) {} }
+  function plCompress(file, cb) {
     try {
       var url = window.URL.createObjectURL(file), img = new Image();
       img.onload = function () {
         try {
-          var max = asPng ? 1000 : 1400, w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h));
+          var max = 1400, w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h));
           var cv = document.createElement("canvas"); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
           cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
           try { window.URL.revokeObjectURL(url); } catch (e) {}
-          cb(asPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.85));
+          cb(cv.toDataURL("image/jpeg", 0.85));
         } catch (e) { cb(null); }
       };
       img.onerror = function () { cb(null); };
       img.src = url;
-    } catch (e) { cb(null); }
-  }
-  // Versión DESENFOCADA del fondo (para el interior "esmerilado" de los
-  // dígitos del reloj de cristal). Desenfoque por reescalado (funciona en
-  // cualquier navegador): se dibuja diminuto y se amplía suavizado.
-  function plBlurData(dataURI, cb) {
-    try {
-      var img = new Image();
-      img.onload = function () {
-        try {
-          var w = img.width, h = img.height;
-          var small = document.createElement("canvas");
-          small.width = Math.max(1, Math.round(w / 14)); small.height = Math.max(1, Math.round(h / 14));
-          small.getContext("2d").drawImage(img, 0, 0, small.width, small.height);
-          var out = document.createElement("canvas");
-          out.width = Math.max(1, Math.round(w / 2)); out.height = Math.max(1, Math.round(h / 2));
-          var ctx = out.getContext("2d");
-          ctx.imageSmoothingEnabled = true;
-          try { ctx.filter = "saturate(1.45) brightness(1.35)"; } catch (e2) {}
-          ctx.drawImage(small, 0, 0, out.width, out.height);
-          cb(out.toDataURL("image/jpeg", 0.72));
-        } catch (e) { cb(null); }
-      };
-      img.onerror = function () { cb(null); };
-      img.src = dataURI;
     } catch (e) { cb(null); }
   }
   var plMotionOK = false, plMotionH = null, plClockH = null;
@@ -3204,42 +3178,15 @@
   function plClockClear() { if (plClockH) { try { window.clearInterval(plClockH); } catch (e) {} plClockH = null; } }
   function plStopMotion() { if (plMotionH) { try { window.removeEventListener("devicemotion", plMotionH); } catch (e) {} plMotionH = null; } plClockClear(); releaseWake(); }
 
-  // --- Réplica de la UI de iOS ---
-  // Dígitos del reloj DIBUJADOS A MANO como SVG (trazo uniforme, ultra
-  // condensados: caja 100x440, trazo 17 — proporciones medidas de capturas
-  // reales). Ninguna fuente del sistema tiene esa forma sin deformarse, así
-  // que el SVG garantiza que se vea IDÉNTICO en cualquier dispositivo. Se usa
-  // como máscara: el "material" (cristal/color) se pinta a través de él.
-  var PL_GLYPHS = {
-    "0": '<rect x="9" y="9" width="82" height="422" rx="41"/>',
-    "1": '<path d="M12,53 L48,16 M48,9 L48,431"/>',
-    "2": '<path d="M10,88 C10,16 90,16 90,92 C90,214 11,266 10,431 L91,431"/>',
-    "3": '<path d="M22,145 C22,70 32,14 54,14 C80,14 90,46 90,115 C90,163 80,190 62,202 C86,212 92,260 92,330 C92,400 74,431 50,431 C28,431 18,404 18,277"/>',
-    "4": '<path d="M63,9 L63,431 M63,14 L10,302 L91,302"/>',
-    "5": '<path d="M14,16 L62,16 C84,16 92,38 92,100 M14,16 L14,318 C14,395 34,431 54,431 C78,431 92,390 92,296 C92,222 87,186 76,187 C64,188 55,197 52,210"/>',
-    "6": '<path d="M74,13 C40,70 10,158 10,310 M10,310 C10,214 90,214 90,318 C90,426 10,426 10,310"/>',
-    "7": '<path d="M10,13 L90,13 C78,148 53,282 48,431"/>',
-    "8": '<rect x="13" y="9" width="74" height="194" rx="37"/><rect x="9" y="220" width="82" height="211" rx="41"/>',
-    "9": '<path d="M90,130 C90,226 10,226 10,122 C10,14 90,14 90,130 M90,130 C90,282 62,370 26,428"/>',
-    ":": '<circle cx="38" cy="123" r="16" class="dot"/><circle cx="38" cy="306" r="16" class="dot"/>'
+  // --- Réplica de la UI de iOS (aprox. a iOS 17/18; sin sus fuentes propias) ---
+  var PL_FONTS = {
+    def: '-apple-system,system-ui,"SF Pro Display",sans-serif',
+    thin: '-apple-system,system-ui,"SF Pro Display",sans-serif',
+    serif: '"New York",Georgia,"Times New Roman",serif',
+    round: '"SF Pro Rounded",ui-rounded,-apple-system,system-ui,sans-serif',
+    mono: '"SF Mono",ui-monospace,Menlo,monospace'
   };
-  // Avances PROPORCIONALES como el reloj real: el "1" es estrecho.
-  var PL_GLYPH_W = { "1": 44, ":": 40 };
-  function plClockMaskUri(t) {
-    var GAP = 14, x = 0, body = "";
-    for (var i = 0; i < t.length; i++) {
-      var ch = t.charAt(i), g = PL_GLYPHS[ch];
-      if (!g) continue;
-      body += '<g transform="translate(' + x + ',0)">' + g + "</g>";
-      x += (PL_GLYPH_W[ch] || 100) + GAP;
-    }
-    var w = Math.max(1, x - GAP + (t.charAt(t.length - 1) === "1" ? 13 : 0));
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' 440">' +
-      '<style>path,rect{fill:none;stroke:#fff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round}circle.dot{fill:#fff;stroke:none}</style>' +
-      body + "</svg>";
-    // encodeURIComponent no escapa ( ) ' — y romperían el url() del CSS.
-    return "data:image/svg+xml," + encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/'/g, "%27");
-  }
+  var PL_WEIGHT = { def: 590, thin: 250, serif: 620, round: 760, mono: 560 };
   var PL_COLORS = ["#ffffff", "#1c1c1e", "#8fc9ff", "#ff9ec9", "#8ef0b0", "#ffe27a", "#c9b0ff"];
   var PL_DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
   var PL_DAYS_L = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -3247,10 +3194,9 @@
   var PL_MONS_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   function plCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
   function pl2(n) { n = n | 0; return n < 10 ? "0" + n : "" + n; }
-  function plTimeStr(h24, leadZero) {
+  function plTimeStr(h24) {
     var d = new Date(), H = d.getHours(), M = d.getMinutes();
-    // iOS NO rellena la hora con cero por defecto ("2:48"); opcional por preset
-    if (h24 !== false) return (leadZero ? pl2(H) : String(H)) + ":" + pl2(M);
+    if (h24 !== false) return pl2(H) + ":" + pl2(M);
     var h = H % 12; if (h === 0) h = 12;
     return h + ":" + pl2(M); // iOS no rotula a.m./p.m. en el reloj grande
   }
@@ -3268,17 +3214,15 @@
     }
     return '<svg viewBox="0 0 18 13" class="ios-i-sig">' + s + "</svg>";
   }
-  // WiFi de iOS: tres arcos rellenos.
   var PL_WIFI_SVG =
-    '<svg viewBox="0 0 20 15" class="ios-i-wifi" fill="#fff"><path d="M10 2.55c3.05 0 5.83 1.17 7.9 3.08a.55.55 0 0 0 .78-.03l1.02-1.14a.55.55 0 0 0-.03-.77A13.35 13.35 0 0 0 10 .35 13.35 13.35 0 0 0 .33 3.69a.55.55 0 0 0-.03.77l1.02 1.14c.2.23.55.24.78.03A11.65 11.65 0 0 1 10 2.55Z"/><path d="M10 6.9c1.94 0 3.7.72 5.05 1.9.23.2.57.19.78-.03l1-1.12a.55.55 0 0 0-.04-.78A9.95 9.95 0 0 0 10 4.5a9.95 9.95 0 0 0-6.79 2.37.55.55 0 0 0-.04.78l1 1.12c.2.22.55.23.78.03A7.65 7.65 0 0 1 10 6.9Z"/><path d="M10 11.15c.95 0 1.82.32 2.52.86.24.19.28.54.07.76l-2.19 2.42a.54.54 0 0 1-.8 0l-2.19-2.42a.53.53 0 0 1 .07-.76 4.1 4.1 0 0 1 2.52-.86Z"/></svg>'
+    '<svg viewBox="0 0 17 12" class="ios-i-wifi" fill="#fff"><path d="M8.5 2.05c2.62 0 5.02 1 6.83 2.66a.6.6 0 0 0 .84-.02l.6-.63a.6.6 0 0 0-.02-.86A11.3 11.3 0 0 0 8.5.15 11.3 11.3 0 0 0 .75 3.2a.6.6 0 0 0-.02.86l.6.63c.22.24.6.25.84.02A9.86 9.86 0 0 1 8.5 2.05Z"/><path d="M8.5 5.6c1.63 0 3.12.62 4.24 1.64a.6.6 0 0 0 .82-.03l.63-.66a.6.6 0 0 0-.03-.87A8 8 0 0 0 8.5 3.6a8 8 0 0 0-5.66 2.08.6.6 0 0 0-.03.87l.63.66c.22.23.6.24.82.03A6.26 6.26 0 0 1 8.5 5.6Z"/><path d="M8.5 8.9 6.4 6.78a3.2 3.2 0 0 1 4.2 0L8.5 8.9Z"/></svg>';
   var PL_BELL_SVG = '<svg viewBox="0 0 20 20" class="ios-i-bell" fill="#fff"><path d="M10 2a1 1 0 0 0-1 1v.6A5 5 0 0 0 5 8.5V12l-1.3 1.9a.7.7 0 0 0 .6 1.1h11.4a.7.7 0 0 0 .6-1.1L15 12V8.5a5 5 0 0 0-4-4.9V3a1 1 0 0 0-1-1Zm0 16a2.2 2.2 0 0 0 2.1-1.6H7.9A2.2 2.2 0 0 0 10 18Z"/><path d="M2.5 1.8 18.2 17.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>';
   // Batería con el porcentaje DENTRO (como iOS): número + carcasa + punta.
-  // saver = modo de ahorro de energía (batería AMARILLA aunque no esté baja).
-  function plBattSvg(level, showPct, saver) {
+  function plBattSvg(level, showPct) {
     if (level == null) level = 78;
     level = Math.max(0, Math.min(100, level | 0));
     var fillW = Math.max(2, Math.round(20 * level / 100));
-    var col = (saver || level <= 20) ? "#ffd60a" : "#fff";
+    var col = level <= 20 ? "#ffd60a" : "#fff";
     var pct = showPct
       ? '<text x="11.5" y="9.5" text-anchor="middle" font-size="8.5" font-weight="700" font-family="-apple-system,system-ui,sans-serif" fill="#000" fill-opacity="0.88">' + level + "</text>"
       : "";
@@ -3287,86 +3231,51 @@
       '<rect x="2" y="2" width="' + fillW + '" height="9" rx="2" fill="' + col + '"/>' + pct +
       '<rect x="24" y="4" width="1.8" height="5" rx="0.9" fill="#fff" fill-opacity="0.5"/></svg>';
   }
-  // Linterna estilo SF Symbols: cabezal, corte, mango largo con "lente" (agujero).
-  var PL_FLASH_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M8.7 2h6.6v1.6H8.7Z"/><path fill-rule="evenodd" d="M8.7 4.7h6.6l-1.05 1.95c-.18.34-.28.72-.28 1.1V19.5a1.47 1.47 0 0 1-2.94 0V7.75c0-.38-.1-.76-.28-1.1L8.7 4.7Zm3.3 2.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/></svg>';
-  // Cámara estilo SF Symbols: cuerpo relleno con la lente en anillo.
-  var PL_CAM_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path fill-rule="evenodd" d="M8.5 4.5c.3-.9 1.15-1.5 2.1-1.5h2.8c.95 0 1.8.6 2.1 1.5l.35 1h2.75A2.4 2.4 0 0 1 21 7.9v9.2a2.4 2.4 0 0 1-2.4 2.4H5.4A2.4 2.4 0 0 1 3 17.1V7.9a2.4 2.4 0 0 1 2.4-2.4h2.75l.35-1ZM12 8.2a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.7a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z"/></svg>';
+  var PL_FLASH_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.3 2h5.4l-.7 4H10l-.7-4Zm.8 5.2h3.8l-.42 3.5c-.1.86-.63 1.4-1.48 1.4s-1.38-.54-1.48-1.4L10.1 7.2ZM11 13.4h2V22h-2v-8.6Z"/></svg>';
+  var PL_CAM_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M9.2 3.2 7.9 5H4.4A2.4 2.4 0 0 0 2 7.4v10.2A2.4 2.4 0 0 0 4.4 20h15.2A2.4 2.4 0 0 0 22 17.6V7.4A2.4 2.4 0 0 0 19.6 5h-3.5l-1.3-1.8H9.2Zm2.8 4.6a4.7 4.7 0 1 1 0 9.4 4.7 4.7 0 0 1 0-9.4Zm0 2a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z"/></svg>';
   var PL_ISLK_SVG = '<svg viewBox="0 0 13 16" fill="#fff"><path d="M6.5 0C4.29 0 2.5 1.79 2.5 4v2H2c-.83 0-1.5.67-1.5 1.5v6.9C.5 15.4 1.13 16 1.9 16h9.2c.77 0 1.4-.6 1.4-1.6V7.5C12.5 6.67 11.83 6 11 6h-.5V4C10.5 1.79 8.71 0 6.5 0Zm2 6h-4V4c0-1.1.9-2 2-2s2 .9 2 2v2Z"/></svg>';
   var PL_FACE_SVG = '<svg viewBox="0 0 22 22" fill="none" stroke="#30d158" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V4.5A2.5 2.5 0 0 1 4.5 2H6M16 2h1.5A2.5 2.5 0 0 1 20 4.5V6M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M6 20H4.5A2.5 2.5 0 0 1 2 17.5V16"/><path d="M8 8.5v1.6M14 8.5v1.6M11 8.5v3.2l-1 .9"/><path d="M8.2 14.6a4 4 0 0 0 5.6 0"/></svg>';
   var PL_KEYS = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"], ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"], ["", ""], ["0", ""], ["", ""]];
 
-  function plIsIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   // Marca de la pantalla de bloqueo (misma función en la vista previa y en la
   // actuación, así lo que ves preparando es EXACTO a lo que verá el espectador).
-  // opts.hideStatus: en iOS el sistema SIEMPRE pinta su propia barra de estado
-  // (hora + batería) encima de la web y no se puede quitar; si dibujáramos la
-  // nuestra saldrían DOS barras. Por eso en la actuación en iPhone ocultamos la
-  // nuestra y dejamos solo la real (una sola barra, como un móvil de verdad).
-  function plLockMarkup(c, opts) {
-    c = c || {}; opts = opts || {};
+  function plLockMarkup(c) {
+    c = c || {};
+    var font = PL_FONTS[c.clockFont] || PL_FONTS.def, wt = PL_WEIGHT[c.clockFont] || 590;
     var glass = c.clockStyle !== "solid";
-    var t = plTimeStr(c.h24, c.leadZero), clockHtml;
-    var mask = plClockMaskUri(t);
-    var maskStyle = "-webkit-mask-image:url('" + mask + "');mask-image:url('" + mask + "')";
-    if (glass) {
-      // Reloj "Cristal": el material se pinta a través de la máscara — fondo
-      // ESMERILADO (refracción) + tinte brillo->azul->plata. Debajo, un clon
-      // oscuro desenfocado hace de sombra de profundidad, como el real.
-      var glassStyle = maskStyle;
-      if (c.wallpaper) {
-        glassStyle += ";background-image:linear-gradient(176deg,rgba(255,255,255,.88) 0%,rgba(210,238,255,.6) 20%,rgba(222,231,240,.52) 55%,rgba(168,180,192,.66) 100%),url('" + (c.wallpaperBlur || c.wallpaper) + "')" +
-          ";background-size:auto,140% auto;background-position:center,center 22%;background-repeat:no-repeat";
-      }
-      clockHtml = '<div class="ios-clockw"><div class="ios-clock glass" style="' + glassStyle + '"></div></div>';
-    } else {
-      clockHtml = '<div class="ios-clockw"><div class="ios-clock" style="' + maskStyle + ";background:" + (c.clockColor || "#ffffff") + '"></div></div>';
-    }
-    var useShot = (c.renderMode === "screenshot" || c.renderMode === "hybrid") && c.lockShot;
-    function elOn(id) { var m = c.el || {}; return m[id] !== "cap" && m[id] !== "off"; }
-    if (useShot && !elOn("clock")) clockHtml = "";
+    var color = glass ? "" : (c.clockColor || "#ffffff");
+    var clockCls = "ios-clock" + (glass ? " glass" : "");
+    var clockStyle = "font-family:" + font + ";font-weight:" + wt + (color ? ";color:" + color : "");
     var bg = c.wallpaper ? "background-image:url('" + c.wallpaper + "')" : "background:#0b0d12";
     var carrier = (c.carrier != null ? c.carrier : "");
     var left = (carrier ? '<span class="ios-carrier">' + plEsc(carrier) + "</span>" : "") + (c.mute ? PL_BELL_SVG : "");
-    var right = plSigSvg(c.signalBars) + (c.wifi === false ? "" : PL_WIFI_SVG) + plBattSvg(c.battLevel, c.battPct !== false, !!c.battSaver);
+    var right = plSigSvg(c.signalBars) + (c.wifi === false ? "" : PL_WIFI_SVG) + plBattSvg(c.battLevel, c.battPct !== false);
     var shortcut = c.shortcut ? '<div class="ios-shortcut">' + plEsc(c.shortcut) + "</div>" : "";
-    var statusBar = (opts.hideStatus || (useShot && !elOn("status")) || (c.statusMode === "use-system")) ? "" :
-      '<div class="ios-status"><span class="ios-status-l">' + left + '</span><span class="ios-status-r">' + right + "</span></div>";
-    // Efecto profundidad de iOS: el recorte del sujeto de la foto se pinta
-    // DELANTE del reloj (va después en el DOM), como hace el bloqueo real.
-    var depth = (c.depthImg && (!useShot || elOn("depth"))) ? '<img class="ios-depth" src="' + c.depthImg + '" alt="">' : "";
-    var dateHtml = (useShot && !elOn("date")) ? "" : '<div class="ios-date">' + plDateStr(c.dateStyle) + "</div>";
-    var bottom = (useShot && !elOn("buttons")) ? "" : '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + "</span>" + shortcut + '<span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>";
-    var homebar = (useShot && !elOn("homebar")) ? "" : '<div class="ios-homebar"></div>';
     return '<div class="ios-lock" style="' + bg + '">' +
-      (useShot ? plShotHtml(c.lockShot, c.shotFit) : "") +
-      '<div class="ios-dim"></div>' + statusBar +
-      '<div class="ios-head">' + dateHtml + clockHtml + "</div>" +
-      depth + bottom + homebar +
+      '<div class="ios-dim"></div>' +
+      '<div class="ios-status"><span class="ios-status-l">' + left + '</span><span class="ios-status-r">' + right + "</span></div>" +
+      '<div class="ios-head"><div class="ios-date">' + plDateStr(c.dateStyle) + "</div>" +
+      '<div class="' + clockCls + '" style="' + clockStyle + '">' + plTimeStr(c.h24) + "</div></div>" +
+      '<div class="ios-bottom"><span class="ios-cbtn">' + PL_FLASH_SVG + "</span>" + shortcut + '<span class="ios-cbtn">' + PL_CAM_SVG + "</span></div>" +
+      '<div class="ios-homebar"></div>' +
       "</div>";
   }
   // Teclado de código de iOS (efecto cristal), con Dynamic Island, título,
   // puntos, teclas 0-9 con sus letras y pie SOS / Cancelar.
-  function plPassMarkup(pin, c) {
-    c = c || {};
+  function plPassMarkup(pin) {
     var dots = ""; for (var i = 0; i < pin; i++) dots += '<span class="ios-pdot" data-i="' + i + '"></span>';
     var keys = "";
     for (var k = 0; k < PL_KEYS.length; k++) {
       var num = PL_KEYS[k][0];
       if (!num) { keys += '<span class="ios-key ghost"></span>'; continue; }
-      keys += '<span class="ios-key" data-k="' + num + '"><span class="k-num">' + num + "</span>" + (PL_KEYS[k][1] && c.subLetters !== false ? '<span class="k-sub">' + PL_KEYS[k][1] + "</span>" : "") + "</span>";
+      keys += '<span class="ios-key" data-k="' + num + '"><span class="k-num">' + num + "</span>" + (PL_KEYS[k][1] ? '<span class="k-sub">' + PL_KEYS[k][1] + "</span>" : "") + "</span>";
     }
-    var dev = c.device || {};
-    var island = (c.el && c.el.island === "off") || dev.island === false ? "" :
-      '<div class="ios-island"><span class="isl-l">' + PL_ISLK_SVG + '</span><span class="isl-r">' + PL_FACE_SVG + "</span></div>";
-    var vars = "--pl-keyd:" + (c.keyD || 20) + "cqw;--pl-keygapy:" + (c.keyGapY != null ? c.keyGapY : 2.15) + "cqh;--pl-dotd:" + (c.dotD || 1.3) + "cqh;--pl-dotgap:" + (c.dotGap != null ? c.dotGap : 5.5) + "cqw;--pl-pass-dim:" + (c.passDim != null ? c.passDim : 0.34) + ";--pl-pass-blur:" + (c.passBlur != null ? c.passBlur : 9) + "px";
-    var useShot = (c.renderMode === "screenshot" || c.renderMode === "hybrid") && c.passShot;
-    return '<div class="ios-pass" style="' + vars + '">' +
-      (useShot ? plShotHtml(c.passShot, c.passShotFit) : "") +
-      island +
-      '<div class="ios-pass-title">' + plEsc(c.passTitle || "Introduce el código de desbloqueo") + "</div>" +
+    return '<div class="ios-pass">' +
+      '<div class="ios-island"><span class="isl-l">' + PL_ISLK_SVG + '</span><span class="isl-r">' + PL_FACE_SVG + "</span></div>" +
+      '<div class="ios-pass-title">Introduce el código de desbloqueo</div>' +
       '<div class="ios-pass-dots">' + dots + "</div>" +
       '<div class="ios-keypad">' + keys + "</div>" +
-      '<div class="ios-pass-foot"><span>' + plEsc(c.footL || "SOS") + "</span><span>" + plEsc(c.footR || "Cancelar") + "</span></div>" +
+      '<div class="ios-pass-foot"><span>SOS</span><span>Cancelar</span></div>' +
       "</div>";
   }
   function plEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -3375,421 +3284,20 @@
     plClockClear();
     function upd() {
       if (!root || !document.body.contains(root)) { plClockClear(); return; }
-      var cks = root.querySelectorAll(".ios-clock"), dt = root.querySelector(".ios-date");
-      var m = 'url("' + plClockMaskUri(plTimeStr(c.h24, c.leadZero)) + '")';
-      for (var i = 0; i < cks.length; i++) { cks[i].style.webkitMaskImage = m; cks[i].style.maskImage = m; }
+      var ck = root.querySelector(".ios-clock"), dt = root.querySelector(".ios-date");
+      if (ck) ck.textContent = plTimeStr(c.h24);
       if (dt) dt.textContent = plDateStr(c.dateStyle);
     }
     plClockH = window.setInterval(upd, 10000);
   }
-
-  /* ========== RÉPLICA CONFIGURABLE: perfiles, presets (IndexedDB), calibración ========== */
-  // Perfiles de dispositivo (viewport CSS en pt, dpr, isla/notch, safe areas en px CSS)
-  var PL_DEVICES = [
-    { id: "se3", name: "iPhone SE (2/3)", cssW: 375, cssH: 667, dpr: 2, notch: false, island: false, safeTop: 20, safeBottom: 0 },
-    { id: "x", name: "iPhone X / XS / 11 Pro", cssW: 375, cssH: 812, dpr: 3, notch: true, island: false, safeTop: 44, safeBottom: 34 },
-    { id: "xr", name: "iPhone XR / 11", cssW: 414, cssH: 896, dpr: 2, notch: true, island: false, safeTop: 44, safeBottom: 34 },
-    { id: "xsmax", name: "iPhone XS Max / 11 Pro Max", cssW: 414, cssH: 896, dpr: 3, notch: true, island: false, safeTop: 44, safeBottom: 34 },
-    { id: "mini", name: "iPhone 12/13 mini", cssW: 375, cssH: 812, dpr: 3, notch: true, island: false, safeTop: 50, safeBottom: 34 },
-    { id: "i13", name: "iPhone 12 / 13 / 14", cssW: 390, cssH: 844, dpr: 3, notch: true, island: false, safeTop: 47, safeBottom: 34 },
-    { id: "i14p", name: "iPhone 12/13 Pro Max / 14 Plus", cssW: 428, cssH: 926, dpr: 3, notch: true, island: false, safeTop: 47, safeBottom: 34 },
-    { id: "i15", name: "iPhone 14 Pro / 15 / 15 Pro / 16", cssW: 393, cssH: 852, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 },
-    { id: "i15pm", name: "iPhone 14 Pro Max / 15 Plus / 15 Pro Max / 16 Plus", cssW: 430, cssH: 932, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 },
-    { id: "i16pro", name: "iPhone 16 Pro", cssW: 402, cssH: 874, dpr: 3, notch: false, island: true, safeTop: 62, safeBottom: 34 },
-    { id: "i16pm", name: "iPhone 16 Pro Max", cssW: 440, cssH: 956, dpr: 3, notch: false, island: true, safeTop: 62, safeBottom: 34 },
-    { id: "custom", name: "Dispositivo personalizado", cssW: 393, cssH: 852, dpr: 3, notch: false, island: true, safeTop: 59, safeBottom: 34 }
-  ];
-  function plDevice(id) { for (var i = 0; i < PL_DEVICES.length; i++) if (PL_DEVICES[i].id === id) return PL_DEVICES[i]; return PL_DEVICES[7]; }
-  // IndexedDB para presets (las imágenes en dataURI caben; localStorage no)
-  var plDbH = null;
-  function plDb(cb) {
-    if (plDbH) return cb(plDbH);
-    try {
-      var rq = indexedDB.open("magic_pl", 1);
-      rq.onupgradeneeded = function () { rq.result.createObjectStore("presets", { keyPath: "id" }); };
-      rq.onsuccess = function () { plDbH = rq.result; cb(plDbH); };
-      rq.onerror = function () { cb(null); };
-    } catch (e) { cb(null); }
-  }
-  function plDbPut(pr, cb) { plDb(function (db) { if (!db) return cb && cb(false); var tx = db.transaction("presets", "readwrite"); tx.objectStore("presets").put(pr); tx.oncomplete = function () { cb && cb(true); }; tx.onerror = function () { cb && cb(false); }; }); }
-  function plDbGet(id, cb) { plDb(function (db) { if (!db) return cb(null); var rq = db.transaction("presets").objectStore("presets").get(id); rq.onsuccess = function () { cb(rq.result || null); }; rq.onerror = function () { cb(null); }; }); }
-  function plDbAll(cb) { plDb(function (db) { if (!db) return cb([]); var rq = db.transaction("presets").objectStore("presets").getAll(); rq.onsuccess = function () { cb(rq.result || []); }; rq.onerror = function () { cb([]); }; }); }
-  function plDbDel(id, cb) { plDb(function (db) { if (!db) return cb && cb(false); var tx = db.transaction("presets", "readwrite"); tx.objectStore("presets").delete(id); tx.oncomplete = function () { cb && cb(true); }; }); }
-  function plActiveId() { try { return localStorage.getItem("magic_pl_active") || ""; } catch (e) { return ""; } }
-  function plSetActive(id) { try { localStorage.setItem("magic_pl_active", id); } catch (e) {} }
-  function plNewPreset(name) {
-    var c = plCfg(); // hereda la config rápida existente como base editable
-    return { version: 1, id: "pl" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || "Mi iPhone",
-      device: "i15", renderMode: "editable",
-      cfg: { carrier: c.carrier || "", mute: c.mute !== false, h24: c.h24 !== false, dateStyle: c.dateStyle || "compact", clockStyle: c.clockStyle || "glass", clockColor: c.clockColor || "#ffffff", battPct: c.battPct !== false, battLevel: c.battLevel != null ? c.battLevel : 63, battSaver: !!c.battSaver, signalBars: c.signalBars != null ? c.signalBars : 3, wifi: c.wifi !== false, shortcut: c.shortcut || "", pinLen: c.pinLen || 6, method: c.method || "sensor", sens: c.sens,
-        passTitle: "Introduce el código de desbloqueo", footL: "SOS", footR: "Cancelar", subLetters: true, passDim: 0.34, passBlur: 9, keyD: 20, keyGapY: 2.15, dotD: 1.3, dotGap: 5.5, leadZero: false, perfMode: "pwa-overlay" },
-      images: { wallpaper: c.wallpaper || "", depthImg: c.depthImg || "", lockShot: "", passShot: "" },
-      shotFit: { x: 0, y: 0, s: 100 }, passShotFit: { x: 0, y: 0, s: 100 },
-      el: { status: "dyn", date: "dyn", clock: "dyn", buttons: "dyn", homebar: "dyn", island: "dyn", depth: "dyn" },
-      cal: {} };
-  }
-  // Config efectiva de render a partir de un preset (para plLockMarkup/plPassMarkup)
-  function plPresetCfg(pr) {
-    var c = {}; var k;
-    for (k in pr.cfg) c[k] = pr.cfg[k];
-    c.wallpaper = pr.images.wallpaper; c.depthImg = pr.images.depthImg;
-    c.lockShot = pr.images.lockShot; c.passShot = pr.images.passShot;
-    c.renderMode = pr.renderMode; c.shotFit = pr.shotFit; c.passShotFit = pr.passShotFit;
-    c.el = pr.el; c.cal = pr.cal; c.device = plDevice(pr.device);
-    if (pr.deviceCustom) c.device = pr.deviceCustom;
-    return c;
-  }
-  // Calibración: selectors de cada elemento ajustable
-  var PL_CAL_SEL = { status: ".ios-status", date: ".ios-date", clock: ".ios-clockw", depth: ".ios-depth", buttons: ".ios-bottom", homebar: ".ios-homebar", shot: ".ios-shot img", island: ".ios-island", ptitle: ".ios-pass-title", pdots: ".ios-pass-dots", keypad: ".ios-keypad", pfoot: ".ios-pass-foot", pshot: ".ios-pass .ios-shot img" };
-  var PL_CAL_LOCK = ["shot", "status", "date", "clock", "depth", "buttons", "homebar"];
-  var PL_CAL_PASS = ["pshot", "island", "ptitle", "pdots", "keypad", "pfoot"];
-  function plApplyCal(root, c) {
-    if (!root || !c || !c.cal) return;
-    for (var id in c.cal) {
-      var el = root.querySelector(PL_CAL_SEL[id]); if (!el) continue;
-      var v = c.cal[id] || {};
-      var t = "translate(" + (v.x || 0) + "cqw," + (v.y || 0) + "cqh) scale(" + (v.sx != null ? v.sx : 1) + "," + (v.sy != null ? v.sy : 1) + ")";
-      el.style.transform = t;
-      el.style.transformOrigin = "center top";
-      if (v.op != null) el.style.opacity = v.op;
-      el.style.visibility = v.h ? "hidden" : "";
-    }
-  }
-  // Capa de captura (métodos captura completa / híbrido)
-  function plShotHtml(img, fit) {
-    if (!img) return "";
-    fit = fit || { x: 0, y: 0, s: 100 };
-    return '<div class="ios-shot"><img src="' + img + '" alt="" style="transform:translate(' + (fit.x || 0) + "cqw," + (fit.y || 0) + 'cqh) scale(' + ((fit.s || 100) / 100) + ')"></div>';
-  }
-  function plPreload(list, cb) {
-    var left = 0, fired = false;
-    function done() { if (!fired && left <= 0) { fired = true; cb(); } }
-    for (var i = 0; i < list.length; i++) {
-      if (!list[i]) continue;
-      left++;
-      (function (src) { var im = new Image(); im.onload = im.onerror = function () { left--; done(); }; im.src = src; })(list[i]);
-    }
-    window.setTimeout(function () { fired = true; cb(); }, 4000);
-    done();
-  }
-
-
-  /* ========== ASISTENTE + EDITOR DE CALIBRACIÓN + COMPARACIÓN ========== */
-  var plDraft = null; // preset en edición
-  function plField(label, inner) { return '<div class="ple-f"><label>' + label + "</label>" + inner + "</div>"; }
-  function plImgInput(id, label, cur) {
-    return '<div class="ple-img"><span>' + label + "</span>" +
-      '<input type="file" accept="image/*" id="' + id + '">' +
-      '<em id="' + id + 'St">' + (cur ? "cargada ✓" : "—") + "</em></div>";
-  }
-  function plReadFile(inp, cb) {
-    var f = inp.files && inp.files[0]; if (!f) return;
-    var r = new FileReader();
-    r.onload = function () { cb(String(r.result)); };
-    r.readAsDataURL(f);
-  }
-  function renderPalmDiag() {
-    clearTabbar();
-    var sa = { t: "?", b: "?" };
-    try {
-      var probe = document.createElement("div");
-      probe.style.cssText = "position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:0;width:1px;pointer-events:none;visibility:hidden";
-      document.body.appendChild(probe);
-      var r = probe.getBoundingClientRect();
-      sa.t = Math.round(r.top) + "px"; sa.b = Math.round(window.innerHeight - r.bottom) + "px";
-      probe.remove();
-    } catch (e) {}
-    var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
-    var rows = [
-      ["Viewport CSS", window.innerWidth + " × " + window.innerHeight + " px"],
-      ["100dvh estable", (window.visualViewport ? Math.round(window.visualViewport.height) : "?") + " px visibles"],
-      ["Device pixel ratio", String(window.devicePixelRatio || 1)],
-      ["Safe area (top/bottom)", sa.t + " / " + sa.b],
-      ["Modo standalone (PWA)", standalone ? "SÍ (pantalla completa, sin barras de Safari)" : "NO — añade la app a la pantalla de inicio"],
-      ["Navegador iOS", plIsIOS() ? "sí" : "no"],
-      ["Barra superior en actuación", plIsIOS() ? "la real del sistema (no se dibuja doble)" : "simulada (escritorio/Android)"],
-      ["Scroll bloqueado en actuación", "sí (touch-action + overflow hidden)"],
-      ["Preset activo", plActiveId() || "ninguno (modo clásico)"],
-      ["screen", (window.screen ? window.screen.width + " × " + window.screen.height : "?")],
-      ["visualViewport", (window.visualViewport ? Math.round(window.visualViewport.width) + " × " + Math.round(window.visualViewport.height) : "?")]
-    ];
-    // Sonda REAL: monta el escenario oculto un instante y mide sus rects.
-    try {
-      var probe2 = document.createElement("div");
-      probe2.className = "pl-stage"; probe2.style.visibility = "hidden"; probe2.style.pointerEvents = "none";
-      probe2.innerHTML = plLockMarkup({ wallpaper: "", carrier: "X" }, {});
-      document.body.appendChild(probe2);
-      var rs = probe2.getBoundingClientRect();
-      var rw = probe2.querySelector(".ios-lock").getBoundingClientRect();
-      var rc = probe2.querySelector(".ios-clock") ? probe2.querySelector(".ios-clock").getBoundingClientRect() : { top: 0, height: 0 };
-      probe2.remove();
-      var okStage = Math.abs(rs.top) < 0.5 && Math.abs(rs.left) < 0.5;
-      rows.push(["Stage rect", Math.round(rs.left) + "," + Math.round(rs.top) + " " + Math.round(rs.width) + "×" + Math.round(rs.height) + (okStage ? " — OK (0,0)" : " — FALLO: no empieza en 0,0")]);
-      rows.push(["Wallpaper rect", Math.round(rw.left) + "," + Math.round(rw.top) + " " + Math.round(rw.width) + "×" + Math.round(rw.height)]);
-      rows.push(["Reloj rect", "top " + Math.round(rc.top) + ", alto " + Math.round(rc.height)]);
-    } catch (e) { rows.push(["Sonda de escenario", "error: " + e.message]); }
-    var h = "";
-    for (var i = 0; i < rows.length; i++) h += "<tr><td>" + rows[i][0] + "</td><td>" + rows[i][1] + "</td></tr>";
-    view.innerHTML = '<div class="wrap"><div class="pagehead"><button class="back" onclick="location.hash=\'#/desbloqueo\'">' + icon("back") + "</button><h1>Diagnóstico de la réplica</h1></div>" +
-      '<table class="ple-diag">' + h + "</table>" +
-      '<p class="hint">Comprobaciones: sin doble barra superior (en iPhone la barra la pone el sistema), una sola Dynamic Island (si tu captura ya la trae, ponla "De la captura" en el asistente), fondo sin deformar (usa la escala de captura en el editor) y tolerancia objetivo de 1–2 px tras calibrar con Superponer/Cortina/Parpadeo.</p></div>';
-  }
-
-  function renderPalmWizard() {
-    clearTabbar();
-    if (!plDraft) plDraft = plNewPreset("Mi iPhone");
-    var pr = plDraft, step = pr.__step || 1;
-    var body = "";
-    if (step === 1) {
-      var devs = "";
-      for (var i = 0; i < PL_DEVICES.length; i++) {
-        var d = PL_DEVICES[i];
-        devs += '<button class="ple-dev' + (pr.device === d.id ? " on" : "") + '" data-d="' + d.id + '">' + d.name + "<em>" + d.cssW + "×" + d.cssH + " pt · @" + d.dpr + "x · " + (d.island ? "Dynamic Island" : d.notch ? "notch" : "clásico") + "</em></button>";
-      }
-      var cust = pr.device === "custom" ? '<div class="ple-row"><input type="number" id="plcW" value="' + plDevice("custom").cssW + '" placeholder="ancho pt"><input type="number" id="plcH" value="' + plDevice("custom").cssH + '" placeholder="alto pt"><label class="pl-chk"><input type="checkbox" id="plcIsl" checked> Dynamic Island</label></div>' : "";
-      body = "<h3>1 · ¿Qué iPhone tienes?</h3><p class='hint'>Define proporciones, isla/notch y zonas seguras. En el propio iPhone la réplica ocupa la pantalla real completa.</p><div class='ple-devs'>" + devs + "</div>" + cust;
-    } else if (step === 2) {
-      var c = pr.cfg;
-      body = "<h3>2 · Preferencias</h3>" +
-        plField("Operador", '<input class="pl-txt" id="plw-carrier" value="' + plEsc(c.carrier) + '" placeholder="vacío = sin operador">') +
-        plField("Formato de hora", '<div class="seg"><button data-k="h24" data-v="1" class="' + (c.h24 ? "on" : "") + '">24 h</button><button data-k="h24" data-v="" class="' + (!c.h24 ? "on" : "") + '">12 h</button></div>') +
-        plField("Cero inicial en la hora (mira TU pantalla: ¿\u201c2:48\u201d o \u201c02:48\u201d?)", '<div class="seg"><button data-k="leadZero" data-v="" class="' + (!c.leadZero ? "on" : "") + '">2:48</button><button data-k="leadZero" data-v="1" class="' + (c.leadZero ? "on" : "") + '">02:48</button></div>') +
-        plField("Modo de actuación", '<div class="seg"><button data-k="perfMode" data-v="pwa-overlay" class="' + (c.perfMode !== "pwa-screenshot" && c.perfMode !== "native-fullscreen" ? "on" : "") + '">PWA</button><button data-k="perfMode" data-v="pwa-screenshot" class="' + (c.perfMode === "pwa-screenshot" ? "on" : "") + '">PWA + captura</button><button data-k="perfMode" data-v="native-fullscreen" class="' + (c.perfMode === "native-fullscreen" ? "on" : "") + '">Nativo</button></div>' +
-          '<p class="hint">PWA: el fondo llega hasta arriba pero la barra de estado (hora/señal/batería reales) la pone iOS y NO se puede sustituir. PWA + captura: tu captura se recorta para encajar bajo la barra real. Nativo: para el player iOS (carpeta native/), que oculta la barra real y dibuja la simulada — única réplica completa.</p>') +
-        plField("Código visual", '<div class="seg"><button data-k="pinLen" data-v="6" class="' + (c.pinLen === 6 ? "on" : "") + '">6 cifras</button><button data-k="pinLen" data-v="4" class="' + (c.pinLen === 4 ? "on" : "") + '">4 cifras</button></div>') +
-        plField("Batería", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-bpct" ' + (c.battPct ? "checked" : "") + "> % visible</label><input type='number' id='plw-blvl' min='1' max='100' value='" + c.battLevel + "' style='width:70px'></div>") +
-        plField("Silencio y señal", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-mute" ' + (c.mute ? "checked" : "") + '> campana silencio</label><input type="number" id="plw-sig" min="0" max="4" value="' + c.signalBars + "\" style='width:60px'> barras</div>") +
-        "<div class='hint warn'><b>Seguridad:</b> el código que se teclea en la actuación es FICTICIO y solo vive en memoria: no se guarda, no se envía, no se registra. <b>Nunca configures ni uses tu código real del iPhone.</b></div>";
-    } else if (step === 3) {
-      body = "<h3>3 · Imágenes</h3><p class='hint'>Todo se procesa y guarda LOCALMENTE en tu dispositivo (IndexedDB). Nada se sube a ningún servidor.</p>" +
-        plImgInput("plw-lock", "Captura de tu pantalla de bloqueo", pr.images.lockShot) +
-        plImgInput("plw-pass", "Captura de tu pantalla de código", pr.images.passShot) +
-        plImgInput("plw-wall", "Fondo original (foto)", pr.images.wallpaper) +
-        plImgInput("plw-depth", "PNG del sujeto recortado (efecto profundidad)", pr.images.depthImg);
-    } else if (step === 4) {
-      var modes = [["screenshot", "Captura completa", "Tu captura es la base visual; los elementos dinámicos se superponen solo donde tú elijas."], ["hybrid", "Híbrido (recomendado)", "La captura pone las partes estáticas; hora/fecha/teclado van en dinámico, calibrados encima."], ["reference", "Solo referencia", "La captura solo se usa en el editor para comparar; el resultado es 100% reconstruido."], ["editable", "Reconstrucción editable", "Sin captura: fondo + componentes configurables."]];
-      var mb = "";
-      for (var m = 0; m < modes.length; m++) mb += '<button class="ple-mode' + (pr.renderMode === modes[m][0] ? " on" : "") + '" data-m="' + modes[m][0] + '">' + modes[m][1] + "<em>" + modes[m][2] + "</em></button>";
-      body = "<h3>4 · Método de creación</h3><div class='ple-modes'>" + mb + "</div>";
-      if (pr.renderMode === "screenshot" || pr.renderMode === "hybrid") {
-        var names = { status: "Barra superior", date: "Fecha", clock: "Reloj", buttons: "Botones inferiores", homebar: "Indicador inferior", depth: "Sujeto (profundidad)" };
-        var rows = "";
-        for (var id in names) {
-          rows += '<div class="ple-elrow"><span>' + names[id] + '</span><div class="seg">' +
-            '<button data-el="' + id + '" data-v="cap" class="' + (pr.el[id] === "cap" ? "on" : "") + '">De la captura</button>' +
-            '<button data-el="' + id + '" data-v="dyn" class="' + (pr.el[id] === "dyn" ? "on" : "") + '">Dinámico</button>' +
-            '<button data-el="' + id + '" data-v="off" class="' + (pr.el[id] === "off" ? "on" : "") + '">Oculto</button></div></div>';
-        }
-        body += "<p class='hint'>Elemento a elemento: ¿lo aporta la captura o lo dibuja la app? Evita duplicados (si la captura ya trae la hora, ponla \"De la captura\" o el reloj dinámico se pintará encima).</p>" + rows;
-      }
-    }
-    view.innerHTML = '<div class="wrap ple-wiz"><div class="ple-steps">Paso ' + step + " de 4</div>" + body +
-      '<div class="ple-nav">' + (step > 1 ? '<button class="btn ghost" id="plwBack">Atrás</button>' : "") +
-      '<button class="btn primary" id="plwNext">' + (step < 4 ? "Siguiente" : "Abrir editor") + "</button></div></div>";
-    view.querySelectorAll(".ple-dev").forEach(function (b) { b.addEventListener("click", function () { pr.device = b.getAttribute("data-d"); renderPalmWizard(); }); });
-    view.querySelectorAll(".ple-mode").forEach(function (b) { b.addEventListener("click", function () {
-      pr.renderMode = b.getAttribute("data-m");
-      if (pr.renderMode === "screenshot") pr.el = { status: "cap", date: "cap", clock: "dyn", buttons: "cap", homebar: "cap", depth: "cap", island: "dyn" };
-      if (pr.renderMode === "hybrid") pr.el = { status: "cap", date: "dyn", clock: "dyn", buttons: "cap", homebar: "cap", depth: "cap", island: "dyn" };
-      renderPalmWizard();
-    }); });
-    view.querySelectorAll("[data-el]").forEach(function (b) { b.addEventListener("click", function () { pr.el[b.getAttribute("data-el")] = b.getAttribute("data-v"); renderPalmWizard(); }); });
-    view.querySelectorAll(".seg [data-k]").forEach(function (b) { b.addEventListener("click", function () {
-      var k = b.getAttribute("data-k"), v = b.getAttribute("data-v");
-      pr.cfg[k] = k === "pinLen" ? parseInt(v, 10) : (k === "perfMode" ? v : !!v); renderPalmWizard();
-    }); });
-    function bindImg(id, key) { var el = document.getElementById(id); if (el) el.addEventListener("change", function () { plReadFile(el, function (d) { pr.images[key] = d; var st = document.getElementById(id + "St"); if (st) st.textContent = "cargada ✓"; if (key === "wallpaper") plBlurData(d, function (b) { pr.images.wallpaperBlur = b || ""; }); }); }); }
-    bindImg("plw-lock", "lockShot"); bindImg("plw-pass", "passShot"); bindImg("plw-wall", "wallpaper"); bindImg("plw-depth", "depthImg");
-    var back = document.getElementById("plwBack"); if (back) back.addEventListener("click", function () { pr.__step = step - 1; renderPalmWizard(); });
-    document.getElementById("plwNext").addEventListener("click", function () {
-      if (step === 1 && pr.device === "custom") {
-        var w = parseInt((document.getElementById("plcW") || {}).value, 10), h = parseInt((document.getElementById("plcH") || {}).value, 10);
-        if (w && h) pr.deviceCustom = { id: "custom", name: "Personalizado", cssW: w, cssH: h, dpr: 3, notch: false, island: !!(document.getElementById("plcIsl") || {}).checked, safeTop: 59, safeBottom: 34 };
-      }
-      if (step === 2) {
-        pr.cfg.carrier = (document.getElementById("plw-carrier") || {}).value || "";
-        pr.cfg.battPct = !!(document.getElementById("plw-bpct") || {}).checked;
-        pr.cfg.battLevel = parseInt((document.getElementById("plw-blvl") || {}).value, 10) || 63;
-        pr.cfg.mute = !!(document.getElementById("plw-mute") || {}).checked;
-        pr.cfg.signalBars = parseInt((document.getElementById("plw-sig") || {}).value, 10);
-      }
-      if (step < 4) { pr.__step = step + 1; renderPalmWizard(); return; }
-      delete pr.__step;
-      plDbPut(pr, function () { plSetActive(pr.id); location.hash = "#/desbloqueo-editor"; });
-    });
-  }
-
-  /* ---- Editor de calibración con comparación ---- */
-  var plEd = { screen: "lock", sel: "clock", zoom: 100, cmp: "off", cmpOp: 0.5, grid: false, undo: [], redo: [], blinkH: null };
-  function plCalOf(pr, id) { if (!pr.cal[id]) pr.cal[id] = { x: 0, y: 0, sx: 1, sy: 1, op: null, h: false }; return pr.cal[id]; }
-  function renderPalmEditor() {
-    clearTabbar();
-    var id = plActiveId();
-    if (!plDraft || plDraft.id !== id) {
-      plDbGet(id, function (pr) { if (!pr) { location.hash = "#/desbloqueo"; return; } plDraft = pr; renderPalmEditor(); });
-      if (!plDraft || plDraft.id !== id) { view.innerHTML = '<div class="wrap"><p class="hint">Cargando preset…</p></div>'; return; }
-    }
-    var pr = plDraft, c = plPresetCfg(pr), dev = c.device;
-    var isLock = plEd.screen === "lock";
-    var ids = isLock ? PL_CAL_LOCK : PL_CAL_PASS;
-    var names = { shot: "Captura", status: "Barra", date: "Fecha", clock: "Reloj", depth: "Sujeto", buttons: "Botones", homebar: "Indicador", pshot: "Captura", island: "Isla", ptitle: "Título", pdots: "Puntos", keypad: "Teclado", pfoot: "SOS/Cancelar" };
-    var chips = "";
-    for (var i = 0; i < ids.length; i++) chips += '<button class="ple-chip' + (plEd.sel === ids[i] ? " on" : "") + '" data-c="' + ids[i] + '">' + names[ids[i]] + "</button>";
-    var v = plCalOf(pr, plEd.sel);
-    var refImg = isLock ? pr.images.lockShot : pr.images.passShot;
-    var stageW = Math.round(dev.cssW * plEd.zoom / 100 * 0.82);
-    view.innerHTML =
-      '<div class="ple-top">' +
-      '<button class="btn ghost sm" id="pleBack">‹ Guardar y salir</button>' +
-      '<div class="seg sm"><button id="pleLock" class="' + (isLock ? "on" : "") + '">Bloqueo</button><button id="plePass" class="' + (!isLock ? "on" : "") + '">Código</button></div>' +
-      '<div class="seg sm"><button data-z="50">50%</button><button data-z="100" class="on">100%</button><button data-z="150">150%</button><button data-z="200">200%</button></div>' +
-      '<button class="btn ghost sm" id="pleUndo">↩</button><button class="btn ghost sm" id="pleRedo">↪</button>' +
-      '<button class="btn ghost sm" id="pleGrid">' + (plEd.grid ? "Rejilla ✓" : "Rejilla") + "</button>" +
-      "</div>" +
-      '<div class="ple-cmpbar">Comparar: <div class="seg sm">' +
-      ["off", "over", "curtain", "blink"].map(function (m) { var lbl = { off: "No", over: "Superponer", curtain: "Cortina", blink: "Parpadeo" }[m]; return '<button data-cmp="' + m + '" class="' + (plEd.cmp === m ? "on" : "") + '"' + (m !== "off" && !refImg ? " disabled" : "") + ">" + lbl + "</button>"; }).join("") +
-      '</div><input type="range" id="pleOp" min="0" max="100" value="' + Math.round(plEd.cmpOp * 100) + '" style="width:110px"><input type="number" id="pleOpN" min="0" max="100" value="' + Math.round(plEd.cmpOp * 100) + '" style="width:56px">%' +
-      (refImg ? "" : " <em class='ple-noref'>sin captura de referencia</em>") + "</div>" +
-      '<div class="ple-stagewrap"><div class="ple-stage" id="pleStage" style="width:' + stageW + "px;aspect-ratio:" + dev.cssW + "/" + dev.cssH + '">' +
-      plLockMarkup(c, {}) + (isLock ? "" : plPassMarkup(c.pinLen || 6, c)) +
-      (plEd.grid ? '<div class="ple-grid"></div>' : "") +
-      (refImg && plEd.cmp !== "off" ? '<img class="ple-ref" id="pleRef" src="' + refImg + '" style="opacity:' + plEd.cmpOp + '">' : "") +
-      (plEd.cmp === "curtain" ? '<div class="ple-curtain" id="pleCurtain"></div>' : "") +
-      "</div></div>" +
-      '<div class="ple-chips">' + chips + "</div>" +
-      '<div class="ple-panel" id="plePanel">' +
-      '<div class="ple-nudges">X: ' + [-10, -1, -0.5, 0.5, 1, 10].map(function (n) { return '<button data-nx="' + n + '">' + (n > 0 ? "+" : "") + n + "</button>"; }).join("") + "</div>" +
-      '<div class="ple-nudges">Y: ' + [-10, -1, -0.5, 0.5, 1, 10].map(function (n) { return '<button data-ny="' + n + '">' + (n > 0 ? "+" : "") + n + "</button>"; }).join("") + "</div>" +
-      '<div class="ple-nums">' +
-      '<label>X<input type="number" step="0.1" id="pleX" value="' + (Math.round((v.x || 0) * dev.cssW / 100 * 10) / 10) + '"></label>' +
-      '<label>Y<input type="number" step="0.1" id="pleY" value="' + (Math.round((v.y || 0) * dev.cssH / 100 * 10) / 10) + '"></label>' +
-      '<label>Esc.X %<input type="number" step="0.5" id="pleSX" value="' + Math.round((v.sx != null ? v.sx : 1) * 100) + '"></label>' +
-      '<label>Esc.Y %<input type="number" step="0.5" id="pleSY" value="' + Math.round((v.sy != null ? v.sy : 1) * 100) + '"></label>' +
-      '<label>Opac.%<input type="number" step="1" min="0" max="100" id="pleOpE" value="' + (v.op != null ? Math.round(v.op * 100) : 100) + '"></label>' +
-      '<label class="pl-chk"><input type="checkbox" id="pleHide" ' + (v.h ? "checked" : "") + ">Ocultar</label>" +
-      '<button class="btn ghost sm" id="pleReset">Restaurar</button>' +
-      "</div>" +
-      (plEd.sel === "keypad" && !isLock ? '<div class="ple-nums"><label>Ø tecla cqw<input type="number" step="0.1" id="pleKeyD" value="' + (c.keyD || 20) + '"></label><label>Sep.filas cqh<input type="number" step="0.05" id="pleKeyG" value="' + (c.keyGapY != null ? c.keyGapY : 2.15) + '"></label><label>Oscurecer %<input type="number" step="1" id="pleDim" value="' + Math.round((c.passDim != null ? c.passDim : 0.34) * 100) + '"></label><label>Blur px<input type="number" step="1" id="pleBlur" value="' + (c.passBlur != null ? c.passBlur : 9) + '"></label></div>' : "") +
-      (plEd.sel === "pdots" && !isLock ? '<div class="ple-nums"><label>Ø punto cqh<input type="number" step="0.05" id="pleDotD" value="' + (c.dotD || 1.3) + '"></label><label>Sep. cqw<input type="number" step="0.1" id="pleDotG" value="' + (c.dotGap != null ? c.dotGap : 5.5) + '"></label></div>' : "") +
-      (plEd.sel === "ptitle" && !isLock ? '<div class="ple-nums"><label style="flex:1">Texto<input type="text" class="pl-txt" id="pleTitle" value="' + plEsc(c.passTitle || "") + '"></label></div>' : "") +
-      ((plEd.sel === "shot" || plEd.sel === "pshot") ? '<div class="ple-nums"><label>Escala captura %<input type="number" step="0.5" id="pleShotS" value="' + ((isLock ? pr.shotFit : pr.passShotFit).s || 100) + '"></label></div>' : "") +
-      "</div>";
-    var stage = document.getElementById("pleStage");
-    plApplyCal(stage, c);
-    plStartClock(stage, c);
-    if (!isLock) { stage.querySelector(".ios-lock").classList.add("ple-dimmed"); var ip = stage.querySelector(".ios-pass"); if (ip) ip.style.opacity = 1; }
-    // selección tocando el elemento + arrastre
-    function snapshot() { plEd.undo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); if (plEd.undo.length > 40) plEd.undo.shift(); plEd.redo = []; }
-    function save() { plDbPut(pr); }
-    function rerender() { save(); renderPalmEditor(); }
-    ids.forEach(function (eid) {
-      var el = stage.querySelector(PL_CAL_SEL[eid]); if (!el) return;
-      el.addEventListener("pointerdown", function (ev) {
-        if (plEd.sel !== eid) { plEd.sel = eid; renderPalmEditor(); return; }
-        ev.preventDefault();
-        var v0 = plCalOf(pr, eid), sx = ev.clientX, sy = ev.clientY, x0 = v0.x || 0, y0 = v0.y || 0;
-        snapshot();
-        function mv(e2) {
-          var r = stage.getBoundingClientRect();
-          v0.x = x0 + (e2.clientX - sx) / r.width * 100;
-          v0.y = y0 + (e2.clientY - sy) / r.height * 100;
-          plApplyCal(stage, c);
-        }
-        function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); save(); renderPalmEditor(); }
-        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
-      });
-    });
-    view.querySelectorAll(".ple-chip").forEach(function (b) { b.addEventListener("click", function () { plEd.sel = b.getAttribute("data-c"); renderPalmEditor(); }); });
-    view.querySelectorAll("[data-z]").forEach(function (b) { b.addEventListener("click", function () { plEd.zoom = parseInt(b.getAttribute("data-z"), 10); renderPalmEditor(); }); });
-    view.querySelectorAll("[data-cmp]").forEach(function (b) { b.addEventListener("click", function () { plEd.cmp = b.getAttribute("data-cmp"); renderPalmEditor(); }); });
-    function nudge(dxPx, dyPx) { snapshot(); var vv = plCalOf(pr, plEd.sel); vv.x = (vv.x || 0) + dxPx / dev.cssW * 100; vv.y = (vv.y || 0) + dyPx / dev.cssH * 100; rerender(); }
-    view.querySelectorAll("[data-nx]").forEach(function (b) { b.addEventListener("click", function () { nudge(parseFloat(b.getAttribute("data-nx")), 0); }); });
-    view.querySelectorAll("[data-ny]").forEach(function (b) { b.addEventListener("click", function () { nudge(0, parseFloat(b.getAttribute("data-ny"))); }); });
-    function bindNum(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener("change", function () { snapshot(); fn(parseFloat(el.value)); rerender(); }); }
-    bindNum("pleX", function (n) { plCalOf(pr, plEd.sel).x = n / dev.cssW * 100; });
-    bindNum("pleY", function (n) { plCalOf(pr, plEd.sel).y = n / dev.cssH * 100; });
-    bindNum("pleSX", function (n) { plCalOf(pr, plEd.sel).sx = n / 100; });
-    bindNum("pleSY", function (n) { plCalOf(pr, plEd.sel).sy = n / 100; });
-    bindNum("pleOpE", function (n) { plCalOf(pr, plEd.sel).op = Math.max(0, Math.min(1, n / 100)); });
-    bindNum("pleKeyD", function (n) { pr.cfg.keyD = n; });
-    bindNum("pleKeyG", function (n) { pr.cfg.keyGapY = n; });
-    bindNum("pleDim", function (n) { pr.cfg.passDim = n / 100; });
-    bindNum("pleBlur", function (n) { pr.cfg.passBlur = n; });
-    bindNum("pleDotD", function (n) { pr.cfg.dotD = n; });
-    bindNum("pleDotG", function (n) { pr.cfg.dotGap = n; });
-    bindNum("pleShotS", function (n) { (isLock ? pr.shotFit : pr.passShotFit).s = n; });
-    var tEl = document.getElementById("pleTitle"); if (tEl) tEl.addEventListener("change", function () { snapshot(); pr.cfg.passTitle = tEl.value; rerender(); });
-    document.getElementById("pleHide").addEventListener("change", function (e) { snapshot(); plCalOf(pr, plEd.sel).h = !!e.target.checked; rerender(); });
-    document.getElementById("pleReset").addEventListener("click", function () { snapshot(); delete pr.cal[plEd.sel]; rerender(); });
-    document.getElementById("pleUndo").addEventListener("click", function () { var u = plEd.undo.pop(); if (!u) return; plEd.redo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); var st = JSON.parse(u); pr.cal = st.cal; pr.cfg = st.cfg; pr.shotFit = st.shotFit; pr.passShotFit = st.passShotFit; rerender(); });
-    document.getElementById("pleRedo").addEventListener("click", function () { var u = plEd.redo.pop(); if (!u) return; plEd.undo.push(JSON.stringify({ cal: pr.cal, cfg: pr.cfg, shotFit: pr.shotFit, passShotFit: pr.passShotFit })); var st = JSON.parse(u); pr.cal = st.cal; pr.cfg = st.cfg; pr.shotFit = st.shotFit; pr.passShotFit = st.passShotFit; rerender(); });
-    document.getElementById("pleGrid").addEventListener("click", function () { plEd.grid = !plEd.grid; renderPalmEditor(); });
-    document.getElementById("pleLock").addEventListener("click", function () { plEd.screen = "lock"; plEd.sel = "clock"; renderPalmEditor(); });
-    document.getElementById("plePass").addEventListener("click", function () { plEd.screen = "pass"; plEd.sel = "keypad"; renderPalmEditor(); });
-    var opR = document.getElementById("pleOp"), opN = document.getElementById("pleOpN");
-    function setOp(val) { plEd.cmpOp = val / 100; var r = document.getElementById("pleRef"); if (r) r.style.opacity = plEd.cmpOp; opR.value = val; opN.value = val; }
-    opR.addEventListener("input", function () { setOp(parseFloat(opR.value)); });
-    opN.addEventListener("change", function () { setOp(parseFloat(opN.value)); });
-    if (plEd.cmp === "blink") { plEd.blinkH = window.setInterval(function () { var r = document.getElementById("pleRef"); if (!r) { window.clearInterval(plEd.blinkH); return; } r.style.opacity = r.style.opacity === "0" ? String(plEd.cmpOp) : "0"; }, 450); }
-    var curt = document.getElementById("pleCurtain");
-    if (curt) {
-      curt.addEventListener("pointerdown", function (ev) {
-        ev.preventDefault();
-        function mv(e2) { var r = stage.getBoundingClientRect(); var pct = Math.max(0, Math.min(100, (e2.clientX - r.left) / r.width * 100)); curt.style.left = pct + "%"; var ref = document.getElementById("pleRef"); if (ref) ref.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)"; }
-        function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); }
-        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
-      });
-    }
-    document.getElementById("pleBack").addEventListener("click", function () { if (plEd.blinkH) window.clearInterval(plEd.blinkH); plDbPut(pr, function () { location.hash = "#/desbloqueo"; }); });
-  }
-
   function renderPalmLock() {
     clearTabbar(); var f0 = document.getElementById("fabEl"); if (f0) f0.remove();
     var c = plCfg();
-    // Gestor de presets (réplicas por comprador) — IndexedDB
-    window.setTimeout(function () {
-      var host = document.getElementById("plPresets");
-      if (!host) return;
-      plDbAll(function (list) {
-        var act = plActiveId(), h = "";
-        for (var i = 0; i < list.length; i++) {
-          var pr = list[i];
-          h += '<div class="ple-preset' + (pr.id === act ? " on" : "") + '" data-id="' + pr.id + '">' +
-            '<label class="pl-chk"><input type="radio" name="plap" ' + (pr.id === act ? "checked" : "") + "> " + plEsc(pr.name) + " <em>(" + plDevice(pr.device).name + " · " + pr.renderMode + ")</em></label>" +
-            '<span class="ple-pbtns"><button data-a="edit">Calibrar</button><button data-a="dup">Duplicar</button><button data-a="ren">Renombrar</button><button data-a="exp">Exportar</button><button data-a="del">Borrar</button></span></div>';
-        }
-        host.innerHTML = h +
-          '<div class="pl-row"><button class="btn primary sm" id="plNewP">+ Nueva réplica (asistente)</button>' +
-          '<button class="btn ghost sm" id="plImpP">Importar</button><input type="file" id="plImpF" accept="application/json" style="display:none">' +
-          (act ? '<button class="btn ghost sm" id="plNoP">Usar modo clásico</button>' : "") + "</div>";
-        host.querySelectorAll(".ple-preset").forEach(function (row) {
-          var id = row.getAttribute("data-id");
-          row.querySelector("input[type=radio]").addEventListener("change", function () { plSetActive(id); renderPalmLock(); });
-          row.querySelectorAll("[data-a]").forEach(function (b) {
-            b.addEventListener("click", function () {
-              var a = b.getAttribute("data-a");
-              if (a === "edit") { plSetActive(id); plDraft = null; location.hash = "#/desbloqueo-editor"; }
-              if (a === "del") plDbDel(id, function () { if (plActiveId() === id) plSetActive(""); renderPalmLock(); });
-              if (a === "dup") plDbGet(id, function (pr) { if (!pr) return; pr.id = "pl" + Date.now().toString(36); pr.name += " (copia)"; plDbPut(pr, function () { renderPalmLock(); }); });
-              if (a === "ren") plDbGet(id, function (pr) { if (!pr) return; var n = window.prompt("Nombre del preset", pr.name); if (!n) return; pr.name = n; plDbPut(pr, function () { renderPalmLock(); }); });
-              if (a === "exp") plDbGet(id, function (pr) { if (!pr) return; var blob = new Blob([JSON.stringify(pr)], { type: "application/json" }); var u = URL.createObjectURL(blob); var aEl = document.createElement("a"); aEl.href = u; aEl.download = pr.name.replace(/\W+/g, "_") + ".magiclock.json"; aEl.click(); window.setTimeout(function () { URL.revokeObjectURL(u); }, 4000); });
-            });
-          });
-        });
-        var np = document.getElementById("plNewP"); if (np) np.addEventListener("click", function () { plDraft = null; location.hash = "#/desbloqueo-config"; });
-        var ip = document.getElementById("plImpP"), iff = document.getElementById("plImpF");
-        if (ip) ip.addEventListener("click", function () { iff.click(); });
-        if (iff) iff.addEventListener("change", function () {
-          var f = iff.files && iff.files[0]; if (!f) return;
-          var r = new FileReader();
-          r.onload = function () { try { var pr = JSON.parse(String(r.result)); if (!pr || !pr.id || !pr.version) throw 0; pr.id = "pl" + Date.now().toString(36); plDbPut(pr, function () { plSetActive(pr.id); renderPalmLock(); }); } catch (e) { toast("Fichero de preset no válido"); } };
-          r.readAsText(f);
-        });
-        var nop = document.getElementById("plNoP"); if (nop) nop.addEventListener("click", function () { plSetActive(""); renderPalmLock(); });
-      });
-    }, 0);
     var pin = c.pinLen || 6, method = c.method || "sensor";
-    var h24 = c.h24 !== false, glass = c.clockStyle !== "solid";
+    var font = c.clockFont || "def", h24 = c.h24 !== false, glass = c.clockStyle !== "solid";
+    var fontOpts = [["def", "Por defecto"], ["thin", "Fina"], ["round", "Redondeada"], ["serif", "Serif"], ["mono", "Mono"]];
+    var fontSeg = "";
+    for (var fi = 0; fi < fontOpts.length; fi++) fontSeg += '<button data-f="' + fontOpts[fi][0] + '" class="' + (font === fontOpts[fi][0] ? "on" : "") + '">' + fontOpts[fi][1] + "</button>";
     var sw = "";
     for (var ci = 0; ci < PL_COLORS.length; ci++) sw += '<button class="pl-sw' + ((c.clockColor || "#ffffff").toLowerCase() === PL_COLORS[ci] ? " on" : "") + '" data-c="' + PL_COLORS[ci] + '" style="background:' + PL_COLORS[ci] + '"></button>';
     var sensVal = c.sens; if (sensVal == null || sensVal > 6) sensVal = 1.4;
@@ -3798,16 +3306,8 @@
       '<div class="panel">' +
       '<p class="hint">El espectador sostiene tu móvil en la pantalla de bloqueo y, al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y se abre Google. No subimos capturas: solo tu <b>fondo</b>, y replicamos tu UI <b>en vivo</b> (hora, fecha y teclado reales) para que sea idéntica a tu iPhone.</p>' +
       '<div class="pl-live"><div class="pl-phone" id="plPrev"></div><div class="pl-liverow"><button class="btn ghost sm" id="plPrevPass">Ver teclado</button><span class="hint pl-livehint">Vista en vivo</span></div></div>' +
-      '<p class="hint warn"><b>Importante para que sea perfecto:</b> haz el truco con la app <b>a pantalla completa</b>. En el iPhone: botón Compartir → <b>Añadir a pantalla de inicio</b>, y ábrela desde ese icono. Así desaparece la barra de Safari y arriba solo queda la barra de estado real del sistema (una sola, como un móvil de verdad). En Safari normal se ven dos barras.</p>' +
-      '<p class="hint warn"><b>Antes de actuar:</b> cierra temporizadores, música, llamadas, mapas y cualquier Live Activity — si la Dynamic Island real muestra actividad, delata el truco. Y recuerda: el código que se teclea es FICTICIO; nunca uses tu código real.</p>' +
-      '<div class="sec-label">Tu réplica (presets)</div>' +
-      '<p class="hint">Crea una réplica calibrada de TU pantalla de bloqueo con el asistente: elige tu iPhone, sube tus capturas y ajusta cada elemento al píxel comparando con tu pantalla real. Se guarda en tu dispositivo y la actuación la usa automáticamente. <a href="#/desbloqueo-diag">Diagnóstico</a></p>' +
-      '<div id="plPresets"><p class="hint">Cargando…</p></div>' +
-      '<div class="sec-label">Modo clásico (reconstrucción rápida)</div>' +
+      '<div class="sec-label">Fondo de pantalla</div>' +
       '<button class="btn ghost" id="plWpUp">' + icon("plus", "i-sm") + " Subir tu fondo</button><input type=\"file\" id=\"plWpFile\" accept=\"image/*\" style=\"display:none\">" +
-      '<div class="sec-label">Efecto profundidad (el sujeto DELANTE del reloj)</div>' +
-      '<p class="hint">Si en tu bloqueo real la persona/objeto de la foto tapa parte del reloj, replícalo: en Fotos mantén pulsado el sujeto → <b>Copiar sujeto</b> → pégalo en Notas y guárdalo como imagen (PNG recortado), o usa cualquier app de quitar fondo. Súbelo aquí y quedará delante del reloj, exacto a iOS.</p>' +
-      '<div class="pl-row"><button class="btn ghost" id="plDpUp">' + icon("plus", "i-sm") + " Subir recorte</button>" + (c.depthImg ? '<button class="btn ghost" id="plDpDel">Quitar</button>' : "") + '</div><input type="file" id="plDpFile" accept="image/*" style="display:none">' +
       '<div class="sec-label">Operador y silencio</div>' +
       '<div class="pl-row"><input type="text" id="plCarrier" class="pl-txt" maxlength="16" placeholder="Operador (p. ej. DIGI ES)" value="' + plEsc(c.carrier != null ? c.carrier : "") + '"><label class="pl-chk"><input type="checkbox" id="plMute"' + (c.mute ? " checked" : "") + '> Silencio</label></div>' +
       '<div class="sec-label">Formato de hora</div>' +
@@ -3816,10 +3316,11 @@
       '<div class="seg" id="plDate"><button data-v="compact" class="' + (c.dateStyle === "full" ? "" : "on") + '">Jue 16 jul</button><button data-v="full" class="' + (c.dateStyle === "full" ? "on" : "") + '">Completa</button></div>' +
       '<div class="sec-label">Estilo del reloj</div>' +
       '<div class="seg" id="plStyle"><button data-v="glass" class="' + (glass ? "on" : "") + '">Cristal</button><button data-v="solid" class="' + (glass ? "" : "on") + '">Sólido</button></div>' +
+      '<div class="sec-label">Fuente del reloj</div>' +
+      '<div class="seg wrap" id="plFont">' + fontSeg + "</div>" +
       (glass ? "" : '<div class="sec-label">Color del reloj</div><div class="pl-swatches" id="plSw">' + sw + '<label class="pl-sw pl-swc" style="background:' + (c.clockColor || "#ffffff") + '"><input type="color" id="plColor" value="' + (c.clockColor || "#ffffff") + '"></label></div>') +
       '<div class="sec-label">Batería</div>' +
       '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plBattPct"' + (c.battPct !== false ? " checked" : "") + '> Mostrar %</label>' +
-      '<label class="pl-chk"><input type="checkbox" id="plBattSav"' + (c.battSaver ? " checked" : "") + '> Ahorro (amarilla)</label>' +
       '<input type="range" id="plBattLvl" min="1" max="100" step="1" value="' + (c.battLevel == null ? 78 : c.battLevel) + '"></div>' +
       '<div class="sec-label">Cobertura y wifi</div>' +
       '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plWifi"' + (c.wifi === false ? "" : " checked") + '> WiFi</label>' +
@@ -3835,13 +3336,13 @@
       '<div class="pl-row"><span class="hint">Máx.</span><input type="range" id="plSens" min="0.6" max="5" step="0.1" value="' + sensVal + '"><span class="hint">Mín.</span></div>' +
       '<p class="hint">Va invertida: a la izquierda = extremadamente sensible (detecta el toque más leve). Ajústala en tu móvil real.</p>' +
       '<button class="btn" id="plGo">' + icon("play", "i-sm") + " Actuar</button>" +
-      '<p class="hint">En la actuación puedes tocar la pantalla para avanzar (modo ensayo), además del sensor. Para salir sin desbloquear, toca la <b>esquina superior derecha</b> (botón invisible, solo tú sabes que está).</p>' +
+      '<p class="hint">En la actuación puedes tocar la pantalla para avanzar (modo ensayo), además del sensor.</p>' +
       "</div></div>";
     var showPass = false;
     function prev() {
       var p = document.getElementById("plPrev"); if (!p) return;
       var cc = plCfg();
-      p.innerHTML = plLockMarkup(cc) + (showPass ? plPassMarkup(cc.pinLen || 6, cc) : "");
+      p.innerHTML = plLockMarkup(cc) + (showPass ? plPassMarkup(cc.pinLen || 6) : "");
       if (showPass) p.className = "pl-phone entering"; else p.className = "pl-phone";
       plStartClock(p, cc);
     }
@@ -3851,12 +3352,12 @@
     view.querySelectorAll("#plH24 button").forEach(function (b) { b.addEventListener("click", function () { set("h24", b.getAttribute("data-v") === "1"); renderPalmLock(); }); });
     view.querySelectorAll("#plDate button").forEach(function (b) { b.addEventListener("click", function () { set("dateStyle", b.getAttribute("data-v")); renderPalmLock(); }); });
     view.querySelectorAll("#plStyle button").forEach(function (b) { b.addEventListener("click", function () { set("clockStyle", b.getAttribute("data-v")); renderPalmLock(); }); });
+    view.querySelectorAll("#plFont button").forEach(function (b) { b.addEventListener("click", function () { set("clockFont", b.getAttribute("data-f")); renderPalmLock(); }); });
     view.querySelectorAll("#plSw .pl-sw[data-c]").forEach(function (b) { b.addEventListener("click", function () { set("clockColor", b.getAttribute("data-c")); renderPalmLock(); }); });
     var col = document.getElementById("plColor"); if (col) col.addEventListener("input", function () { set("clockColor", col.value); prev(); });
     var car = document.getElementById("plCarrier"); if (car) car.addEventListener("input", function () { set("carrier", car.value); prev(); });
     var mu = document.getElementById("plMute"); if (mu) mu.addEventListener("change", function () { set("mute", mu.checked); prev(); });
     var bp = document.getElementById("plBattPct"); if (bp) bp.addEventListener("change", function () { set("battPct", bp.checked); prev(); });
-    var bs = document.getElementById("plBattSav"); if (bs) bs.addEventListener("change", function () { set("battSaver", bs.checked); prev(); });
     var bl = document.getElementById("plBattLvl"); if (bl) bl.addEventListener("input", function () { set("battLevel", parseInt(bl.value, 10)); prev(); });
     var wf = document.getElementById("plWifi"); if (wf) wf.addEventListener("change", function () { set("wifi", wf.checked); prev(); });
     var sg = document.getElementById("plSig"); if (sg) sg.addEventListener("input", function () { set("signalBars", parseInt(sg.value, 10)); prev(); });
@@ -3872,81 +3373,30 @@
         toast("Procesando fondo…");
         plCompress(fl, function (data) {
           if (!data) { toast("No se pudo procesar la imagen"); return; }
-          set("wallpaper", data);
-          // Genera también la versión esmerilada para el interior del reloj.
-          plBlurData(data, function (b) {
-            if (b) set("wallpaperBlur", b);
-            prev(); toast("Fondo guardado");
-          });
+          set("wallpaper", data); prev(); toast("Fondo guardado");
         });
       });
     }
-    var dpBtn = document.getElementById("plDpUp"), dpFile = document.getElementById("plDpFile"), dpDel = document.getElementById("plDpDel");
-    if (dpBtn && dpFile) {
-      dpBtn.addEventListener("click", function () { dpFile.click(); });
-      dpFile.addEventListener("change", function () {
-        var fl = dpFile.files && dpFile.files[0]; if (!fl) return;
-        toast("Procesando recorte…");
-        plCompress(fl, function (data) {
-          if (!data) { toast("No se pudo procesar la imagen"); return; }
-          set("depthImg", data); renderPalmLock(); toast("Recorte guardado");
-        }, true); // PNG: conserva la transparencia del recorte
-      });
-    }
-    if (dpDel) dpDel.addEventListener("click", function () { var cc = plCfg(); delete cc.depthImg; plSave(cc); renderPalmLock(); });
     document.getElementById("plGo").addEventListener("click", function () {
       if (!plCfg().wallpaper) { toast("Sube antes tu fondo de pantalla"); return; }
       plPrimeMotion(function () { location.hash = "#/desbloqueo-actuar"; });
     });
     prev();
   }
-  // Cromo de actuación: fondo NEGRO absoluto (nunca beige) también en la zona
-  // de la barra de estado real, forzando theme-color negro mientras se actúa.
-  var plThemeSaved = null;
-  function plPerformChrome(onoff) {
-    try {
-      document.body.classList.toggle("performing", !!onoff);
-      document.documentElement.classList.toggle("performing", !!onoff);
-      var metas = document.querySelectorAll('meta[name="theme-color"]');
-      if (onoff) {
-        if (!plThemeSaved) { plThemeSaved = []; metas.forEach(function (m) { plThemeSaved.push([m, m.getAttribute("content")]); m.setAttribute("content", "#000000"); }); }
-      } else if (plThemeSaved) {
-        plThemeSaved.forEach(function (pr2) { pr2[0].setAttribute("content", pr2[1]); });
-        plThemeSaved = null;
-      }
-    } catch (e) {}
-  }
-
   function renderPalmPerform() {
     clearTabbar(); var f1 = document.getElementById("fabEl"); if (f1) f1.remove();
-    var aid = plActiveId();
-    if (aid && !renderPalmPerform.__pr) {
-      plDbGet(aid, function (pr) { renderPalmPerform.__pr = pr || { __none: true }; renderPalmPerform(); });
-      view.innerHTML = "";
-      return;
-    }
-    var pr = renderPalmPerform.__pr && !renderPalmPerform.__pr.__none ? renderPalmPerform.__pr : null;
-    renderPalmPerform.__pr = null;
-    var c = pr ? plPresetCfg(pr) : plCfg();
-    if (!c.wallpaper && !c.lockShot) { location.hash = "#/desbloqueo"; return; }
-    plPreload([c.wallpaper, c.wallpaperBlur, c.lockShot, c.passShot, c.depthImg], function () {});
+    var c = plCfg();
+    if (!c.wallpaper) { location.hash = "#/desbloqueo"; return; }
     var pin = c.pinLen || 6, method = c.method || "sensor";
-    plPerformChrome(true);
     var sens = c.sens; if (sens == null || sens > 6) sens = 1.4;
     var entered = 0, done = false, entering = false;
-    // Modos honestos: en PWA sobre iOS la barra superior REAL no puede
-    // ocultarse ni sustituirse; solo el wrapper nativo (native-fullscreen)
-    // dibuja la barra simulada porque ahi la real esta oculta de verdad.
-    var perfMode = c.perfMode || "pwa-overlay";
-    var hideSim = plIsIOS() && perfMode !== "native-fullscreen";
     view.innerHTML =
-      '<div class="pl-stage' + (perfMode === "pwa-screenshot" ? " mode-shotcompat" : "") + '" id="plStage">' +
-      plLockMarkup(c, { hideStatus: hideSim }) +
-      plPassMarkup(pin, c) +
+      '<div class="pl-stage" id="plStage">' +
+      plLockMarkup(c) +
+      plPassMarkup(pin) +
       '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
       "</div>";
     var stage = document.getElementById("plStage");
-    plApplyCal(stage, c);
     plStartClock(stage, c);
     var keyEls = stage.querySelectorAll(".ios-key[data-k]");
     function flashKey() {
@@ -5053,7 +4503,6 @@
   var routedOnce = false;
   function route() {
     try {
-      if (location.hash !== "#/desbloqueo-actuar") plPerformChrome(false);
       // El primer render carga quieto (html.boot); a partir del segundo la
       // clase cae aquí mismo, justo antes de reemplazar el contenido, para
       // que las animaciones de entrada vuelvan sin reiniciar nada visible.
@@ -5126,9 +4575,6 @@
       if (h === "#/revelacion-musical") return renderMusicReveal();
       if (h === "#/desbloqueo") return renderPalmLock();
       if (h === "#/desbloqueo-actuar") return renderPalmPerform();
-      if (h === "#/desbloqueo-config") return renderPalmWizard();
-      if (h === "#/desbloqueo-editor") return renderPalmEditor();
-      if (h === "#/desbloqueo-diag") return renderPalmDiag();
       if (h === "#/lector") return renderLector();
       if (h === "#/lector-metodo") return renderLectorMethod();
       if (h === "#/ajustes") return renderSettings();

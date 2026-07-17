@@ -1838,76 +1838,58 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 
 /* --- Pantalla de bloqueo --- */
 .ios-lock { position: absolute; inset: 0; width: 100%; height: 100%; background-size: cover; background-position: center; overflow: hidden; }
-.ios-dim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 16%, rgba(0,0,0,0) 70%, rgba(0,0,0,.26) 100%); transition: background .4s ease, backdrop-filter .4s ease, -webkit-backdrop-filter .4s ease; z-index: 1; }
+.ios-dim { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background .4s ease; z-index: 1; }
 /* Barra de estado: izq = operador + silencio; der = cobertura · wifi · batería. */
 .ios-status { position: absolute; top: 1.4cqh; left: 0; right: 0; height: 5cqh; display: flex; align-items: center; justify-content: space-between; padding: 0 7.5cqw; z-index: 3; }
 .ios-status-l, .ios-status-r { display: flex; align-items: center; gap: 1.6cqw; }
 .ios-carrier { color: #fff; font: 600 2cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .02em; }
 .ios-i-bell { height: 2cqh; width: auto; opacity: .95; }
 .ios-i-sig { height: 1.6cqh; width: auto; }
-.ios-i-wifi { height: 1.75cqh; width: auto; }
+.ios-i-wifi { height: 1.6cqh; width: auto; }
 .ios-i-batt { height: 1.7cqh; width: auto; }
-/* Fecha + reloj grande. Medidas de capturas reales (iPhone 1320x2868): fecha
-   centrada al 10% de alto; reloj del 12,7% al 51,5% de alto y ~86% de ancho. */
-.ios-head { position: absolute; top: 9.1cqh; left: 0; right: 0; text-align: center; z-index: 3; transition: opacity .35s ease, transform .35s ease; }
-.ios-date { color: #fff; font: 590 2.1cqh/1.2 -apple-system, system-ui, sans-serif; opacity: .96; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
-/* Reloj: dígitos SVG propios (idénticos en cualquier dispositivo) usados como
-   MÁSCARA de una caja; el material (cristal/color) se pinta a través. Caja
-   medida de la captura real: 86% de ancho, del 12,6% al 51,3% de alto. */
-.ios-clockw { position: relative; }
-.ios-clock { display: block; width: 86cqw; height: 38.7cqh; margin: 1.3cqh auto 0; background: #fff; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
-/* Estilo "Cristal": el degradado y el fondo esmerilado van inline
-   (plLockMarkup). El relieve va por drop-shadow: sigue el contorno EXACTO de
-   la máscara (sombra abajo + filo de luz arriba) sin tapar las muescas. */
-.ios-clock.glass { background-color: transparent; filter: drop-shadow(0 .28cqh .18cqh rgba(8,14,22,.5)) drop-shadow(0 -.1cqh 0 rgba(255,255,255,.55)); }
-/* Recorte del sujeto DELANTE del reloj (efecto profundidad de iOS). */
-.ios-depth { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 3; pointer-events: none; transition: opacity .35s ease; }
-/* Botones inferiores (linterna / cámara) + atajo central opcional. Círculos al
-   12,5% de ancho, centros al 90,8% de alto (medidos de la captura real). */
-.ios-bottom { position: absolute; bottom: 6.3cqh; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12cqw; z-index: 3; transition: opacity .35s ease; }
-.ios-cbtn { width: 12.5cqw; height: 12.5cqw; border-radius: 50%; background: rgba(10,8,6,.20); backdrop-filter: blur(14px) saturate(1.25) brightness(1.04); -webkit-backdrop-filter: blur(14px) saturate(1.25) brightness(1.04); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; box-shadow: inset 0 0.15cqh 0.35cqh rgba(255,255,255,.26), inset 0 -0.1cqh 0.3cqh rgba(0,0,0,.10); }
-.ios-cbtn svg { width: 5.6cqw; height: 5.6cqw; }
+/* Fecha + reloj grande. */
+.ios-head { position: absolute; top: 6.5cqh; left: 0; right: 0; text-align: center; z-index: 3; transition: opacity .35s ease, transform .35s ease; }
+.ios-date { color: #fff; font: 600 2.15cqh/1.2 -apple-system, system-ui, sans-serif; opacity: .96; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.ios-clock { margin-top: .3cqh; font-size: 20cqh; line-height: .96; letter-spacing: -0.4cqw; color: #fff; }
+/* Estilo "Cristal": reloj translúcido que deja ver el fondo, como iOS. */
+.ios-clock.glass { color: rgba(255,255,255,.34); text-shadow: 0 0.4cqh 3cqh rgba(255,255,255,.22), 0 0.15cqh 0.4cqh rgba(255,255,255,.5); -webkit-text-stroke: 0.12cqh rgba(255,255,255,.28); }
+/* Botones inferiores (linterna / cámara) + atajo central opcional. */
+.ios-bottom { position: absolute; bottom: 4.4cqh; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 10cqw; z-index: 3; transition: opacity .35s ease; }
+.ios-cbtn { width: 8.8cqh; height: 8.8cqh; border-radius: 50%; background: rgba(0,0,0,.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.ios-cbtn svg { width: 4.3cqh; height: 4.3cqh; }
 .ios-shortcut { color: #fff; font: 500 2.05cqh/1 -apple-system, system-ui, sans-serif; opacity: .95; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
-.ios-homebar { position: absolute; bottom: 1.3cqh; left: 50%; transform: translateX(-50%); width: 34.5cqw; height: .55cqh; border-radius: 1cqh; background: #fff; opacity: .92; z-index: 3; transition: opacity .3s ease; }
+.ios-homebar { position: absolute; bottom: 1.1cqh; left: 50%; transform: translateX(-50%); width: 36cqw; height: .6cqh; border-radius: 1cqh; background: #fff; opacity: .9; z-index: 3; }
 
 /* --- Teclado de código (aparece al primer golpe) --- */
 .ios-pass { position: absolute; inset: 0; z-index: 5; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
 /* Dynamic Island con candado + Face ID. */
-.ios-island { position: absolute; top: 2cqh; left: 50%; transform: translateX(-50%); width: 45.4cqw; height: 4.5cqh; border-radius: 3.2cqh; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 4.5cqw; }
-.ios-island .isl-l svg { height: 2.4cqh; width: auto; }
-.ios-island .isl-r svg { height: 2.9cqh; width: auto; }
-.ios-pass-title { position: absolute; top: 19.9cqh; left: 0; right: 0; text-align: center; color: #fff; font: 400 2.2cqh/1.25 -apple-system, system-ui, sans-serif; text-shadow: 0 1px 4px rgba(0,0,0,.4); padding: 0 3cqw; white-space: nowrap; }
-.ios-pass-dots { position: absolute; top: 23.9cqh; left: 0; right: 0; display: flex; justify-content: center; gap: 5.5cqw; }
-.ios-pdot { width: 1.3cqh; height: 1.3cqh; border-radius: 50%; background: transparent; border: 0.16cqh solid rgba(255,255,255,.95); box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: background .1s ease, transform .1s ease; }
+.ios-island { position: absolute; top: 1.3cqh; left: 50%; transform: translateX(-50%); width: 33cqw; height: 4.4cqh; border-radius: 3cqh; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 3.4cqw; }
+.ios-island .isl-l svg { height: 2.3cqh; width: auto; }
+.ios-island .isl-r svg { height: 2.7cqh; width: auto; }
+.ios-pass-title { position: absolute; top: 20cqh; left: 0; right: 0; text-align: center; color: #fff; font: 400 2.5cqh/1.25 -apple-system, system-ui, sans-serif; text-shadow: 0 1px 4px rgba(0,0,0,.4); padding: 0 6cqw; }
+.ios-pass-dots { position: absolute; top: 27.5cqh; left: 0; right: 0; display: flex; justify-content: center; gap: 4cqw; }
+.ios-pdot { width: 2.1cqh; height: 2.1cqh; border-radius: 50%; background: transparent; border: 0.26cqh solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: background .1s ease, transform .1s ease; }
 .ios-pdot.on { background: #fff; transform: scale(1.04); }
 /* Rejilla 3x4 de teclas con efecto cristal. */
-.ios-keypad { position: absolute; top: 35.5cqh; left: 50%; transform: translateX(-50%); width: 76.2cqw; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.15cqh 0; justify-items: center; }
-.ios-key { position: relative; overflow: hidden; width: 20cqw; aspect-ratio: 1 / 1; border-radius: 50%; background: rgba(255,255,255,.09); backdrop-filter: blur(22px) saturate(1.5) brightness(1.16); -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(1.16); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0.2cqh 0.5cqh rgba(255,255,255,.32), inset 0 -0.15cqh 0.4cqh rgba(0,0,0,.08), 0 0.2cqh 0.7cqh rgba(0,0,0,.10); transition: background .12s ease, transform .12s ease; }
-/* Destello de vidrio en la parte alta de cada tecla (liquid glass). */
-.ios-key::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse 70% 45% at 32% 20%, rgba(255,255,255,.28), rgba(255,255,255,0) 70%); pointer-events: none; }
+.ios-keypad { position: absolute; top: 38cqh; left: 50%; transform: translateX(-50%); width: 74cqw; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3.2cqh 6cqw; justify-items: center; }
+.ios-key { width: 15cqw; aspect-ratio: 1 / 1; border-radius: 50%; background: rgba(255,255,255,.18); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0 0 0.12cqh rgba(255,255,255,.14); transition: background .12s ease, transform .12s ease; }
 .ios-key.ghost { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
-.ios-key.ghost::before { content: none; }
-.ios-key .k-num { position: relative; color: #fff; font: 400 4.1cqh/1 -apple-system, system-ui, sans-serif; margin-top: .35cqh; }
-.ios-key .k-sub { position: relative; color: #fff; font: 600 1.25cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .18em; margin-top: .55cqh; }
-.ios-key.press { background: rgba(255,255,255,.48); transform: scale(.95); }
-.ios-pass-foot { position: absolute; bottom: 8.1cqh; left: 50%; transform: translateX(-50%); width: 76.2cqw; display: grid; grid-template-columns: repeat(3, 1fr); color: #fff; font: 400 1.9cqh/1 -apple-system, system-ui, sans-serif; }
-.ios-pass-foot span { justify-self: center; }
-.ios-pass-foot span:last-child { grid-column: 3; }
+.ios-key .k-num { color: #fff; font: 400 4.4cqh/1 -apple-system, system-ui, sans-serif; }
+.ios-key .k-sub { color: #fff; font: 600 1.35cqh/1 -apple-system, system-ui, sans-serif; letter-spacing: .14em; margin-top: .5cqh; }
+.ios-key.press { background: rgba(255,255,255,.55); transform: scale(.94); }
+.ios-pass-foot { position: absolute; bottom: 4.2cqh; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 13cqw; color: #fff; font: 400 2.3cqh/1 -apple-system, system-ui, sans-serif; }
 
 /* Estado "introduciendo código": el reloj y botones se ocultan, aparece el
    teclado (el fondo se mantiene nítido, como en iOS, solo un pelín atenuado). */
-.entering .ios-dim { background: rgba(0,0,0,.34); backdrop-filter: blur(9px) saturate(1.2); -webkit-backdrop-filter: blur(9px) saturate(1.2); }
-.entering .ios-status { opacity: 0; }
+.entering .ios-dim { background: rgba(0,0,0,.14); }
 .entering .ios-head { opacity: 0; transform: translateY(-3cqh); }
-.entering .ios-depth { opacity: 0; }
 .entering .ios-bottom { opacity: 0; }
-.entering .ios-homebar { opacity: 0; }
 .entering .ios-pass { opacity: 1; }
 /* Fundido de desbloqueo antes de abrir Google. */
 .pl-stage.unlocking { background: #fff; }
 .pl-stage.unlocking .ios-lock, .pl-stage.unlocking .ios-pass { opacity: 0; transition: opacity .5s ease; }
 /* Botón de salida discreto (esquina superior), solo para el mago. */
-.pl-exit { position: absolute; top: calc(6px + env(safe-area-inset-top)); right: 6px; z-index: 10; width: 48px; height: 48px; border-radius: 50%; border: none; background: transparent; color: transparent; opacity: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pl-exit { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 10; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(0,0,0,.28); color: rgba(255,255,255,.55); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .pl-exit svg, .pl-exit .i { width: 18px; height: 18px; }
 
 /* --- Controles de la preparación --- */
@@ -1921,70 +1903,3 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .pl-row { display: flex; align-items: center; gap: 14px; margin: 2px 0 4px; }
 .pl-row input[type=range] { flex: 1; }
 .pl-chk { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--ink, #e8e2d2); font-size: 14px; }
-.hint.warn { background: rgba(201,162,75,.12); border: 1px solid rgba(201,162,75,.4); border-radius: 10px; padding: 9px 11px; }
-
-/* ===== Réplica configurable: captura, asistente, editor, diagnóstico ===== */
-/* Capa de captura (métodos captura completa / híbrido): la imagen del usuario
-   como base, con transform calibrable (x/y en cq, escala). */
-.ios-shot { position: absolute; inset: 0; overflow: hidden; }
-.ios-shot img { width: 100%; height: 100%; object-fit: cover; display: block; transform-origin: center center; }
-.ios-pass .ios-shot { z-index: 0; }
-.ios-pass > *:not(.ios-shot) { position: relative; }
-/* Teclado y puntos gobernados por variables calibrables */
-.ios-key { width: var(--pl-keyd, 20cqw); }
-.ios-keypad { gap: var(--pl-keygapy, 2.15cqh) 0; }
-.ios-pdot { width: var(--pl-dotd, 1.3cqh); height: var(--pl-dotd, 1.3cqh); }
-.ios-pass-dots { gap: var(--pl-dotgap, 5.5cqw); }
-.entering .ios-dim { background: rgba(0, 0, 0, var(--pl-pass-dim, .34)); backdrop-filter: blur(var(--pl-pass-blur, 9px)) saturate(1.2); -webkit-backdrop-filter: blur(var(--pl-pass-blur, 9px)) saturate(1.2); }
-/* Guardas táctiles del modo actuación: sin scroll, zoom, selección ni callout */
-.pl-stage { touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; height: 100vh; height: 100dvh; }
-/* Asistente */
-.ple-wiz h3 { margin: 10px 0 6px; }
-.ple-steps { color: var(--muted, #9aa); font-size: 13px; margin-top: 8px; }
-.ple-devs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
-.ple-dev, .ple-mode { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); cursor: pointer; }
-.ple-dev em, .ple-mode em { display: block; font-style: normal; color: var(--muted, #9aa); font-size: 12px; margin-top: 2px; }
-.ple-dev.on, .ple-mode.on { border-color: var(--accent, #c9a24b); box-shadow: 0 0 0 1px var(--accent, #c9a24b); }
-.ple-modes { display: grid; gap: 8px; margin: 10px 0; }
-.ple-nav { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
-.ple-f { margin: 10px 0; } .ple-f > label { display: block; font-size: 13px; color: var(--muted, #9aa); margin-bottom: 4px; }
-.ple-img { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
-.ple-img span { flex: 1 1 100%; font-size: 13px; }
-.ple-img em { color: var(--accent, #c9a24b); font-style: normal; font-size: 12px; }
-.ple-elrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; font-size: 13px; }
-.ple-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-/* Editor */
-.ple-top, .ple-cmpbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; }
-.ple-cmpbar { font-size: 13px; color: var(--muted, #9aa); }
-.ple-noref { color: var(--muted, #9aa); font-style: normal; }
-.ple-stagewrap { overflow: auto; display: flex; justify-content: center; padding: 8px; max-height: 62vh; }
-.ple-stage { position: relative; container-type: size; overflow: hidden; border-radius: 18px; background: #000; flex: 0 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
-.ple-stage .ios-lock.ple-dimmed .ios-head, .ple-stage .ios-lock.ple-dimmed .ios-bottom { opacity: .25; }
-.ple-ref { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 40; }
-.ple-curtain { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; background: var(--accent, #c9a24b); cursor: ew-resize; z-index: 41; touch-action: none; }
-.ple-curtain::after { content: "◂▸"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--accent, #c9a24b); color: #000; border-radius: 10px; padding: 2px 6px; font-size: 12px; }
-.ple-grid { position: absolute; inset: 0; pointer-events: none; z-index: 39; background-image: linear-gradient(rgba(0,255,200,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,.16) 1px, transparent 1px), linear-gradient(rgba(0,255,200,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,.5) 1px, transparent 1px); background-size: 5% 5%, 5% 5%, 50.5% 50.5%, 50.5% 50.5%; }
-.ple-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 10px; }
-.ple-chip { border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
-.ple-chip.on { border-color: var(--accent, #c9a24b); color: var(--accent, #c9a24b); }
-.ple-panel { padding: 6px 10px 16px; }
-.ple-nudges { display: flex; gap: 6px; align-items: center; margin: 6px 0; font-size: 13px; color: var(--muted, #9aa); }
-.ple-nudges button { min-width: 44px; padding: 6px 4px; border-radius: 8px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); cursor: pointer; }
-.ple-nums { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin: 8px 0; }
-.ple-nums label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted, #9aa); gap: 3px; }
-.ple-nums input[type=number] { width: 76px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line, #2a2f3a); background: var(--card, #1a1720); color: var(--ink, #e8e2d2); }
-.seg.sm button, .btn.sm { padding: 5px 10px; font-size: 13px; }
-.ple-preset { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line, #2a2f3a); border-radius: 10px; margin: 6px 0; flex-wrap: wrap; }
-.ple-preset.on { border-color: var(--accent, #c9a24b); }
-.ple-preset em { color: var(--muted, #9aa); font-style: normal; font-size: 12px; }
-.ple-pbtns { display: flex; gap: 6px; flex-wrap: wrap; }
-.ple-pbtns button { border: 1px solid var(--line, #2a2f3a); background: none; color: var(--ink, #e8e2d2); border-radius: 8px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
-.ple-diag { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
-.ple-diag td { border-bottom: 1px solid var(--line, #2a2f3a); padding: 7px 6px; }
-.ple-diag td:first-child { color: var(--muted, #9aa); }
-
-/* Actuación: NUNCA beige — negro absoluto también tras la barra real */
-html.performing, body.performing, body.performing .app { background: #000 !important; }
-/* Modo PWA+captura: la captura se recorta por arriba para encajar bajo la
-   barra de estado real (evita hora/barra duplicadas de la captura). */
-.pl-stage.mode-shotcompat .ios-shot img { margin-top: calc(-1 * env(safe-area-inset-top, 0px)); }

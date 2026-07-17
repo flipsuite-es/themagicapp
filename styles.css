@@ -1982,3 +1982,9 @@ h1.title { margin-block: calc(4px - 0.15em) calc(2px - 0.15em); }
 .ple-diag { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
 .ple-diag td { border-bottom: 1px solid var(--line, #2a2f3a); padding: 7px 6px; }
 .ple-diag td:first-child { color: var(--muted, #9aa); }
+
+/* Actuación: NUNCA beige — negro absoluto también tras la barra real */
+html.performing, body.performing, body.performing .app { background: #000 !important; }
+/* Modo PWA+captura: la captura se recorta por arriba para encajar bajo la
+   barra de estado real (evita hora/barra duplicadas de la captura). */
+.pl-stage.mode-shotcompat .ios-shot img { margin-top: calc(-1 * env(safe-area-inset-top, 0px)); }

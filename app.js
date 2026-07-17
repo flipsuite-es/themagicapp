@@ -3247,9 +3247,10 @@
   var PL_MONS_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   function plCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
   function pl2(n) { n = n | 0; return n < 10 ? "0" + n : "" + n; }
-  function plTimeStr(h24) {
+  function plTimeStr(h24, leadZero) {
     var d = new Date(), H = d.getHours(), M = d.getMinutes();
-    if (h24 !== false) return pl2(H) + ":" + pl2(M);
+    // iOS NO rellena la hora con cero por defecto ("2:48"); opcional por preset
+    if (h24 !== false) return (leadZero ? pl2(H) : String(H)) + ":" + pl2(M);
     var h = H % 12; if (h === 0) h = 12;
     return h + ":" + pl2(M); // iOS no rotula a.m./p.m. en el reloj grande
   }
@@ -3304,7 +3305,7 @@
   function plLockMarkup(c, opts) {
     c = c || {}; opts = opts || {};
     var glass = c.clockStyle !== "solid";
-    var t = plTimeStr(c.h24), clockHtml;
+    var t = plTimeStr(c.h24, c.leadZero), clockHtml;
     var mask = plClockMaskUri(t);
     var maskStyle = "-webkit-mask-image:url('" + mask + "');mask-image:url('" + mask + "')";
     if (glass) {
@@ -3375,7 +3376,7 @@
     function upd() {
       if (!root || !document.body.contains(root)) { plClockClear(); return; }
       var cks = root.querySelectorAll(".ios-clock"), dt = root.querySelector(".ios-date");
-      var m = 'url("' + plClockMaskUri(plTimeStr(c.h24)) + '")';
+      var m = 'url("' + plClockMaskUri(plTimeStr(c.h24, c.leadZero)) + '")';
       for (var i = 0; i < cks.length; i++) { cks[i].style.webkitMaskImage = m; cks[i].style.maskImage = m; }
       if (dt) dt.textContent = plDateStr(c.dateStyle);
     }
@@ -3421,7 +3422,7 @@
     return { version: 1, id: "pl" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || "Mi iPhone",
       device: "i15", renderMode: "editable",
       cfg: { carrier: c.carrier || "", mute: c.mute !== false, h24: c.h24 !== false, dateStyle: c.dateStyle || "compact", clockStyle: c.clockStyle || "glass", clockColor: c.clockColor || "#ffffff", battPct: c.battPct !== false, battLevel: c.battLevel != null ? c.battLevel : 63, battSaver: !!c.battSaver, signalBars: c.signalBars != null ? c.signalBars : 3, wifi: c.wifi !== false, shortcut: c.shortcut || "", pinLen: c.pinLen || 6, method: c.method || "sensor", sens: c.sens,
-        passTitle: "Introduce el código de desbloqueo", footL: "SOS", footR: "Cancelar", subLetters: true, passDim: 0.34, passBlur: 9, keyD: 20, keyGapY: 2.15, dotD: 1.3, dotGap: 5.5 },
+        passTitle: "Introduce el código de desbloqueo", footL: "SOS", footR: "Cancelar", subLetters: true, passDim: 0.34, passBlur: 9, keyD: 20, keyGapY: 2.15, dotD: 1.3, dotGap: 5.5, leadZero: false, perfMode: "pwa-overlay" },
       images: { wallpaper: c.wallpaper || "", depthImg: c.depthImg || "", lockShot: "", passShot: "" },
       shotFit: { x: 0, y: 0, s: 100 }, passShotFit: { x: 0, y: 0, s: 100 },
       el: { status: "dyn", date: "dyn", clock: "dyn", buttons: "dyn", homebar: "dyn", island: "dyn", depth: "dyn" },
@@ -3508,8 +3509,25 @@
       ["Navegador iOS", plIsIOS() ? "sí" : "no"],
       ["Barra superior en actuación", plIsIOS() ? "la real del sistema (no se dibuja doble)" : "simulada (escritorio/Android)"],
       ["Scroll bloqueado en actuación", "sí (touch-action + overflow hidden)"],
-      ["Preset activo", plActiveId() || "ninguno (modo clásico)"]
+      ["Preset activo", plActiveId() || "ninguno (modo clásico)"],
+      ["screen", (window.screen ? window.screen.width + " × " + window.screen.height : "?")],
+      ["visualViewport", (window.visualViewport ? Math.round(window.visualViewport.width) + " × " + Math.round(window.visualViewport.height) : "?")]
     ];
+    // Sonda REAL: monta el escenario oculto un instante y mide sus rects.
+    try {
+      var probe2 = document.createElement("div");
+      probe2.className = "pl-stage"; probe2.style.visibility = "hidden"; probe2.style.pointerEvents = "none";
+      probe2.innerHTML = plLockMarkup({ wallpaper: "", carrier: "X" }, {});
+      document.body.appendChild(probe2);
+      var rs = probe2.getBoundingClientRect();
+      var rw = probe2.querySelector(".ios-lock").getBoundingClientRect();
+      var rc = probe2.querySelector(".ios-clock") ? probe2.querySelector(".ios-clock").getBoundingClientRect() : { top: 0, height: 0 };
+      probe2.remove();
+      var okStage = Math.abs(rs.top) < 0.5 && Math.abs(rs.left) < 0.5;
+      rows.push(["Stage rect", Math.round(rs.left) + "," + Math.round(rs.top) + " " + Math.round(rs.width) + "×" + Math.round(rs.height) + (okStage ? " — OK (0,0)" : " — FALLO: no empieza en 0,0")]);
+      rows.push(["Wallpaper rect", Math.round(rw.left) + "," + Math.round(rw.top) + " " + Math.round(rw.width) + "×" + Math.round(rw.height)]);
+      rows.push(["Reloj rect", "top " + Math.round(rc.top) + ", alto " + Math.round(rc.height)]);
+    } catch (e) { rows.push(["Sonda de escenario", "error: " + e.message]); }
     var h = "";
     for (var i = 0; i < rows.length; i++) h += "<tr><td>" + rows[i][0] + "</td><td>" + rows[i][1] + "</td></tr>";
     view.innerHTML = '<div class="wrap"><div class="pagehead"><button class="back" onclick="location.hash=\'#/desbloqueo\'">' + icon("back") + "</button><h1>Diagnóstico de la réplica</h1></div>" +
@@ -3535,6 +3553,9 @@
       body = "<h3>2 · Preferencias</h3>" +
         plField("Operador", '<input class="pl-txt" id="plw-carrier" value="' + plEsc(c.carrier) + '" placeholder="vacío = sin operador">') +
         plField("Formato de hora", '<div class="seg"><button data-k="h24" data-v="1" class="' + (c.h24 ? "on" : "") + '">24 h</button><button data-k="h24" data-v="" class="' + (!c.h24 ? "on" : "") + '">12 h</button></div>') +
+        plField("Cero inicial en la hora (mira TU pantalla: ¿\u201c2:48\u201d o \u201c02:48\u201d?)", '<div class="seg"><button data-k="leadZero" data-v="" class="' + (!c.leadZero ? "on" : "") + '">2:48</button><button data-k="leadZero" data-v="1" class="' + (c.leadZero ? "on" : "") + '">02:48</button></div>') +
+        plField("Modo de actuación", '<div class="seg"><button data-k="perfMode" data-v="pwa-overlay" class="' + (c.perfMode !== "pwa-screenshot" && c.perfMode !== "native-fullscreen" ? "on" : "") + '">PWA</button><button data-k="perfMode" data-v="pwa-screenshot" class="' + (c.perfMode === "pwa-screenshot" ? "on" : "") + '">PWA + captura</button><button data-k="perfMode" data-v="native-fullscreen" class="' + (c.perfMode === "native-fullscreen" ? "on" : "") + '">Nativo</button></div>' +
+          '<p class="hint">PWA: el fondo llega hasta arriba pero la barra de estado (hora/señal/batería reales) la pone iOS y NO se puede sustituir. PWA + captura: tu captura se recorta para encajar bajo la barra real. Nativo: para el player iOS (carpeta native/), que oculta la barra real y dibuja la simulada — única réplica completa.</p>') +
         plField("Código visual", '<div class="seg"><button data-k="pinLen" data-v="6" class="' + (c.pinLen === 6 ? "on" : "") + '">6 cifras</button><button data-k="pinLen" data-v="4" class="' + (c.pinLen === 4 ? "on" : "") + '">4 cifras</button></div>') +
         plField("Batería", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-bpct" ' + (c.battPct ? "checked" : "") + "> % visible</label><input type='number' id='plw-blvl' min='1' max='100' value='" + c.battLevel + "' style='width:70px'></div>") +
         plField("Silencio y señal", '<div class="pl-row"><label class="pl-chk"><input type="checkbox" id="plw-mute" ' + (c.mute ? "checked" : "") + '> campana silencio</label><input type="number" id="plw-sig" min="0" max="4" value="' + c.signalBars + "\" style='width:60px'> barras</div>") +
@@ -3575,7 +3596,7 @@
     view.querySelectorAll("[data-el]").forEach(function (b) { b.addEventListener("click", function () { pr.el[b.getAttribute("data-el")] = b.getAttribute("data-v"); renderPalmWizard(); }); });
     view.querySelectorAll(".seg [data-k]").forEach(function (b) { b.addEventListener("click", function () {
       var k = b.getAttribute("data-k"), v = b.getAttribute("data-v");
-      pr.cfg[k] = k === "pinLen" ? parseInt(v, 10) : !!v; renderPalmWizard();
+      pr.cfg[k] = k === "pinLen" ? parseInt(v, 10) : (k === "perfMode" ? v : !!v); renderPalmWizard();
     }); });
     function bindImg(id, key) { var el = document.getElementById(id); if (el) el.addEventListener("change", function () { plReadFile(el, function (d) { pr.images[key] = d; var st = document.getElementById(id + "St"); if (st) st.textContent = "cargada ✓"; if (key === "wallpaper") plBlurData(d, function (b) { pr.images.wallpaperBlur = b || ""; }); }); }); }
     bindImg("plw-lock", "lockShot"); bindImg("plw-pass", "passShot"); bindImg("plw-wall", "wallpaper"); bindImg("plw-depth", "depthImg");
@@ -3778,6 +3799,7 @@
       '<p class="hint">El espectador sostiene tu móvil en la pantalla de bloqueo y, al “teclear” en su palma, cada golpe pone un dígito hasta que se desbloquea y se abre Google. No subimos capturas: solo tu <b>fondo</b>, y replicamos tu UI <b>en vivo</b> (hora, fecha y teclado reales) para que sea idéntica a tu iPhone.</p>' +
       '<div class="pl-live"><div class="pl-phone" id="plPrev"></div><div class="pl-liverow"><button class="btn ghost sm" id="plPrevPass">Ver teclado</button><span class="hint pl-livehint">Vista en vivo</span></div></div>' +
       '<p class="hint warn"><b>Importante para que sea perfecto:</b> haz el truco con la app <b>a pantalla completa</b>. En el iPhone: botón Compartir → <b>Añadir a pantalla de inicio</b>, y ábrela desde ese icono. Así desaparece la barra de Safari y arriba solo queda la barra de estado real del sistema (una sola, como un móvil de verdad). En Safari normal se ven dos barras.</p>' +
+      '<p class="hint warn"><b>Antes de actuar:</b> cierra temporizadores, música, llamadas, mapas y cualquier Live Activity — si la Dynamic Island real muestra actividad, delata el truco. Y recuerda: el código que se teclea es FICTICIO; nunca uses tu código real.</p>' +
       '<div class="sec-label">Tu réplica (presets)</div>' +
       '<p class="hint">Crea una réplica calibrada de TU pantalla de bloqueo con el asistente: elige tu iPhone, sube tus capturas y ajusta cada elemento al píxel comparando con tu pantalla real. Se guarda en tu dispositivo y la actuación la usa automáticamente. <a href="#/desbloqueo-diag">Diagnóstico</a></p>' +
       '<div id="plPresets"><p class="hint">Cargando…</p></div>' +
@@ -3878,6 +3900,23 @@
     });
     prev();
   }
+  // Cromo de actuación: fondo NEGRO absoluto (nunca beige) también en la zona
+  // de la barra de estado real, forzando theme-color negro mientras se actúa.
+  var plThemeSaved = null;
+  function plPerformChrome(onoff) {
+    try {
+      document.body.classList.toggle("performing", !!onoff);
+      document.documentElement.classList.toggle("performing", !!onoff);
+      var metas = document.querySelectorAll('meta[name="theme-color"]');
+      if (onoff) {
+        if (!plThemeSaved) { plThemeSaved = []; metas.forEach(function (m) { plThemeSaved.push([m, m.getAttribute("content")]); m.setAttribute("content", "#000000"); }); }
+      } else if (plThemeSaved) {
+        plThemeSaved.forEach(function (pr2) { pr2[0].setAttribute("content", pr2[1]); });
+        plThemeSaved = null;
+      }
+    } catch (e) {}
+  }
+
   function renderPalmPerform() {
     clearTabbar(); var f1 = document.getElementById("fabEl"); if (f1) f1.remove();
     var aid = plActiveId();
@@ -3892,11 +3931,17 @@
     if (!c.wallpaper && !c.lockShot) { location.hash = "#/desbloqueo"; return; }
     plPreload([c.wallpaper, c.wallpaperBlur, c.lockShot, c.passShot, c.depthImg], function () {});
     var pin = c.pinLen || 6, method = c.method || "sensor";
+    plPerformChrome(true);
     var sens = c.sens; if (sens == null || sens > 6) sens = 1.4;
     var entered = 0, done = false, entering = false;
+    // Modos honestos: en PWA sobre iOS la barra superior REAL no puede
+    // ocultarse ni sustituirse; solo el wrapper nativo (native-fullscreen)
+    // dibuja la barra simulada porque ahi la real esta oculta de verdad.
+    var perfMode = c.perfMode || "pwa-overlay";
+    var hideSim = plIsIOS() && perfMode !== "native-fullscreen";
     view.innerHTML =
-      '<div class="pl-stage" id="plStage">' +
-      plLockMarkup(c, { hideStatus: plIsIOS() && c.statusMode !== "simulated" }) +
+      '<div class="pl-stage' + (perfMode === "pwa-screenshot" ? " mode-shotcompat" : "") + '" id="plStage">' +
+      plLockMarkup(c, { hideStatus: hideSim }) +
       plPassMarkup(pin, c) +
       '<button class="pl-exit" id="plExit" aria-label="Salir">' + icon("x") + "</button>" +
       "</div>";
@@ -5008,6 +5053,7 @@
   var routedOnce = false;
   function route() {
     try {
+      if (location.hash !== "#/desbloqueo-actuar") plPerformChrome(false);
       // El primer render carga quieto (html.boot); a partir del segundo la
       // clase cae aquí mismo, justo antes de reemplazar el contenido, para
       // que las animaciones de entrada vuelvan sin reiniciar nada visible.

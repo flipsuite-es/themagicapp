@@ -34,5 +34,16 @@ let html = readFileSync(OUT, 'utf8');
   }
 }
 
+// Sincroniza los meta del <head> con index.html (theme-color y PWA de iOS):
+// un standalone con metas viejas pinta la franja de estado de beige.
+{
+  const idx = readFileSync(join(R, 'index.html'), 'utf8');
+  const vp = (idx.match(/<meta name="viewport"[^>]*>/) || [''])[0];
+  const th = idx.match(/<meta name="theme-color"[^>]*>/g) || [];
+  const apple = idx.match(/<meta name="apple-mobile-web-app[^>]*>/g) || [];
+  html = html.replace(/<meta name="viewport"[^>]*>/, vp);
+  html = html.replace(/<meta name="theme-color"[^>]*>\s*/g, '');
+  html = html.replace(vp, vp + '\n' + th.join('\n') + '\n' + apple.filter((m) => !html.includes(m)).join('\n'));
+}
 writeFileSync(OUT, html);
 console.log('standalone regenerado:', html.length, 'bytes');
